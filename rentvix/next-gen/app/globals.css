@@ -1,0 +1,890 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-system: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+    /* Light Mode - Fixed and Enhanced */
+    --background: 0 0% 100%; /* Pure white */
+    --foreground: 222.2 84% 4.9%; /* Very dark text */
+    --card: 0 0% 100%; /* Pure white cards */
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%; /* Bright neon cyan - Default */
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%; /* Light gray */
+    --muted-foreground: 215.4 16.3% 46.9%; /* Medium gray */
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%; /* Light border */
+    --input: 214.3 31.8% 91.4%; /* Light input */
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
+
+    /* Sidebar variables - Match main content */
+    --sidebar-background: 0 0% 100%; /* Same as background */
+    --sidebar-foreground: 222.2 84% 4.9%; /* Same as foreground */
+    --sidebar-primary: 221.2 83.2% 53.3%; /* Same as primary */
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-accent: 210 40% 96.1%; /* Same as muted */
+    --sidebar-accent-foreground: 222.2 47.4% 11.2%;
+    --sidebar-border: 214.3 31.8% 91.4%; /* Same as border */
+    --sidebar-ring: 221.2 83.2% 53.3%;
+    --sidebar-muted-foreground: 215.4 16.3% 46.9%; /* Same as muted-foreground */
+
+    /* Chart colors */
+    --chart-1: 221.2 83.2% 53.3%;
+    --chart-2: 262.1 83.3% 57.8%;
+    --chart-3: 316.6 73.3% 52.5%;
+    --chart-4: 4.8 90.6% 58.4%;
+    --chart-5: 27.6 87.9% 49.6%;
+    --chart-6: 47.4 80.9% 54.1%;
+    --chart-7: 172.5 66.7% 50.4%;
+    --chart-8: 201.8 100% 54.3%;
+  }
+
+  .dark {
+    /* Dark Mode - Fixed and Enhanced */
+    --background: 222.2 84% 4.9%; /* Dark slate */
+    --foreground: 210 40% 98%; /* Light text */
+    --card: 222.2 84% 4.9%; /* Dark cards */
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%; /* Brighter neon cyan for dark */
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%; /* Dark gray */
+    --muted-foreground: 215 20.2% 65.1%; /* Light gray */
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%; /* Dark border */
+    --input: 217.2 32.6% 17.5%; /* Dark input */
+    --ring: 224.3 76.3% 48%;
+
+    /* Sidebar variables - Match main content */
+    --sidebar-background: 222.2 84% 4.9%; /* Same as background */
+    --sidebar-foreground: 210 40% 98%; /* Same as foreground */
+    --sidebar-primary: 217.2 91.2% 59.8%; /* Same as primary */
+    --sidebar-primary-foreground: 222.2 47.4% 11.2%;
+    --sidebar-accent: 217.2 32.6% 17.5%; /* Same as muted */
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217.2 32.6% 17.5%; /* Same as border */
+    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-muted-foreground: 215 20.2% 65.1%; /* Same as muted-foreground */
+  }
+
+  /* Theme-specific neon color overrides */
+  .theme-powerful {
+    --primary: 195 100% 55%; /* Neon cyan */
+    --secondary: 217 91% 65%; /* Electric blue */
+    --sidebar-primary: 195 100% 55%;
+    --chart-1: 195 100% 55%;
+    --chart-2: 217 91% 65%;
+  }
+
+  .theme-ceria {
+    --primary: 84 100% 55%; /* Neon lime */
+    --secondary: 45 100% 60%; /* Golden yellow */
+    --sidebar-primary: 84 100% 55%;
+    --chart-1: 84 100% 55%;
+    --chart-2: 45 100% 60%;
+  }
+
+  .theme-run {
+    --primary: 24 100% 60%; /* Neon orange */
+    --secondary: 0 100% 65%; /* Electric red */
+    --sidebar-primary: 24 100% 60%;
+    --chart-1: 24 100% 60%;
+    --chart-2: 0 100% 65%;
+  }
+
+  .theme-calm {
+    --primary: 200 100% 60%; /* Neon blue */
+    --secondary: 180 100% 55%; /* Bright teal */
+    --sidebar-primary: 200 100% 60%;
+    --chart-1: 200 100% 60%;
+    --chart-2: 180 100% 55%;
+  }
+
+  /* Dark mode theme adjustments */
+  .dark.theme-powerful {
+    --primary: 195 100% 60%;
+    --sidebar-primary: 195 100% 60%;
+    --chart-1: 195 100% 60%;
+  }
+
+  .dark.theme-ceria {
+    --primary: 84 100% 60%;
+    --sidebar-primary: 84 100% 60%;
+    --chart-1: 84 100% 60%;
+  }
+
+  .dark.theme-run {
+    --primary: 24 100% 65%;
+    --sidebar-primary: 24 100% 65%;
+    --chart-1: 24 100% 65%;
+  }
+
+  .dark.theme-calm {
+    --primary: 200 100% 65%;
+    --sidebar-primary: 200 100% 65%;
+    --chart-1: 200 100% 65%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-system);
+    font-feature-settings: "rlig" 1, "calt" 1;
+    transition: background-color 0.3s ease, color 0.3s ease;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+  }
+
+  /* Consistent system font for all elements */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  p,
+  span,
+  div,
+  button,
+  input,
+  textarea,
+  select,
+  .font-space-grotesk,
+  .font-outfit,
+  .font-manrope,
+  .font-inter {
+    font-family: var(--font-system) !important;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Light mode background - Fixed */
+  body:not(.dark) {
+    background-color: hsl(0 0% 100%) !important;
+    color: hsl(222.2 84% 4.9%) !important;
+    background-image: radial-gradient(circle at 20% 80%, hsl(var(--primary) / 0.02) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, hsl(var(--secondary) / 0.01) 0%, transparent 50%);
+  }
+
+  /* Dark mode background - Fixed */
+  body.dark {
+    background-color: hsl(222.2 84% 4.9%) !important;
+    color: hsl(210 40% 98%) !important;
+    background-image: radial-gradient(circle at 20% 80%, hsl(var(--primary) / 0.05) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, hsl(var(--secondary) / 0.05) 0%, transparent 50%);
+  }
+
+  /* Safe area support for mobile devices */
+  .safe-area-pb {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Enhanced component styling for both light and dark themes - MINIMAL SHADOWS */
+@layer components {
+  /* Main content area styling */
+  .main-content {
+    @apply bg-background text-foreground;
+    min-height: calc(100vh - 4rem);
+    transition: all 0.3s ease;
+  }
+
+  /* Main content area - Light theme */
+  .main-content:not(.dark *) {
+    background-color: hsl(0 0% 100%) !important;
+    color: hsl(222.2 84% 4.9%) !important;
+  }
+
+  /* Main content area - Dark theme */
+  .dark .main-content {
+    background-color: hsl(222.2 84% 4.9%) !important;
+    color: hsl(210 40% 98%) !important;
+  }
+
+  /* Card components with minimal shadows */
+  .card {
+    @apply bg-card text-card-foreground border-border shadow-sm;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  /* Card components - Light theme */
+  .card:not(.dark *) {
+    background-color: hsl(0 0% 100%) !important;
+    color: hsl(222.2 84% 4.9%) !important;
+    border-color: hsl(214.3 31.8% 91.4%) !important;
+  }
+
+  /* Card components - Dark theme */
+  .dark .card {
+    background-color: hsl(222.2 84% 4.9%) !important;
+    color: hsl(210 40% 98%) !important;
+    border-color: hsl(217.2 32.6% 17.5%) !important;
+  }
+
+  .card-hover {
+    transition: all 0.3s ease;
+  }
+
+  .card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px -5px hsl(var(--primary) / 0.1), 0 8px 10px -6px hsl(var(--primary) / 0.1);
+  }
+
+  /* Bottom Navigation Styling - Enhanced */
+  .bottom-nav {
+    @apply bg-card/95 border-t border-border;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 -4px 20px hsl(var(--primary) / 0.1);
+  }
+
+  .bottom-nav-item {
+    @apply transition-all duration-300 flex flex-col items-center justify-center;
+    min-height: 56px;
+  }
+
+  .bottom-nav-item.active {
+    @apply text-primary bg-primary/10;
+    transform: translateY(-2px);
+  }
+
+  .bottom-nav-item:not(.active) {
+    @apply text-muted-foreground hover:text-foreground;
+  }
+
+  /* Badge positioning fix */
+  .bottom-nav-badge {
+    position: absolute;
+    top: 8px;
+    right: 50%;
+    transform: translateX(50%);
+    z-index: 10;
+  }
+
+  /* Quick Actions Overlay */
+  .quick-actions-overlay {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  .quick-action-button {
+    animation: slideUp 0.3s ease-out;
+    animation-fill-mode: both;
+  }
+
+  .quick-action-button:nth-child(1) {
+    animation-delay: 0.1s;
+  }
+  .quick-action-button:nth-child(2) {
+    animation-delay: 0.15s;
+  }
+  .quick-action-button:nth-child(3) {
+    animation-delay: 0.2s;
+  }
+
+  /* Button styling with minimal shadows */
+  .btn-primary {
+    @apply bg-primary text-primary-foreground hover:bg-primary/90;
+    transition: all 0.3s ease;
+  }
+
+  .btn-secondary {
+    @apply bg-secondary text-secondary-foreground hover:bg-secondary/90;
+    transition: all 0.3s ease;
+  }
+
+  /* Input styling for both themes */
+  .form-input {
+    @apply bg-input border-border text-foreground placeholder:text-muted-foreground;
+    transition: all 0.3s ease;
+  }
+
+  /* Input styling - Light theme */
+  .form-input:not(.dark *) {
+    background-color: hsl(214.3 31.8% 91.4%) !important;
+    color: hsl(222.2 84% 4.9%) !important;
+    border-color: hsl(214.3 31.8% 91.4%) !important;
+  }
+
+  /* Input styling - Dark theme */
+  .dark .form-input {
+    background-color: hsl(217.2 32.6% 17.5%) !important;
+    color: hsl(210 40% 98%) !important;
+    border-color: hsl(217.2 32.6% 17.5%) !important;
+  }
+
+  .form-input:focus {
+    @apply ring-2 ring-primary/20 border-primary/50;
+  }
+
+  /* Enhanced Badge styling with proper centering */
+  .badge {
+    @apply inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors;
+    min-height: 20px;
+    text-align: center;
+  }
+
+  /* Badge variants with better dark mode support */
+  .badge-status-active {
+    @apply bg-green-100 text-green-800 border border-green-200;
+  }
+
+  .dark .badge-status-active {
+    @apply bg-green-900/30 text-green-300 border-green-800;
+  }
+
+  .badge-status-inactive {
+    @apply bg-gray-100 text-gray-800 border border-gray-200;
+  }
+
+  .dark .badge-status-inactive {
+    @apply bg-gray-800/30 text-gray-300 border-gray-700;
+  }
+
+  .badge-status-pending {
+    @apply bg-yellow-100 text-yellow-800 border border-yellow-200;
+  }
+
+  .dark .badge-status-pending {
+    @apply bg-yellow-900/30 text-yellow-300 border-yellow-800;
+  }
+
+  .badge-type-corporate {
+    @apply bg-blue-100 text-blue-800 border border-blue-200;
+  }
+
+  .dark .badge-type-corporate {
+    @apply bg-blue-900/30 text-blue-300 border-blue-800;
+  }
+
+  .badge-type-individual {
+    @apply bg-purple-100 text-purple-800 border border-purple-200;
+  }
+
+  .dark .badge-type-individual {
+    @apply bg-purple-900/30 text-purple-300 border-purple-800;
+  }
+
+  /* Enhanced button styling for dark mode */
+  .btn-outline-enhanced {
+    @apply bg-background border-border text-foreground hover:bg-accent hover:text-accent-foreground;
+    transition: all 0.2s ease-in-out;
+  }
+
+  .btn-outline-enhanced:not(.dark *) {
+    @apply bg-white border-gray-200 text-gray-900 hover:bg-gray-50;
+  }
+
+  .dark .btn-outline-enhanced {
+    @apply bg-gray-900 border-gray-700 text-gray-100 hover:bg-gray-800;
+  }
+
+  /* Ghost button improvements for dark mode */
+  .btn-ghost-enhanced {
+    @apply bg-transparent hover:bg-accent hover:text-accent-foreground;
+    transition: all 0.2s ease-in-out;
+  }
+
+  .btn-ghost-enhanced:not(.dark *) {
+    @apply text-gray-700 hover:bg-gray-100 hover:text-gray-900;
+  }
+
+  .dark .btn-ghost-enhanced {
+    @apply text-gray-300 hover:bg-gray-800 hover:text-gray-100;
+  }
+
+  /* Table improvements for dark mode */
+  .table-enhanced {
+    @apply bg-background border-border;
+  }
+
+  .table-enhanced:not(.dark *) {
+    @apply bg-white border-gray-200;
+  }
+
+  .dark .table-enhanced {
+    @apply bg-gray-900 border-gray-700;
+  }
+
+  /* Table row hover effects */
+  .table-row-hover {
+    @apply hover:bg-muted/50 transition-colors;
+  }
+
+  .table-row-hover:not(.dark *) {
+    @apply hover:bg-gray-50;
+  }
+
+  .dark .table-row-hover {
+    @apply hover:bg-gray-800/50;
+  }
+
+  /* Dropdown menu improvements */
+  .dropdown-enhanced {
+    @apply bg-popover border-border shadow-lg;
+  }
+
+  .dropdown-enhanced:not(.dark *) {
+    @apply bg-white border-gray-200 shadow-lg;
+  }
+
+  .dark .dropdown-enhanced {
+    @apply bg-gray-900 border-gray-700 shadow-2xl;
+  }
+
+  /* Input field improvements */
+  .input-enhanced {
+    @apply bg-background border-border text-foreground placeholder:text-muted-foreground;
+  }
+
+  .input-enhanced:not(.dark *) {
+    @apply bg-white border-gray-200 text-gray-900 placeholder:text-gray-500;
+  }
+
+  .dark .input-enhanced {
+    @apply bg-gray-900 border-gray-700 text-gray-100 placeholder:text-gray-400;
+  }
+
+  /* Select trigger improvements */
+  .select-enhanced {
+    @apply bg-background border-border text-foreground;
+  }
+
+  .select-enhanced:not(.dark *) {
+    @apply bg-white border-gray-200 text-gray-900;
+  }
+
+  .dark .select-enhanced {
+    @apply bg-gray-900 border-gray-700 text-gray-100;
+  }
+
+  /* Card improvements for better contrast */
+  .card-enhanced {
+    @apply bg-card border-border shadow-sm;
+  }
+
+  .card-enhanced:not(.dark *) {
+    @apply bg-white border-gray-200 shadow-sm;
+  }
+
+  .dark .card-enhanced {
+    @apply bg-gray-900 border-gray-800 shadow-lg;
+  }
+
+  /* Tooltip improvements */
+  .tooltip-enhanced {
+    @apply bg-popover border-border text-popover-foreground shadow-md;
+  }
+
+  .tooltip-enhanced:not(.dark *) {
+    @apply bg-gray-900 text-white border-gray-700;
+  }
+
+  .dark .tooltip-enhanced {
+    @apply bg-gray-800 text-gray-100 border-gray-600;
+  }
+
+  /* Navigation styling */
+  .top-navbar {
+    @apply bg-background/95 border-b border-border;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    transition: all 0.3s ease;
+  }
+
+  .top-navbar:not(.dark *) {
+    background-color: hsl(var(--background) / 0.95);
+    border-color: hsl(var(--border));
+    box-shadow: 0 1px 3px 0 hsl(var(--primary) / 0.05);
+  }
+
+  .dark .top-navbar {
+    background-color: hsl(var(--background) / 0.95);
+    border-color: hsl(var(--border));
+    box-shadow: 0 1px 3px 0 hsl(var(--primary) / 0.1);
+  }
+
+  /* Mobile menu cards */
+  .mobile-menu-card {
+    @apply bg-card text-card-foreground border-border;
+    transition: all 0.3s ease;
+  }
+
+  .mobile-menu-card:hover {
+    @apply border-primary/30;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px -5px hsl(var(--primary) / 0.15);
+  }
+
+  /* Dialog styling */
+  .dialog-content {
+    @apply bg-card text-card-foreground border-border;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  .dialog-overlay {
+    @apply bg-background/80;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+
+  /* Dropdown styling */
+  .dropdown-content {
+    @apply bg-popover text-popover-foreground border-border shadow-lg;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  /* Interactive elements */
+  .interactive-element {
+    @apply hover:bg-accent hover:text-accent-foreground;
+    transition: all 0.3s ease;
+  }
+
+  .interactive-element:focus {
+    @apply ring-2 ring-primary/20 ring-offset-2 ring-offset-background;
+  }
+
+  /* Menu items */
+  .menu-item {
+    @apply text-foreground hover:bg-accent hover:text-accent-foreground;
+    transition: all 0.3s ease;
+  }
+
+  .menu-item[data-active="true"] {
+    @apply bg-primary text-primary-foreground;
+  }
+
+  /* Status indicators with theme awareness */
+  .status-available {
+    @apply text-green-600 dark:text-green-400;
+  }
+
+  .status-rented {
+    @apply text-blue-600 dark:text-blue-400;
+  }
+
+  .status-maintenance {
+    @apply text-orange-600 dark:text-orange-400;
+  }
+
+  .status-overdue {
+    @apply text-red-600 dark:text-red-400;
+  }
+
+  /* Welcome banner styling */
+  .welcome-banner {
+    @apply bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  /* KPI cards styling */
+  .kpi-card {
+    @apply bg-card text-card-foreground border-border;
+    transition: all 0.3s ease;
+  }
+
+  .kpi-card:not(.dark *) {
+    background-color: hsl(var(--card));
+    box-shadow: 0 1px 3px 0 hsl(var(--primary) / 0.05);
+  }
+
+  .dark .kpi-card {
+    background-color: hsl(var(--card));
+    box-shadow: 0 1px 3px 0 hsl(var(--primary) / 0.1);
+  }
+
+  /* Activity cards */
+  .activity-card {
+    @apply bg-card text-card-foreground border-border;
+  }
+
+  /* Suggestion cards */
+  .suggestion-card {
+    @apply bg-card text-card-foreground border-border;
+  }
+
+  /* Floating action button */
+  .fab {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 40;
+    @apply bg-primary text-primary-foreground shadow-lg;
+    box-shadow: 0 8px 32px hsl(var(--primary) / 0.3);
+    transition: all 0.3s ease;
+  }
+
+  .fab:hover {
+    box-shadow: 0 12px 40px hsl(var(--primary) / 0.4);
+    transform: translateY(-2px);
+  }
+
+  /* Enhanced Sidebar Scrollbar Styling */
+  .sidebar-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--primary) / 0.2) transparent;
+  }
+
+  .sidebar-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .sidebar-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 4px;
+  }
+
+  .sidebar-scrollbar::-webkit-scrollbar-thumb {
+    background: hsl(var(--primary) / 0.2);
+    border-radius: 20px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+    transition: all 0.3s ease;
+  }
+
+  .sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary) / 0.4);
+    background-clip: content-box;
+  }
+
+  .sidebar-scrollbar::-webkit-scrollbar-thumb:active {
+    background: hsl(var(--primary) / 0.6);
+    background-clip: content-box;
+  }
+
+  .sidebar-scrollbar::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  /* Dark mode sidebar scrollbar */
+  .dark .sidebar-scrollbar::-webkit-scrollbar-thumb {
+    background: hsl(var(--primary) / 0.3);
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  .dark .sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary) / 0.5);
+    background-clip: content-box;
+  }
+
+  .dark .sidebar-scrollbar::-webkit-scrollbar-thumb:active {
+    background: hsl(var(--primary) / 0.7);
+    background-clip: content-box;
+  }
+
+  /* Ultra-thin scrollbar for collapsed sidebar */
+  .sidebar-collapsed-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--primary) / 0.2) transparent;
+  }
+
+  .sidebar-collapsed-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .sidebar-collapsed-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .sidebar-collapsed-scrollbar::-webkit-scrollbar-thumb {
+    background: hsl(var(--primary) / 0.2);
+    border-radius: 2px;
+    transition: all 0.3s ease;
+  }
+
+  .sidebar-collapsed-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary) / 0.4);
+  }
+
+  /* Smooth scrolling for sidebar */
+  .sidebar-smooth-scroll {
+    scroll-behavior: smooth;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  /* Hide scrollbar on mobile but keep functionality */
+  @media (max-width: 768px) {
+    .sidebar-mobile-scroll {
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    .sidebar-mobile-scroll::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  /* Light theme specific enhancements */
+  :not(.dark) .text-gradient {
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--secondary)), hsl(var(--primary) / 0.8));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  :not(.dark) .glass {
+    background: hsl(var(--card) / 0.9);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid hsl(var(--border));
+  }
+
+  /* Dark theme specific enhancements */
+  .dark .text-gradient {
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--secondary)), hsl(var(--primary) / 0.8));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .dark .glass {
+    background: hsl(var(--card) / 0.9);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid hsl(var(--border));
+  }
+
+  /* Enhanced light theme shadows - MINIMAL */
+  :not(.dark) .shadow-theme {
+    box-shadow: 0 4px 6px -1px hsl(var(--primary) / 0.1), 0 2px 4px -2px hsl(var(--primary) / 0.1);
+  }
+
+  :not(.dark) .shadow-theme-lg {
+    box-shadow: 0 10px 15px -3px hsl(var(--primary) / 0.1), 0 4px 6px -4px hsl(var(--primary) / 0.1);
+  }
+
+  /* Enhanced dark theme shadows - MINIMAL */
+  .dark .shadow-theme {
+    box-shadow: 0 4px 6px -1px hsl(var(--primary) / 0.2), 0 2px 4px -2px hsl(var(--primary) / 0.2);
+  }
+
+  .dark .shadow-theme-lg {
+    box-shadow: 0 10px 15px -3px hsl(var(--primary) / 0.2), 0 4px 6px -4px hsl(var(--primary) / 0.2);
+  }
+
+  /* Button styling - Light theme */
+  .btn-outline:not(.dark *) {
+    background-color: hsl(0 0% 100%) !important;
+    color: hsl(222.2 84% 4.9%) !important;
+    border-color: hsl(214.3 31.8% 91.4%) !important;
+  }
+
+  .btn-outline:hover:not(.dark *) {
+    background-color: hsl(210 40% 96%) !important;
+    color: hsl(222.2 84% 4.9%) !important;
+  }
+
+  /* Button styling - Dark theme */
+  .dark .btn-outline {
+    background-color: hsl(222.2 84% 4.9%) !important;
+    color: hsl(210 40% 98%) !important;
+    border-color: hsl(217.2 32.6% 17.5%) !important;
+  }
+
+  .dark .btn-outline:hover {
+    background-color: hsl(217.2 32.6% 17.5%) !important;
+    color: hsl(210 40% 98%) !important;
+  }
+
+  /* Text color fixes for dark mode */
+  .dark .text-card-foreground {
+    color: hsl(210 40% 98%) !important;
+  }
+
+  .dark .text-muted-foreground {
+    color: hsl(215 20.2% 65.1%) !important;
+  }
+
+  .dark .text-foreground {
+    color: hsl(210 40% 98%) !important;
+  }
+}
+
+/* Animations and transitions */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: white !important;
+    color: black !important;
+  }
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .fab {
+    display: none; /* Hide FAB when bottom nav is present */
+  }
+  .sidebar-mobile-overlay {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    @apply bg-background/80;
+  }
+}
+
+@media (min-width: 769px) {
+  .fab {
+    display: block;
+  }
+}

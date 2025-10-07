@@ -1,0 +1,26 @@
+{
+    "title": "Data User",
+    "menu_title": "Data User",
+    "table": "mst_users",
+    "columns": [
+        {
+            "source": "nama",
+            "label": "New Content",
+            "display": "text"
+        },
+        {
+            "source": "email",
+            "label": "New Content",
+            "display": "text"
+        },
+        {
+            "source": "no_hp",
+            "label": "New Content",
+            "display": "text"
+        }
+    ],
+    "summary": {
+        "group_by": "status",
+        "sum": []
+    }
+}

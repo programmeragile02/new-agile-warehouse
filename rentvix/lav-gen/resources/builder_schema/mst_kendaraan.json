@@ -1,0 +1,31 @@
+{
+    "title": "Data Kendaraan",
+    "menu_title": "Data Kendaraan",
+    "table": "mst_kendaraan",
+    "columns": [
+        {
+            "source": "foto_depan",
+            "label": "New Content",
+            "display": "image"
+        },
+        {
+            "source": "model",
+            "label": "New Content",
+            "display": "text"
+        },
+        {
+            "source": "lokasi",
+            "label": "New Content",
+            "display": "text"
+        },
+        {
+            "source": "status",
+            "label": "New Content",
+            "display": "badge"
+        }
+    ],
+    "summary": {
+        "group_by": "status",
+        "sum": []
+    }
+}
