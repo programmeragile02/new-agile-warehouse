@@ -114,4 +114,9 @@ return [
         'name' => env('MAIL_FROM_NAME', 'Agile Store'),
     ],
 
+    'markdown' => [
+        'theme' => 'agile', // pakai tema kustom
+        'paths' => [resource_path('views/vendor/mail')],
+    ],
+
 ];

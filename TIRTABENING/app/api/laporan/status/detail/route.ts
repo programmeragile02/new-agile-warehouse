@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-const prisma = db();
+
 // shift "YYYY-MM" sebanyak delta bulan (untuk cari bulan catat = tagihan - 1)
 function shiftYM(ym: string, delta: number): string {
   const [y, m] = ym.split("-").map(Number);
@@ -11,6 +11,7 @@ function shiftYM(ym: string, delta: number): string {
 }
 
 export async function GET(req: NextRequest) {
+  const prisma = await db();
   const { searchParams } = new URL(req.url);
   const periode = searchParams.get("periode"); // periode Tagihan
   const pelangganId = searchParams.get("pelangganId");

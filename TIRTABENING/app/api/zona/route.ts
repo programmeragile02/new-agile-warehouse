@@ -336,7 +336,6 @@ import { db } from "@/lib/db";
 import { z } from "zod";
 import type { Prisma } from "@prisma/client";
 
-const prisma = db();
 // ===== Helpers =====
 function genZonaCode() {
   const ts = Date.now().toString().slice(-5);
@@ -373,6 +372,7 @@ const postSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  const prisma = await db();
   try {
     const body = await req.json();
     const parsed = postSchema.safeParse(body);
@@ -486,6 +486,7 @@ export async function POST(req: NextRequest) {
 // GET /api/zona?page=1&pageSize=10&q=...&petugasId=... — (tidak wajib ubah)
 // ===================================================================
 export async function GET(req: NextRequest) {
+  const prisma = await db();
   try {
     const sp = req.nextUrl.searchParams;
     const pageRaw = parseInt(sp.get("page") ?? "1", 10);
@@ -592,6 +593,7 @@ const putSchema = z.object({
 });
 
 export async function PUT(req: NextRequest) {
+  const prisma = await db();
   console.log("📨 [PUT /api/zona] URL:", req.url);
   try {
     const urlId = req.nextUrl.searchParams.get("id") ?? undefined;
@@ -734,6 +736,7 @@ export async function PUT(req: NextRequest) {
 // DELETE /api/zona — (tanpa perubahan)
 // ===================================================================
 export async function DELETE(req: NextRequest) {
+  const prisma = await db();
   try {
     const urlId = req.nextUrl.searchParams.get("id") ?? undefined;
     const body = await req.json().catch(() => ({} as unknown));

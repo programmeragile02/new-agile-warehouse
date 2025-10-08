@@ -4,7 +4,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthUserId } from "@/lib/auth";
 
-const prisma = db();
 /* ===== Helper label bulan (id-ID) ===== */
 const BULAN = [
   "Jan",
@@ -68,6 +67,7 @@ function buildDueDate(tahun: number, bulan1to12: number, defaultDay: number) {
 
 /* ===== Debug wrapper ===== */
 async function q<T>(label: string, fn: () => Promise<T>): Promise<T> {
+  const prisma = await db();
   try {
     return await fn();
   } catch (e: any) {
@@ -78,6 +78,7 @@ async function q<T>(label: string, fn: () => Promise<T>): Promise<T> {
 }
 
 export async function GET(req: NextRequest) {
+  const prisma = await db();
   const debugMode = req.nextUrl.searchParams.get("debug") === "1";
 
   try {

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-const prisma = db();
 import { z } from "zod";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,6 +14,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const prisma = await db();
   try {
     const id = params.id;
     const body = await req.json();
@@ -57,6 +57,7 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const prisma = await db();
   try {
     const id = params.id;
     await prisma.item.update({

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthUserId } from "@/lib/auth"; // sudah kamu punya
-const prisma = db();
+
 export async function GET(req: NextRequest) {
+  const prisma = await db();
   try {
     const userId = await getAuthUserId(req);
     if (!userId) {

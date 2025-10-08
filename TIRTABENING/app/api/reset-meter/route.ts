@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { z } from "zod";
 import { startOfMonth, endOfMonth, parseISO, isValid } from "date-fns";
-const prisma = db();
+const prisma = await db();
 
 function monthRange(ym?: string) {
   if (!ym) return {};
@@ -28,6 +28,7 @@ async function upsertJadwalPerZona(
   kodePeriode: string,
   zonaId: string
 ) {
+  const prisma = await db();
   // target = jumlah pelanggan aktif di zona
   const [target, progress] = await Promise.all([
     trx.pelanggan.count({
@@ -88,6 +89,7 @@ async function upsertJadwalPerZona(
 
 /** Sinkronkan CatatMeter, CatatMeterBlok, dan rekap Jadwal untuk SEMUA periode DRAFT */
 async function syncAfterReset(pelangganId: string, tanggalResetYMD: string) {
+  const prisma = await db();
   const d = new Date(`${tanggalResetYMD}T00:00:00`);
   if (Number.isNaN(d.getTime())) return;
 
@@ -200,6 +202,7 @@ async function syncAfterReset(pelangganId: string, tanggalResetYMD: string) {
 
 // ========= GET =========
 export async function GET(req: NextRequest) {
+  const prisma = await db();
   try {
     const sp = req.nextUrl.searchParams;
 
@@ -312,6 +315,7 @@ export async function GET(req: NextRequest) {
 
 // ========= POST =========
 export async function POST(req: NextRequest) {
+  const prisma = await db();
   try {
     const body = await req.json();
     const data = postSchema.parse(body);
@@ -350,6 +354,7 @@ export async function POST(req: NextRequest) {
 const putSchema = postSchema.extend({ id: z.string().min(1) });
 
 export async function PUT(req: NextRequest) {
+  const prisma = await db();
   try {
     const body = await req.json();
     const data = putSchema.parse(body);

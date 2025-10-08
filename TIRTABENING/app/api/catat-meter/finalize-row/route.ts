@@ -5,7 +5,6 @@ import { CatatStatus } from "@prisma/client";
 import { randomToken } from "@/lib/auth-utils";
 import puppeteer from "puppeteer";
 export const runtime = "nodejs";
-const prisma = db();
 
 /* =======================
    Helper periode
@@ -160,6 +159,7 @@ function waText(p: {
 }
 
 async function sendWaAndLog(tujuanRaw: string, text: string) {
+  const prisma = await db();
   const to = tujuanRaw.replace(/\D/g, "").replace(/^0/, "62");
   const base = (process.env.WA_SENDER_URL || "").replace(/\/$/, "");
   const apiKey = process.env.WA_SENDER_API_KEY || "";
@@ -211,6 +211,7 @@ async function sendWaImageAndLog(
   tagihanId: string,
   caption?: string
 ) {
+  const prisma = await db();
   const to = tujuanRaw.replace(/\D/g, "").replace(/^0/, "62");
   const base = (process.env.WA_SENDER_URL || "").replace(/\/$/, "");
   const apiKey = (process.env as any).WA_SENDER_API_KEY || "";
@@ -300,6 +301,7 @@ async function sendWaImageAndLog(
    FINALIZE ROW
    ======================= */
 export async function POST(req: NextRequest) {
+  const prisma = await db();
   try {
     const { id, sendWa }: { id?: string; sendWa?: boolean } = await req.json();
     if (!id)

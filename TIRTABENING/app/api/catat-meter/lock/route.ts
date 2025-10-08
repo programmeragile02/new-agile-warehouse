@@ -2,7 +2,6 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-const prisma = db();
 /**
  * POST /api/catat-meter/lock
  * Body: { id: string; lock: boolean }
@@ -10,6 +9,7 @@ const prisma = db();
  * - Menolak jika periode sudah dikunci (level periode menang)
  */
 export async function POST(req: NextRequest) {
+  const prisma = await db();
   try {
     const body = await req.json().catch(() => ({}));
     const id: string | undefined = body?.id;

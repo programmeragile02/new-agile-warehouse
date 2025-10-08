@@ -4,7 +4,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { z } from "zod";
 import { toDbStatus } from "@/lib/status-map";
-const prisma = db();
 
 const schema = z.object({
   progress: z.number().int().min(0).optional(),
@@ -23,6 +22,7 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const prisma = await db();
   try {
     const body = await req.json().catch(() => ({}));
     const parsed = schema.safeParse(body);

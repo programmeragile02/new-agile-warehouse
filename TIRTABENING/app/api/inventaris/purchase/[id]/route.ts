@@ -3,7 +3,6 @@ import { db } from "@/lib/db";
 import { z } from "zod";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-const prisma = db();
 
 const UpdateSchema = z.object({
   tanggal: z.string().min(1), // "YYYY-MM-DDTHH:mm"
@@ -21,6 +20,7 @@ function parseLocalDateTimeToUTC(s: string) {
 }
 
 export async function PATCH(req: NextRequest, ctx: { params: { id: string } }) {
+  const prisma = await db();
   try {
     // Next 15: params async — aman juga kalau sync.
     const { id } = ctx.params;
@@ -148,6 +148,7 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const prisma = await db();
   try {
     const id = params.id;
     const existing = await prisma.purchase.findUnique({

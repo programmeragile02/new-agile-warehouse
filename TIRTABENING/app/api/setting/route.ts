@@ -4,7 +4,6 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 export const dynamic = "force-dynamic";
-const prisma = db();
 
 function cleanData<T extends Record<string, any>>(obj: T): Partial<T> {
   const out: Record<string, any> = {};
@@ -41,6 +40,7 @@ const SettingSchema = z.object({
 
 // GET
 export async function GET() {
+  const prisma = await db();
   try {
     const row =
       (await prisma.setting.findUnique({ where: { id: 1 } })) ??
@@ -83,6 +83,7 @@ export async function GET() {
 
 // PUT
 export async function PUT(req: Request) {
+  const prisma = await db();
   try {
     const body = await req.json().catch(() => ({}));
     const parsed = SettingSchema.safeParse(body);

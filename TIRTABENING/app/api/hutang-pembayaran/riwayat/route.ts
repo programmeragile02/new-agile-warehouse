@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-const prisma = db();
 export const dynamic = "force-dynamic";
 
 /* util tanggal */
@@ -16,6 +15,7 @@ const toISO = (d?: Date | null) =>
 
 /* =================== GET =================== */
 export async function GET(req: Request) {
+  const prisma = await db();
   try {
     const url = new URL(req.url);
     const giver = (url.searchParams.get("giver") || "").trim();
@@ -104,6 +104,7 @@ export async function GET(req: Request) {
 
 /* =================== PUT (update header + detail) =================== */
 export async function PUT(req: Request) {
+  const prisma = await db();
   try {
     const body = await req.json();
     const id: string = String(body?.id || "");
@@ -177,6 +178,7 @@ export async function PUT(req: Request) {
 
 /* =================== PATCH (posting) =================== */
 export async function PATCH(req: Request) {
+  const prisma = await db();
   try {
     const body = await req.json();
     const id: string = String(body?.id || "");
@@ -208,6 +210,7 @@ export async function PATCH(req: Request) {
 
 /* =================== DELETE (hapus bila masih DRAFT) =================== */
 export async function DELETE(req: Request) {
+  const prisma = await db();
   try {
     const url = new URL(req.url);
     const id = String(url.searchParams.get("id") || "");

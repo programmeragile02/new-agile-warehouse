@@ -2,7 +2,6 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-const prisma = db();
 
 // type guard supaya TS aman
 function isBulan(x: unknown): x is string {
@@ -10,6 +9,7 @@ function isBulan(x: unknown): x is string {
 }
 
 async function doSync(req: NextRequest) {
+  const prisma = await db();
   const sp = req.nextUrl.searchParams;
   let bulan: unknown = sp.get("bulan");
 
@@ -74,6 +74,7 @@ async function doSync(req: NextRequest) {
 
 // ✅ terima POST
 export async function POST(req: NextRequest) {
+  const prisma = await db();
   try {
     return await doSync(req);
   } catch (e: any) {
@@ -87,6 +88,7 @@ export async function POST(req: NextRequest) {
 
 // ✅ alias GET → POST (hindari 405)
 export async function GET(req: NextRequest) {
+  const prisma = await db();
   try {
     return await doSync(req);
   } catch (e: any) {

@@ -23,9 +23,9 @@ class TenantResolveController extends Controller
             ->where('product_code', $productCode)
             // ->whereIn('status', ['active','paid'])
             ->where('is_active', 1)
-            ->where(function($q){
-                $q->whereNull('end_date')->orWhere('end_date','>=', now()->toDateString());
-            })
+            // ->where(function($q){
+            //     $q->whereNull('end_date')->orWhere('end_date','>=', now()->toDateString());
+            // })
             ->orderByDesc('created_at')
             ->first();
 

@@ -2,10 +2,9 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-const prisma = db();
-
 
 export async function GET() {
+  const prisma = await db();
   try {
     // batas bulan ini (lokal)
     const now = new Date();

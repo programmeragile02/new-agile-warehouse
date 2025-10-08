@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 export const runtime = "nodejs";
-const prisma = db();
 
 export async function GET(req: NextRequest) {
+  const prisma = await db();
   try {
     const tagihanId = req.nextUrl.searchParams.get("tagihanId") || "";
     if (!tagihanId) {

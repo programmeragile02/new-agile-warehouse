@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 export const dynamic = "force-dynamic";
-const prisma = db();
-
 
 /** Terima ISO atau "YYYY-MM-DD" + jam opsional */
 function parseFlexibleRange(
@@ -49,6 +47,7 @@ const fmtTanggalID = (d: Date | string) => {
 type HutangStatus = "UNPAID" | "PARTIAL" | "PAID";
 
 export async function GET(req: NextRequest) {
+  const prisma = await db();
   try {
     const u = new URL(req.url);
     const statusParam = (u.searchParams.get("status") || "").toUpperCase() as

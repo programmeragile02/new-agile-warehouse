@@ -1,7 +1,6 @@
 // app/api/catat-blok/finalize-row/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-const prisma = db();
 function nextYm(ym: string) {
   const [y, m] = ym.split("-").map(Number);
   const d = new Date(Date.UTC(y, m - 1, 1));
@@ -13,6 +12,7 @@ function nextYm(ym: string) {
 }
 
 export async function POST(req: NextRequest) {
+  const prisma = await db();
   try {
     const { id } = (await req.json()) as { id: string };
     if (!id)

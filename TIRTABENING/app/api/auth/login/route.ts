@@ -68,10 +68,10 @@
 //   }
 // }
 import { NextResponse } from "next/server";
-import { getTenantContextOrThrow } from "@/lib/tenant-context";
-import { prismaFor } from "@/lib/prisma-tenant";
 import { encodeCookie } from "@/lib/auth-session";
-import { verifyPasswordAny } from "@/lib/auth-utils"; // pakai util kamu\
+import { verifyPasswordAny } from "@/lib/auth-utils"; // pakai util kamu
+import { db } from "@/lib/db";
+import jwt from "jsonwebtoken";
 
 // Opsi paket yang valid (samakan dengan yang ada di Warehouse/Panel)
 const OFFERING_WHITELIST = new Set(["basic", "premium", "enterprise"]);
@@ -83,6 +83,7 @@ function normalizeOffering(v?: unknown): string | undefined {
 }
 
 export async function POST(req: Request) {
+    const prisma = await db();
     try {
         const body = await req.json().catch(() => ({}));
         const { username, password } = body as {
@@ -99,9 +100,9 @@ export async function POST(req: Request) {
         }
 
         // Ambil prisma dari tenant cookie
-        const productCode = process.env.NEXT_PUBLIC_PRODUCT_CODE!;
-        const { dbUrl } = getTenantContextOrThrow(productCode);
-        const prisma = prismaFor(dbUrl);
+        // const productCode = process.env.NEXT_PUBLIC_PRODUCT_CODE!;
+        // const { dbUrl } = await getTenantContextOrThrow(productCode);
+        // const prisma = prismaFor(dbUrl);
 
         const user = await prisma.user.findUnique({ where: { username } });
         if (!user || !user.isActive) {

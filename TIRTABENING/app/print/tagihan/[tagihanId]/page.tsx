@@ -1,7 +1,6 @@
 import { db } from "@/lib/db";
 import Image from "next/image";
 export const runtime = "nodejs";
-const prisma = db();
 
 // ===== utils format =====
 function rp(n: number) {
@@ -32,6 +31,8 @@ type PageProps = {
 };
 
 export default async function Page({ params, searchParams }: PageProps) {
+  const prisma = await db();
+  
   const { tagihanId } = params;
   const compact = (searchParams?.compact ?? "") === "1";
 

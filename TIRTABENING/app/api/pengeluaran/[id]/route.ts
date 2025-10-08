@@ -2,7 +2,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-const prisma = db();
+
 function toClientHeader(p: any) {
   return {
     id: p.id,
@@ -24,6 +24,7 @@ export async function GET(
   _: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const prisma = await db();
   const p = await prisma.pengeluaran.findUnique({
     where: { id: params.id },
     include: { details: true },
@@ -36,6 +37,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const prisma = await db();
   const body = await req.json().catch(() => ({}));
   const data: any = {};
 
@@ -62,6 +64,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const prisma = await db();
   // action: "post" => CLOSE
   const body = await req.json().catch(() => ({}));
   if (body?.action !== "post") {
@@ -88,6 +91,7 @@ export async function DELETE(
   _: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const prisma = await db();
   await prisma.pengeluaran.delete({ where: { id: params.id } });
   return NextResponse.json({ ok: true });
 }

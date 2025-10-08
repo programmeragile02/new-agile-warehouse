@@ -7,9 +7,9 @@ php artisan queue:work --queue=provisioning
 php artisan vendor:publish --tag=laravel-mail
 
 # agilestore
-php artisan serve port 8000
+php artisan serve port 8001
 php artisan queue:work --queue=default,provisioning
 
 atau
 
-php artisan queue:work --queue=provisioning,default -v# new-agile-warehouse
+php artisan queue:work --queue=provisioning,default -v

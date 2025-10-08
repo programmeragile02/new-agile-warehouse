@@ -6,7 +6,6 @@ import { getAuthUserId } from "@/lib/auth";
 import bcrypt from "bcryptjs";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-const prisma = db();
 
 // Util: payload yang dikirim ke client
 const userSelect = {
@@ -24,6 +23,7 @@ const userSelect = {
 };
 
 export async function GET(req: NextRequest) {
+  const prisma = await db();
   try {
     const userId = await getAuthUserId(req);
     if (!userId) {
@@ -71,6 +71,7 @@ export async function GET(req: NextRequest) {
 
 // Update name/phone
 export async function PUT(req: NextRequest) {
+  const prisma = await db();
   try {
     const userId = await getAuthUserId(req);
     if (!userId) {
@@ -108,6 +109,7 @@ export async function PUT(req: NextRequest) {
 
 // Ganti password (verifikasi sandi lama)
 export async function PATCH(req: NextRequest) {
+  const prisma = await db();
   try {
     const userId = await getAuthUserId(req);
     if (!userId) {

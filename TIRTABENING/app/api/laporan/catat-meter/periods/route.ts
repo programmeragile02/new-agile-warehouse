@@ -2,10 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthUserWithRole } from "@/lib/auth-user-server";
 export const dynamic = "force-dynamic";
-const prisma = db();
-
 
 export async function GET(req: NextRequest) {
+  const prisma = await db();
   try {
     const me = await getAuthUserWithRole(req);
     if (!me)

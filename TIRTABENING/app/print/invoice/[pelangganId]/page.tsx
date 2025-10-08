@@ -1,7 +1,6 @@
 import { db } from "@/lib/db";
 import Image from "next/image";
 export const runtime = "nodejs";
-const prisma = db();
 
 // ===== utils format =====
 function rp(n: number) {
@@ -28,6 +27,7 @@ export default async function Page({
   params: Promise<{ pelangganId: string }>;
   searchParams?: Promise<{ pdf?: string; compact?: string }>;
 }) {
+  const prisma = await db();
   const { pelangganId } = await params;
   const sp = (await searchParams) || {};
   const isPdf = sp?.pdf === "1";

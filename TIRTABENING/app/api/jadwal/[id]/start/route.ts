@@ -2,9 +2,9 @@
 
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-const prisma = db();
 
 export async function POST(_: Request, { params }: { params: { id: string } }) {
+  const prisma = await db();
   try {
     // Hanya update bila belum DONE
     await prisma.jadwalPencatatan.updateMany({

@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 
 // ambil offering dari cookie/localStorage kalau ada
@@ -31,6 +31,7 @@ export function LoginForm() {
     const [formData, setFormData] = useState({ username: "", password: "" });
     const router = useRouter();
     const { toast } = useToast();
+    const params = useParams();
 
     // offering aktif dari client (bisa kamu ganti dari dropdown pilihan paket)
     const offering = getOfferingClient();
@@ -66,11 +67,11 @@ export function LoginForm() {
                 description: `Selamat datang, ${data.user.name}`,
             });
 
-            const next = params.get("next");
-            if (next) {
-                router.replace(next);
-                return;
-            }
+            // const next = params.get("next");
+            // if (next) {
+            //     router.replace(next);
+            //     return;
+            // }
 
             switch (data?.user?.role) {
                 case "WARGA":

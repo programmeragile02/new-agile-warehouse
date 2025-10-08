@@ -1,5 +1,4 @@
 import { db } from "@/lib/db";
-const prisma = db();
 /** helper: kembalikan array N periode ke belakang termasuk periode sekarang (YYYY-MM) */
 export function lastNPeriods(kodePeriode: string, n: number) {
   const [y, m] = kodePeriode.split("-").map(Number);
@@ -64,6 +63,7 @@ async function fetchHistoryForZone(
   zonaId: string | null,
   periods: string[]
 ): Promise<RowHist[]> {
+  const prisma = await db();
   // CatatMeter join CatatPeriode; pakai snapshot zona di CatatMeter agar historis aman
   const data = await prisma.catatMeter.findMany({
     where: {
@@ -131,6 +131,7 @@ export async function computeAnomaliPerZonaPerPeriode(
   kodePeriode: string,
   zonaId: string
 ): Promise<AnomaliResponse> {
+  const prisma = await db();
   // ambil 6 periode terakhir (sekarang + 5)
   const periods = lastNPeriods(kodePeriode, 6);
   const hist = await fetchHistoryForZone(zonaId, periods);

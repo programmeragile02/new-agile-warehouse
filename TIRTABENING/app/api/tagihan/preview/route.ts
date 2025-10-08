@@ -1,8 +1,9 @@
 import PDFDocument from "pdfkit";
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-const prisma = db();
+
 export async function GET(req: NextRequest) {
+  const prisma = await db();
   const periode = req.nextUrl.searchParams.get("periode") ?? "";
   if (!/^\d{4}-\d{2}$/.test(periode))
     return new Response("Bad Request", { status: 400 });

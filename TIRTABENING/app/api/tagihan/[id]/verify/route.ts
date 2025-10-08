@@ -6,7 +6,6 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { resolveUploadPath } from "@/lib/uploads";
 export const runtime = "nodejs";
-const prisma = db();
 
 function getAppOrigin(req: NextRequest) {
   const h = req.headers;
@@ -85,6 +84,7 @@ function waTextPembayaranVerified(p: {
 
 /** WA send helpers (TEXT saja) */
 async function sendWaAndLog(tujuanRaw: string, text: string) {
+  const prisma = await db();
   const to = tujuanRaw.replace(/\D/g, "").replace(/^0/, "62");
   const base = (process.env.WA_SENDER_URL || "").replace(/\/$/, "");
   const apiKey = process.env.WA_SENDER_API_KEY || "";
@@ -142,6 +142,7 @@ async function sendWaImageAndLog(
   filename: string,
   caption?: string
 ) {
+  const prisma = await db();
   const to = tujuanRaw.replace(/\D/g, "").replace(/^0/, "62");
   const base = (process.env.WA_SENDER_URL || "").replace(/\/$/, "");
   const apiKey = process.env.WA_SENDER_API_KEY || "";
@@ -262,6 +263,7 @@ export async function PATCH(
   req: Request,
   { params }: { params: { id: string } }
 ) {
+  const prisma = await db();
   try {
     const id = params.id;
     const body = (await req.json()) ?? {};

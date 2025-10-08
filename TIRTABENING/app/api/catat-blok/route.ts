@@ -3,7 +3,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { addMonths } from "date-fns";
-const prisma = db();
+const prisma = await db();
 const NAMA_BULAN = [
   "Januari",
   "Februari",
@@ -101,6 +101,7 @@ async function ensureBlokReadings(periodeYm: string, tandonId: string) {
 }
 
 export async function GET(req: NextRequest) {
+  const prisma = await db();
   try {
     const sp = req.nextUrl.searchParams;
     const action = sp.get("action");
@@ -191,6 +192,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
+  const prisma = await db();
   try {
     const body = await req.json();
     const { id, meterAkhir, kendala } = body as {

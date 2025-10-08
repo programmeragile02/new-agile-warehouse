@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-const prisma = db();
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -8,6 +7,7 @@ const PREFIX = "INV";
 const WIDTH = 4;
 
 export async function GET() {
+  const prisma = await db();
   try {
     const last = await prisma.item.findFirst({
       where: { deletedAt: null, kode: { startsWith: PREFIX } },

@@ -5,7 +5,6 @@ import { db } from "@/lib/db";
 import { getAuthUserWithRole } from "@/lib/auth-user-server";
 import { PengeluaranStatus, MetodeBayar, PurchaseStatus } from "@prisma/client";
 export const dynamic = "force-dynamic";
-const prisma = db();
 
 function monthRange(ym: string) {
   const [y, m] = ym.split("-").map(Number);
@@ -32,6 +31,7 @@ function formatPeriodeID(ym?: string | null) {
 }
 
 export async function GET(req: NextRequest) {
+  const prisma = await db();
   try {
     // Auth
     const me = await getAuthUserWithRole(req);

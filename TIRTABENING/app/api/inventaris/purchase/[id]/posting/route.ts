@@ -4,14 +4,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-const prisma = db();
-
 
 // POST: close (posting) satu purchase by id
 export async function POST(
   _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const prisma = await db();
   try {
     const id = params.id;
 

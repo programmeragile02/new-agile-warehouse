@@ -2,7 +2,6 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-const prisma = db();
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
@@ -25,6 +24,7 @@ function parseQs(req: NextRequest): Qs {
 }
 
 export async function GET(req: NextRequest) {
+  const prisma = await db();
   try {
     const { keyword, tandonId, zonaId, limitPelanggan } = parseQs(req);
     const limit =

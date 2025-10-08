@@ -4,7 +4,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthUserWithRole } from "@/lib/auth-user-server";
 export const dynamic = "force-dynamic";
-const prisma = db();
 
 const isYm = (x?: string | null) => !!x && /^\d{4}-\d{2}$/.test(x);
 const toInt = (v: string | null, d: number) => {
@@ -13,6 +12,7 @@ const toInt = (v: string | null, d: number) => {
 };
 
 export async function GET(req: NextRequest) {
+  const prisma = await db();
   try {
     // ===== Authz =====
     const me = await getAuthUserWithRole(req);

@@ -3,8 +3,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 export const dynamic = "force-dynamic";
-const prisma = db();
-
 
 function isYm(x?: string | null) {
   return !!x && /^\d{4}-\d{2}$/.test(x);
@@ -44,6 +42,7 @@ function mapUiStatus(
 
 // ---------------- GET ----------------
 export async function GET(req: NextRequest) {
+  const prisma = await db();
   try {
     const sp = req.nextUrl.searchParams;
     const month = resolveMonthFromSearchParams(sp);
@@ -195,6 +194,7 @@ export async function GET(req: NextRequest) {
 
 // ---------------- POST ----------------
 export async function POST(req: NextRequest) {
+  const prisma = await db();
   try {
     const sp = req.nextUrl.searchParams;
 

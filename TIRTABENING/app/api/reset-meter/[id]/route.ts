@@ -4,9 +4,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { z } from "zod";
 
-const prisma = db(); 
 // helper re-use
 async function syncAfterReset(pelangganId: string, tanggalResetYMD: string) {
+  const prisma = await db();
   const d = new Date(`${tanggalResetYMD}T00:00:00`);
   const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 
@@ -83,6 +83,7 @@ export async function GET(
   _: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const prisma = await db();
   try {
     const r = await prisma.resetMeter.findUnique({
       where: { id: params.id },
@@ -144,6 +145,7 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const prisma = await db();
   try {
     const body = await req.json().catch(() => ({}));
     const data = putSchema.parse(body);
@@ -199,6 +201,7 @@ export async function DELETE(
   _: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const prisma = await db();
   try {
     await prisma.resetMeter.delete({ where: { id: params.id } });
     return NextResponse.json({ ok: true });

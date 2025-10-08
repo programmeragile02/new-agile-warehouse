@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-const prisma = db();
 export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const prisma = await db();
   const body = await req.json().catch(() => ({}));
   const { keterangan, nominal, tanggal } = body ?? {};
 

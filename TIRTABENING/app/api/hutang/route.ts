@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-const prisma = db();
 const toRow = (h: any) => ({
   id: h.id,
   noBukti: h.noBukti,
@@ -19,6 +18,7 @@ const toRow = (h: any) => ({
 });
 
 export async function GET(req: NextRequest) {
+  const prisma = await db();
   const u = new URL(req.url);
   const q = (u.searchParams.get("q") || "").trim();
   const status = u.searchParams.get("status") || "";
@@ -55,6 +55,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const prisma = await db();
   const body = await req.json().catch(() => ({}));
   const {
     noBukti,
@@ -107,6 +108,7 @@ export async function POST(req: NextRequest) {
 
 /** DELETE /api/hutang?id=... */
 export async function DELETE(req: NextRequest) {
+  const prisma = await db();
   const u = new URL(req.url);
   const id = u.searchParams.get("id");
   if (!id)

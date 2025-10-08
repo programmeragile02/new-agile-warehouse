@@ -7,7 +7,6 @@ import { renderKwitansiToJPG } from "@/lib/render-kwitansi";
 import { resolveUploadPath } from "@/lib/uploads";
 import fs from "node:fs/promises";
 
-const prisma = db();
 // ——— Helpers yang sama seperti PATCH verify (dipersingkat) ———
 function getAppOrigin(req: NextRequest) {
   const h = req.headers;
@@ -51,6 +50,7 @@ function formatRp(n: number) {
 
 // ——— Utility kirim WA (SAMAKAN dengan yang di PATCH verify) ———
 async function sendWaAndLog(tujuanRaw: string, text: string) {
+  const prisma = await db();
   const to = tujuanRaw.replace(/\D/g, "").replace(/^0/, "62");
   const base = (process.env.WA_SENDER_URL || "").replace(/\/$/, "");
   const apiKey = process.env.WA_SENDER_API_KEY || "";
@@ -106,6 +106,7 @@ async function sendWaImageAndLog(
   filename: string,
   caption?: string
 ) {
+  const prisma = await db();
   const to = tujuanRaw.replace(/\D/g, "").replace(/^0/, "62");
   const base = (process.env.WA_SENDER_URL || "").replace(/\/$/, "");
   const apiKey = process.env.WA_SENDER_API_KEY || "";
@@ -218,6 +219,7 @@ function waTextPembayaranVerified(p: {
 
 // ——— POST /api/tagihan/kirim-wa-kwitansi ———
 export async function POST(req: NextRequest) {
+  const prisma = await db();
   try {
     const { tagihanId } = await req.json();
 

@@ -3,7 +3,6 @@ import { db } from "@/lib/db";
 import puppeteer from "puppeteer";
 import { randomToken } from "@/lib/auth-utils";
 
-const prisma = db();
 /* ============ Helpers ============ */
 function getAppOrigin(req: NextRequest) {
   const h = req.headers;
@@ -129,6 +128,7 @@ function waText(p: {
 }
 
 async function sendWaAndLog(tujuanRaw: string, text: string) {
+  const prisma = await db();
   const to = tujuanRaw.replace(/\D/g, "").replace(/^0/, "62");
   const base = (process.env.WA_SENDER_URL || "").replace(/\/$/, "");
   const apiKey = process.env.WA_SENDER_API_KEY || "";
@@ -180,6 +180,7 @@ async function sendWaImageAndLog(
   tagihanId: string,
   caption?: string
 ) {
+  const prisma = await db();
   const to = tujuanRaw.replace(/\D/g, "").replace(/^0/, "62");
   const base = (process.env.WA_SENDER_URL || "").replace(/\/$/, "");
   const apiKey = process.env.WA_SENDER_API_KEY || "";
@@ -266,6 +267,7 @@ async function sendWaImageAndLog(
 
 /* ============ POST: kirim WA tagihan by tagihanId ============ */
 export async function POST(req: NextRequest) {
+  const prisma = await db();
   try {
     const { tagihanId } = await req.json();
     if (!tagihanId) {

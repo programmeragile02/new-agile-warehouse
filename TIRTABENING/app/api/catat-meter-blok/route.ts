@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { CatatStatus } from "@prisma/client";
 
-const prisma = db();
 // ===== Helpers yang sama dengan catat-meter =====
 function isPeriodStr(p: string) {
   return /^\d{4}-(0[1-9]|1[0-2])$/.test(p);
@@ -22,6 +21,7 @@ function prevPeriodStr(p: string) {
   return toKodePeriode(d.getFullYear(), d.getMonth() + 1);
 }
 async function getLatestPeriode() {
+  const prisma = await db();
   return prisma.catatPeriode.findFirst({
     where: { deletedAt: null },
     orderBy: [{ tahun: "desc" }, { bulan: "desc" }],
@@ -38,6 +38,7 @@ async function getLatestPeriode() {
 // ===== INIT untuk satu ZONA (POST) =====
 // POST /api/catat-meter-blok?periode=YYYY-MM&zona=Kode/Nama Zona
 export async function POST(req: NextRequest) {
+  const prisma = await db();
   const kodePeriode = req.nextUrl.searchParams.get("periode") ?? "";
   const zonaParam = (req.nextUrl.searchParams.get("zona") ?? "").trim(); // WAJIB
 
@@ -211,6 +212,7 @@ export async function POST(req: NextRequest) {
 // ===== LIST (GET) =====
 // GET /api/catat-meter-blok?periode=YYYY-MM&zona=...&search=...
 export async function GET(req: NextRequest) {
+  const prisma = await db();
   const kodePeriode = req.nextUrl.searchParams.get("periode") ?? "";
   const zonaParam = (req.nextUrl.searchParams.get("zona") ?? "").trim();
   const q = (req.nextUrl.searchParams.get("search") ?? "").trim();
@@ -322,6 +324,7 @@ export async function GET(req: NextRequest) {
 
 // ===== UPDATE (PUT) =====
 export async function PUT(req: NextRequest) {
+  const prisma = await db();
   try {
     const body = await req.json();
     const id: string | undefined = body?.id;
@@ -384,6 +387,7 @@ export async function PUT(req: NextRequest) {
 
 // ===== DELETE (baris) =====
 export async function DELETE(req: NextRequest) {
+  const prisma = await db();
   try {
     const urlId = req.nextUrl.searchParams.get("id") ?? undefined;
     const body = await req.json().catch(() => ({}));

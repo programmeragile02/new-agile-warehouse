@@ -4,7 +4,6 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { addMonths } from "date-fns";
 
-const prisma = db();
 // ===== helpers =====
 function bad(message: string, status = 400) {
   return NextResponse.json({ ok: false, message }, { status });
@@ -29,6 +28,7 @@ function prevPeriod(kode: string) {
 }
 
 async function getOrThrowPeriodeByKode(kode: string) {
+  const prisma = await db();
   const periode = await prisma.catatPeriode.findUnique({
     where: { kodePeriode: kode },
   });
@@ -38,6 +38,7 @@ async function getOrThrowPeriodeByKode(kode: string) {
 }
 
 async function getDefaultCatatDateForPeriod(kode: string) {
+  const prisma = await db();
   // Setting.tanggalCatatDefault (Int 1..31) – fallback: tanggal 1
   const setting = await prisma.setting
     .findFirst({ where: { id: 1 } })
@@ -69,6 +70,7 @@ const NAMA_BULAN = [
 
 // ====== ACTIONS (GET) ======
 export async function GET(req: Request) {
+  const prisma = await db();
   try {
     const { searchParams } = new URL(req.url);
     const action = searchParams.get("action");
@@ -193,6 +195,7 @@ export async function GET(req: Request) {
 
 // ====== UPDATE (PUT) ======
 export async function PUT(req: Request) {
+  const prisma = await db();
   try {
     const body = await req.json().catch(() => ({}));
     const id: string | undefined = body?.id;
@@ -232,6 +235,7 @@ export async function PUT(req: Request) {
 
 // ====== FINALIZE ROW (POST /finalize-row) ======
 export async function POST(req: Request) {
+  const prisma = await db();
   try {
     const url = new URL(req.url);
     if (url.pathname.endsWith("/finalize-row")) {

@@ -3,13 +3,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { CatatStatus } from "@prisma/client";
 
-const prisma = db(); 
 // ---- helpers ----
 function isPeriodStr(p: string) {
   return /^\d{4}-(0[1-9]|1[0-2])$/.test(p);
 }
 
 export async function POST(req: NextRequest) {
+  const prisma = await db();
   try {
     const body = await req.json().catch(() => ({} as any));
     const periode: string = body?.periode ?? "";

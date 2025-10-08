@@ -193,7 +193,6 @@ import { renderKwitansiToJPG } from "@/lib/render-kwitansi";
 import { resolveUploadPath } from "@/lib/uploads";
 import fs from "node:fs/promises";
 export const runtime = "nodejs";
-const prisma = db();
 
 function getAppOrigin(req: NextRequest) {
   const h = req.headers;
@@ -227,6 +226,7 @@ const eod = (d: Date) =>
   new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
 
 export async function GET(req: NextRequest) {
+  const prisma = await db();
   try {
     const url = new URL(req.url);
     const tagihanId = url.searchParams.get("tagihanId") || "";

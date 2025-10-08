@@ -360,7 +360,6 @@
 
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-const prisma = db();
 const IMONTHS = [
   "Jan",
   "Feb",
@@ -395,6 +394,7 @@ function nextYM(year: number, month1to12: number) {
 }
 
 export async function GET(req: Request) {
+  const prisma = await db();
   try {
     const { searchParams } = new URL(req.url);
     const now = new Date();

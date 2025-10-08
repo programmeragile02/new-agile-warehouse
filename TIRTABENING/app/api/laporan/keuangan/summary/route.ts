@@ -107,7 +107,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-const prisma = db();
 
 const isYm = (x?: string | null) => !!x && /^\d{4}-\d{2}$/.test(x || "");
 
@@ -119,6 +118,7 @@ function monthRange(ym: string) {
 }
 
 export async function GET(req: NextRequest) {
+  const prisma = await db();
   try {
     const sp = req.nextUrl.searchParams;
     const periode = sp.get("periode") || "";

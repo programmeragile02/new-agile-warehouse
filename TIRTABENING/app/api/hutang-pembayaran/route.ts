@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-const prisma = db();
 /* ---------- helpers ---------- */
 const int = (v: any) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
@@ -30,6 +29,7 @@ const withNowTime = (yyyyMmDd: string) => {
 };
 
 async function compose(giver: string) {
+  const prisma = await db();
   const headers = await prisma.hutang.findMany({
     where: { pemberi: giver },
     orderBy: { tanggalHutang: "asc" },
@@ -86,6 +86,7 @@ async function compose(giver: string) {
 
 /* ---------- GET ---------- */
 export async function GET(req: Request) {
+  const prisma = await db();
   try {
     const url = new URL(req.url);
     const mode = url.searchParams.get("mode");
@@ -129,6 +130,7 @@ export async function GET(req: Request) {
 
 /* ---------- POST (Create Payment; status = DRAFT) ---------- */
 export async function POST(req: Request) {
+  const prisma = await db();
   try {
     const body = await req.json();
 
@@ -282,6 +284,7 @@ export async function POST(req: Request) {
    { action: "post" | "unpost", id: string, userId?: string }
 --------------------------------------------------- */
 export async function PATCH(req: Request) {
+  const prisma = await db();
   try {
     const body = await req.json();
     const action = String(body?.action || "").toLowerCase();

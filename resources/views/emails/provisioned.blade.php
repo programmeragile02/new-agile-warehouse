@@ -26,12 +26,6 @@ Access {{ $product ?? 'App' }}
 
 ---
 
-## Thank You
-Thank you for purchasing **{{ $product ?? 'our product' }}** and trusting us to support your business.  
-We are committed to helping your company grow with reliable tools and excellent service.  
-
----
-
 ## Need Assistance?
 Our support team is here to help you anytime.
 

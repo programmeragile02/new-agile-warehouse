@@ -4,7 +4,7 @@ import { z } from "zod";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const prisma = db();
+const prisma = await db();
 
 const CreateItemSchema = z.object({
   nama: z.string().min(1, "Nama wajib diisi"),
@@ -30,6 +30,7 @@ async function generateNextKode(tx: typeof prisma) {
 }
 
 export async function GET() {
+  const prisma = await db();
   try {
     const items = await prisma.item.findMany({
       where: { deletedAt: null },
@@ -54,6 +55,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const prisma = await db();
   try {
     const body = await req.json();
     const parsed = CreateItemSchema.parse(body);

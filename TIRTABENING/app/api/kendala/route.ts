@@ -2,7 +2,6 @@
 
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-const prisma = db();
 
 /**
  * Tentukan prioritas dari isi kendala (heuristic ringan).
@@ -47,6 +46,7 @@ function mapIssue(row: any, source: "meter_reading" | "meter_reading_blok") {
 }
 
 export async function GET(req: Request) {
+  const prisma = await db();
   try {
     const { searchParams } = new URL(req.url);
     // optional: ?periode=YYYY-MM (kalau mau limit ke 1 periode tertentu)

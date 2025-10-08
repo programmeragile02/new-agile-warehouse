@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-const prisma = db();
 /**
  * Pilih periode:
  * - kalau ada ?periode=YYYY-MM → pakai itu
  * - kalau tidak ada → ambil periode TERBARU yang MEMILIKI data di CatatMeter
  */
 async function resolvePeriodeFromCatatMeter(periodeParam?: string) {
+  const prisma = await db();
   if (periodeParam) {
     const [yStr, mStr] = periodeParam.split("-");
     const cp = await prisma.catatPeriode.findFirst({
@@ -48,6 +48,7 @@ async function resolvePeriodeFromCatatMeter(periodeParam?: string) {
 }
 
 export async function GET(req: Request) {
+  const prisma = await db();
   try {
     const { searchParams } = new URL(req.url);
     const periodeParam = searchParams.get("periode") ?? undefined;

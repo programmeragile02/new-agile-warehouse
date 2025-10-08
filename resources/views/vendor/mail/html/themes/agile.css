@@ -1,0 +1,30 @@
+/* Tema Agile Biru */
+:root {
+  --text-color: #0f172a;          /* slate-900 */
+  --background-color: #ffffff;
+  --panel-bg: #f8fafc;            /* slate-50 */
+  --panel-border: #dbeafe;        /* blue-100 */
+  --link-color: #2563eb;          /* blue-600 */
+  --btn-bg: #2563eb;              /* blue-600 */
+  --btn-border: #1d4ed8;          /* blue-700 */
+  --btn-text: #ffffff;
+  --heading-color: #0b1220;
+}
+
+body, .wrapper { background-color: var(--background-color) !important; color: var(--text-color) !important; }
+
+a, .subcopy a { color: var(--link-color) !important; }
+
+.panel { background-color: var(--panel-bg) !important; border: 1px solid var(--panel-border) !important; }
+
+.button-primary {
+  background-color: var(--btn-bg) !important;
+  border-top: 10px solid var(--btn-bg) !important;
+  border-right: 18px solid var(--btn-bg) !important;
+  border-bottom: 10px solid var(--btn-bg) !important;
+  border-left: 18px solid var(--btn-bg) !important;
+  color: var(--btn-text) !important;
+  text-decoration: none !important;
+}
+
+h1, h2, h3 { color: var(--heading-color) !important; }

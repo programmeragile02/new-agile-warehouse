@@ -47,18 +47,17 @@
 //     );
 //   }
 // }
-const prisma = db();
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-const prisma = db();
 
 
 const ymUTC = (d: Date) =>
   `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 
 export async function GET() {
+  const prisma = await db();
   try {
     // Pembayaran tagihan → tanggalBayar (real)
     const pembayaran = await prisma.pembayaran.findMany({

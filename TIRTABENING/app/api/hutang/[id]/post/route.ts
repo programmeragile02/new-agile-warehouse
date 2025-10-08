@@ -35,13 +35,13 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-const prisma = db();
 type P = { id: string };
 
 export async function POST(
   _req: NextRequest,
   ctx: { params: P } | { params: Promise<P> }
 ) {
+  const prisma = await db();
   const { id } = await (ctx as any).params;
 
   try {

@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-const prisma = db();
 type P = { id: string; detailId: string };
 
 export async function PUT(
   req: NextRequest,
   ctx: { params: P } | { params: Promise<P> }
 ) {
+  const prisma = await db();
   const { id, detailId } = await (ctx as any).params;
   const body = await req.json().catch(() => ({}));
   const { keterangan, nominal } = body ?? {};
@@ -52,6 +52,7 @@ export async function DELETE(
   _req: NextRequest,
   ctx: { params: P } | { params: Promise<P> }
 ) {
+  const prisma = await db();
   const { id, detailId } = await (ctx as any).params;
 
   const head = await prisma.hutang.findUnique({ where: { id } });

@@ -320,7 +320,6 @@ import { notFound } from "next/navigation";
 export const runtime = "nodejs";
 export const revalidate = 0;
 
-const prisma = db();
 /* =========================
    Helpers
 ========================= */
@@ -366,6 +365,8 @@ export default async function KwitansiPage({
   params,
   searchParams,
 }: PageProps) {
+  const prisma = await db();
+  
   const tagihan = await prisma.tagihan.findUnique({
     where: { id: params.tagihanId },
     include: {

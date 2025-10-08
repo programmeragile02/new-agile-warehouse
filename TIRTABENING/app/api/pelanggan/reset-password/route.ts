@@ -4,10 +4,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-const prisma = db();
+
 // ---- Helper auth sama seperti di route pelanggan ----
 type JwtPayload = { sub?: string };
 async function getAuthUser(req: NextRequest) {
+  const prisma = await db();
   const token = req.cookies.get("tb_token")?.value;
   if (!token) return null;
   try {
@@ -49,6 +50,7 @@ function generateStrongPassword(len = 12) {
 }
 
 export async function POST(req: NextRequest) {
+  const prisma = await db();
   try {
     const me = await getAuthUser(req);
     if (!me || me.role !== "ADMIN") {

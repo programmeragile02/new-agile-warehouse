@@ -1,8 +1,9 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-const prisma = db();
+
 export async function POST(req: NextRequest) {
+  const prisma = await db();
   const periodeStr = req.nextUrl.searchParams.get("periode") ?? "";
   if (!/^\d{4}-\d{2}$/.test(periodeStr)) {
     return NextResponse.json(

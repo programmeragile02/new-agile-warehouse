@@ -2,8 +2,13 @@
 
 namespace App\Services\Provisioning;
 
+use App\Mail\AddonActivatedMail;
+use App\Mail\RenewMail;
+use App\Mail\UpgradeMail;
 use App\Models\CustomerProductInstance;
 use App\Models\ProvisioningJob;
+use App\Services\WhatsappTemplates;
+use App\Services\WhatsappSender;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\Hash;
@@ -173,35 +178,19 @@ class TenantProvisioner
             Log::error('TP: email failed', ['err' => $e->getMessage()]);
         }
 
-        // Kirim WA (opsional)
+        // Kirim WA
         if ($phone = data_get($job->meta, 'customer_phone')) {
-            app(\App\Services\WhatsappSender::class)->sendTemplate(
-                to: $phone,
-                text:
-"*Aktivasi Berhasil*🎉
+            $text = WhatsappTemplates::purchase([
+                'product_name'     => $job->product_name ?? $job->product_code,
+                'customer_name'    => data_get($job->meta, 'customer_name', 'Pelanggan'),
+                'app_url'          => $appUrl,
+                'company_id'       => $companyId,
+                'company_password' => $companyPassword,
+                'admin_username'   => $adminUser,
+                'admin_password'   => $adminPass,
+            ]);
 
-Terima kasih telah memilih *{$job->product_code}*.
-Akun Anda sudah aktif dan siap digunakan.
-
-━━━━━━━━━━━━━━━━━━━━
-📝 Akses Aplikasi   : {$appUrl}
-
-🏢 Company ID       : {$companyId}
-🔑 Company Pass     : {$companyPassword}
-
-👤 Admin User       : {$adminUser}
-🔒 Admin Pass       : {$adminPass}
-━━━━━━━━━━━━━━━━━━━━
-
-📖 *Langkah Awal*
-1. Login menggunakan *Company ID* di atas.
-2. Masuk dengan *Admin User* dan *Admin Pass*.
-3. Segera ubah kata sandi Admin demi keamanan.
-
-🤝 Selamat bergabung bersama kami.
-Tim Support *Agile Store* siap membantu jika ada kendala.
-Hubungi: support@agilestore.com atau WhatsApp ini"
-            );
+            app(WhatsappSender::class)->sendTemplate(to: $phone, text: $text);
         }
     }
 
@@ -234,19 +223,25 @@ Hubungi: support@agilestore.com atau WhatsApp ini"
             $driver->enforceActiveState($dbName, (bool) $instance->is_active, $manifest);
         }
 
-        // Notifikasi email (opsional)
+        // Notifikasi email
         $email = data_get($job->meta, 'customer_email');
         if ($email) {
-            try {
-                Mail::raw(
-                    "Langganan {$job->product_code} Anda telah diperpanjang. Masa aktif hingga {$instance->end_date}.",
-                    function ($m) use ($email) {
-                        $m->to($email)->subject('Perpanjangan Berhasil');
-                    }
-                );
-            } catch (\Throwable $e) {
-                Log::warning('TP: renew notice mail failed', ['err'=>$e->getMessage()]);
-            }
+            Mail::to($email)->send(new RenewMail(
+                product:       $job->product_name ?? $job->product_code,
+                appUrl:        $instance->app_url ?? '#',
+                recipientName: data_get($job->meta, 'customer_name', 'Customer'),
+                endDate:       Carbon::parse($instance->end_date)->isoFormat('D MMMM Y'),
+            ));
+        }
+
+        // kirim wa
+        if ($phone = data_get($job->meta, 'customer_phone')) {
+            $text = WhatsappTemplates::renew([
+                'product_name'  => $job->product_name ?? $job->product_code,
+                'customer_name' => data_get($job->meta, 'customer_name', 'Pelanggan'),
+                'end_date_fmt'  => Carbon::parse($instance->end_date)->isoFormat('D MMMM Y'),
+            ]);
+            app(WhatsappSender::class)->sendTemplate(to: $phone, text: $text);
         }
     }
 
@@ -309,19 +304,31 @@ Hubungi: support@agilestore.com atau WhatsApp ini"
             $driver->enforceActiveState($dbName, (bool) $instance->is_active, $manifest);
         }
 
-        // Notifikasi email (opsional)
+        // Notifikasi email
         $email = data_get($job->meta, 'customer_email');
         if ($email) {
-            try {
-                Mail::raw(
-                    "Paket {$job->product_code} Anda telah di-upgrade ke {$instance->package_name}.",
-                    function ($m) use ($email) {
-                        $m->to($email)->subject('Upgrade Paket Berhasil');
-                    }
-                );
-            } catch (\Throwable $e) {
-                Log::warning('TP: upgrade notice mail failed', ['err'=>$e->getMessage()]);
-            }
+            Mail::to($email)->send(new UpgradeMail(
+                product:       $job->product_name ?? $job->product_code,
+                appUrl:        $instance->app_url ?? '#',
+                recipientName: data_get($job->meta, 'customer_name', 'Customer'),
+                packageName:   $instance->package_name ?? '-',
+                durationName:  $instance->duration_name ?? '-',
+                startDate:     Carbon::parse($instance->start_date)->isoFormat('D MMM Y'),
+                endDate:       Carbon::parse($instance->end_date)->isoFormat('D MMM Y'),
+            ));
+        }
+
+        // kirim wa
+        if ($phone = data_get($job->meta, 'customer_phone')) {
+            $text = WhatsappTemplates::upgrade([
+                'product_name'  => $job->product_name ?? $job->product_code,
+                'customer_name' => data_get($job->meta, 'customer_name', 'Pelanggan'),
+                'package_name'  => $instance->package_name,
+                'duration_name' => $instance->duration_name,
+                'start_date_fmt'=> Carbon::parse($instance->start_date)->isoFormat('D MMM Y'),
+                'end_date_fmt'  => Carbon::parse($instance->end_date)->isoFormat('D MMM Y'),
+            ]);
+            app(WhatsappSender::class)->sendTemplate(to: $phone, text: $text);
         }
     }
 
@@ -390,6 +397,33 @@ Hubungi: support@agilestore.com atau WhatsApp ini"
         // }
 
         // Anggap add-on selalu non-downtime & tanpa ubah status job instance.
+
+        // kirim email
+        $email = data_get($job->meta, 'customer_email');
+        if ($email) {
+            $instance = CustomerProductInstance::where('subscription_instance_id', $instanceId)->first();
+            $addonsForMail = collect($addons)->map(fn($a) => [
+                'name'  => $a['name'] ?? ($a['feature_code'] ?? '-'),
+                'price' => (int)($a['price'] ?? 0),
+            ])->values()->all();
+
+            Mail::to($email)->send(new AddonActivatedMail(
+                product:       $job->product_name ?? $job->product_code,
+                appUrl:        $instance?->app_url ?? '#',
+                recipientName: data_get($job->meta, 'customer_name', 'Customer'),
+                addons:        $addonsForMail,
+            ));
+        }
+
+        // kirim wa
+        if ($phone = data_get($job->meta, 'customer_phone')) {
+            $text = WhatsappTemplates::addon([
+                'product_name'  => $job->product_name ?? $job->product_code,
+                'customer_name' => data_get($job->meta, 'customer_name', 'Pelanggan'),
+                'addons'        => array_values($addons), // array of ['name','price']
+            ]);
+            app(WhatsappSender::class)->sendTemplate(to: $phone, text: $text);
+        }
     }
 
     /**

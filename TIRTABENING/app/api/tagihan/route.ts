@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-const prisma = db();
 
 // parse periode ke (y,m) agar bisa di-sort benar
 function parsePeriodeYM(p?: string | null): { y: number; m: number } | null {
@@ -46,6 +45,7 @@ function comparePeriodeDesc(a: string, b: string) {
 }
 
 export async function GET(req: NextRequest) {
+  const prisma = await db();
   try {
     const url = new URL(req.url);
 

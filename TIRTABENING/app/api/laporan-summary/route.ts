@@ -2,7 +2,6 @@
 
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-const prisma = db();
 const MONTHS = [
   "Jan",
   "Feb",
@@ -57,6 +56,7 @@ function isOperasional(name?: string) {
 }
 
 export async function GET(req: Request) {
+  const prisma = await db();
   try {
     const { searchParams } = new URL(req.url);
     const year = Number(searchParams.get("year") ?? new Date().getFullYear());

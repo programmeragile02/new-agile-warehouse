@@ -254,8 +254,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-const prisma = db();
-
 
 type MoneyFlow = "ALL" | "IN" | "OUT";
 
@@ -317,6 +315,7 @@ type MutasiRow = {
 };
 
 export async function GET(req: NextRequest) {
+  const prisma = await db();
   try {
     const sp = req.nextUrl.searchParams;
     const periode = sp.get("periode") || "";

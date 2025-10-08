@@ -4,7 +4,6 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import * as jose from "jose";
 import { db } from "@/lib/db";
-const prisma = db();
 const SESSION_COOKIE = "session"; // <- cookie untuk magic-link login
 
 /**
@@ -15,6 +14,7 @@ const SESSION_COOKIE = "session"; // <- cookie untuk magic-link login
  * 4) Authorization: Bearer <token>
  */
 export async function getAuthUserId(req: NextRequest): Promise<string | null> {
+  const prisma = await db();
   try {
     // 1) Session cookie (magic link)
     const sToken = req.cookies.get(SESSION_COOKIE)?.value;
@@ -102,6 +102,7 @@ export function clearSessionCookie(res: NextResponse) {
 
 /** Utility logout: hapus session di DB + clear cookie + redirect ke /login */
 export async function logout(req: NextRequest) {
+  const prisma = await db();
   const token = req.cookies.get(SESSION_COOKIE)?.value;
   if (token) {
     await prisma.session.deleteMany({ where: { token } }).catch(() => {});

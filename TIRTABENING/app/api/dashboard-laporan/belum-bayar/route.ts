@@ -63,8 +63,8 @@
 
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-const prisma = db();
 export async function GET(req: Request) {
+  const prisma = await db();
   try {
     const now = new Date();
     const today = new Date(now.toISOString().slice(0, 10));

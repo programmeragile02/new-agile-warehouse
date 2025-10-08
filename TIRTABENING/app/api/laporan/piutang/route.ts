@@ -199,7 +199,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthUserWithRole } from "@/lib/auth-user-server";
 export const dynamic = "force-dynamic";
-const prisma = db();
 
 function isYm(x?: string | null) {
   return !!x && /^\d{4}-\d{2}$/.test(x);
@@ -247,6 +246,7 @@ function parseInfoTags(info?: string | null) {
 }
 
 export async function GET(req: NextRequest) {
+  const prisma = await db();
   try {
     const me = await getAuthUserWithRole(req);
     if (!me)

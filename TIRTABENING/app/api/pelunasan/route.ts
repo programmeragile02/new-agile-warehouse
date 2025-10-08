@@ -438,7 +438,6 @@ import { randomToken } from "@/lib/auth-utils";
 import { nextMonth } from "@/lib/period";
 import { saveUploadFile } from "@/lib/uploads"; // ⬅️ simpan bukti
 export const runtime = "nodejs";
-const prisma = db();
 
 // ==== util origin ====
 function getAppOrigin(req: NextRequest) {
@@ -500,6 +499,7 @@ function adminWaText(p: {
 }
 
 async function sendWaAndLog(tujuanRaw: string, text: string) {
+  const prisma = await db();
   const to = tujuanRaw.replace(/\D/g, "").replace(/^0/, "62");
   const base = (process.env.WA_SENDER_URL || "").replace(/\/$/, "");
   const apiKey = process.env.WA_SENDER_API_KEY || "";
@@ -577,6 +577,7 @@ function appendInfo(
 
 // ================ HANDLER ================
 export async function POST(req: NextRequest) {
+  const prisma = await db();
   try {
     const form = await req.formData();
     const tagihanId = String(form.get("tagihanId") || "");

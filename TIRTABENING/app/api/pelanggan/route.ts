@@ -6,7 +6,6 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { Prisma } from "@prisma/client";
 import jwt from "jsonwebtoken";
-const prisma = db();
 
 // ========== Helpers singkat ==========
 function genCustomerCode(name: string) {
@@ -60,6 +59,7 @@ const bodySchema = z.object({
 
 // ========= CREATE =========
 export async function POST(req: NextRequest) {
+  const prisma = await db();
   try {
     const json = await req.json();
     const parsed = bodySchema.safeParse(json);
@@ -198,6 +198,7 @@ function toTitleCase(s: string) {
 }
 
 export async function GET(req: NextRequest) {
+  const prisma = await db();
   try {
     const sp = req.nextUrl.searchParams;
     const pageRaw = parseInt(sp.get("page") ?? "1", 10);
@@ -307,6 +308,7 @@ export async function GET(req: NextRequest) {
 
 // ========= UPDATE =========
 export async function PUT(req: NextRequest) {
+  const prisma = await db();
   try {
     const urlId = req.nextUrl.searchParams.get("id") ?? undefined;
 
@@ -626,6 +628,7 @@ function getAuthUserId(req: NextRequest): string | null {
 
 // --- DELETE (soft delete) ---
 export async function DELETE(req: NextRequest) {
+  const prisma = await db();
   try {
     const urlId = req.nextUrl.searchParams.get("id") ?? undefined;
     const body = await req.json().catch(() => ({} as unknown));

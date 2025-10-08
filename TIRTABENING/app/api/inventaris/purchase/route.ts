@@ -4,7 +4,6 @@ import { z } from "zod";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const prisma = db();
 
 const CreateSchema = z.object({
   tanggal: z.string().min(1), // "YYYY-MM-DDTHH:mm" dari <input type="datetime-local">
@@ -23,6 +22,7 @@ function parseLocalDateTimeToUTC(s: string) {
 }
 
 export async function GET() {
+  const prisma = await db();
   try {
     const rows = await prisma.purchase.findMany({
       where: { deletedAt: null },
@@ -61,6 +61,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const prisma = await db();
   try {
     const body = await req.json();
     const parsed = CreateSchema.parse({

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-const prisma = db();
 export const dynamic = "force-dynamic";
 
 // ======================= Utilities =======================
@@ -49,6 +48,7 @@ function deriveStatus(
 // ======================= Handler =======================
 
 export async function GET(req: NextRequest) {
+  const prisma = await db();
   try {
     const { searchParams } = new URL(req.url);
 

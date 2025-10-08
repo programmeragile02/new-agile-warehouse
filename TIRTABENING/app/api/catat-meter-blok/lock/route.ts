@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-const prisma = db();
+
 export async function POST(req: NextRequest) {
+  const prisma = await db();
   try {
     const { id, lock } = await req.json();
     if (!id)

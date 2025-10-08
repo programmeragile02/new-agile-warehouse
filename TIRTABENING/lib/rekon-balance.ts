@@ -1,5 +1,4 @@
 import { db } from "@/lib/db";
-const prisma = db();
 export type BalanceStatus = "OK" | "WARNING" | "ALERT";
 
 export type TandonBalance = {
@@ -35,6 +34,7 @@ type Tol = { ABS: number; PCT: number; MIN_INPUT_FOR_PCT: number };
 
 // Ambil toleransi dari Setting bila nanti sudah ada field; sementara default aman
 async function loadToleransi(): Promise<{ tandon: Tol; blok: Tol }> {
+  const prisma = await db();
   // const s = await prisma.setting.findFirst();
   return {
     tandon: { ABS: 50, PCT: 5, MIN_INPUT_FOR_PCT: 30 },
@@ -64,6 +64,7 @@ function pickStatus(input: number, out: number, tol: Tol): BalanceStatus {
 export async function getPeriodeIdByKode(
   kodePeriode: string
 ): Promise<string | null> {
+  const prisma = await db();
   const p = await prisma.catatPeriode.findUnique({
     where: { kodePeriode },
     select: { id: true },
@@ -75,6 +76,7 @@ export async function getPeriodeIdByKode(
 export async function getTandonBalances(
   periodeId: string
 ): Promise<TandonBalance[]> {
+  const prisma = await db();
   const tol = (await loadToleransi()).tandon;
 
   const tandons = await prisma.tandonReading.findMany({
@@ -132,6 +134,7 @@ export async function getBlokBalances(
   periodeId: string,
   filterTandonId?: string
 ): Promise<BlokBalance[]> {
+  const prisma = await db();
   const tol = (await loadToleransi()).blok;
 
   const blokReads = await prisma.blokReading.findMany({
@@ -213,6 +216,7 @@ export async function getPelangganPemakaianByBlok(
   periodeId: string,
   zonaId: string
 ): Promise<PelangganUsage[]> {
+  const prisma = await db();
   // ambil catat meter status DONE utk periode & zona tsb
   const rows = await prisma.catatMeter.findMany({
     where: {

@@ -3,7 +3,6 @@ import { db } from "@/lib/db";
 import { getAuthUserId } from "@/lib/auth";
 import type { Prisma } from "@prisma/client";
 export const runtime = "nodejs";
-const prisma = db();
 
 function toInt(v: string | null, def: number) {
   const n = Number.parseInt(String(v ?? ""), 10);
@@ -11,6 +10,7 @@ function toInt(v: string | null, def: number) {
 }
 
 export async function GET(req: NextRequest) {
+  const prisma = await db();
   try {
     // ── auth ───────────────────────────────────────────────────────────────────
     const userId = await getAuthUserId(req);

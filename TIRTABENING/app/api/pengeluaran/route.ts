@@ -2,7 +2,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-const prisma = db();
+
 function toClientHeader(p: any) {
   return {
     id: p.id,
@@ -21,6 +21,7 @@ function toClientHeader(p: any) {
 }
 
 export async function GET(req: NextRequest) {
+  const prisma = await db();
   const month = req.nextUrl.searchParams.get("month"); // "YYYY-MM"
   const where: any = {};
   if (month) {
@@ -42,6 +43,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const prisma = await db();
   const body = await req.json().catch(() => ({}));
   const { noBulan, tanggalPengeluaran } = body ?? {};
 

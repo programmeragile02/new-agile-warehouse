@@ -5,7 +5,6 @@ import { saveUploadFile } from "@/lib/uploads";
 import { nextMonth } from "@/lib/period";
 import { getAuthUserId } from "@/lib/auth";
 export const runtime = "nodejs";
-const prisma = db();
 
 // helper: kalau input cuma tanggal, pakai jam real saat ini
 function composeWithNowTime(dateStr: string) {
@@ -41,6 +40,7 @@ async function rebuildImmutableInfo(
   anchorId: string,
   paidAt: Date
 ) {
+  const prisma = await db();
   const paidAtISO = paidAt.toISOString();
   const paidAtHuman = paidAt.toLocaleDateString("id-ID", {
     day: "2-digit",
@@ -191,6 +191,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const prisma = await db();
   const uid = await getAuthUserId(req);
   if (uid) {
     const u = await prisma.user.findUnique({

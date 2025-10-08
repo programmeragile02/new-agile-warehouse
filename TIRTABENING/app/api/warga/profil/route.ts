@@ -4,7 +4,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthUserId } from "@/lib/auth";
 export const dynamic = "force-dynamic";
-const prisma = db();
 
 function jsonOk(data: any) {
   return NextResponse.json({ ok: true, data });
@@ -14,6 +13,7 @@ function jsonErr(status: number, error: string) {
 }
 
 export async function GET(req: NextRequest) {
+  const prisma = await db();
   try {
     const userId = await getAuthUserId(req);
     if (!userId) return jsonErr(401, "UNAUTHORIZED");
@@ -48,6 +48,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
+  const prisma = await db();
   try {
     const userId = await getAuthUserId(req);
     if (!userId) return jsonErr(401, "UNAUTHORIZED");

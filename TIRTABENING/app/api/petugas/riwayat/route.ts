@@ -5,13 +5,13 @@ import { db } from "@/lib/db";
 import { getAuthUserId } from "@/lib/auth";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-const prisma = db();
 
 function isYm(v?: string | null) {
   return !!v && /^\d{4}-\d{2}$/.test(v);
 }
 
 export async function GET(req: NextRequest) {
+  const prisma = await db();
   try {
     const meId = await getAuthUserId(req);
     if (!meId) {

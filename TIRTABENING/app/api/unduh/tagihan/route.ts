@@ -74,7 +74,6 @@ import { renderPageToJPG } from "@/lib/render-page-to-jpg";
 import { resolveUploadPath } from "@/lib/uploads";
 import fs from "node:fs/promises";
 export const runtime = "nodejs";
-const prisma = db();
 
 function getAppOrigin(req: NextRequest) {
   const h = req.headers;
@@ -89,6 +88,7 @@ function getAppOrigin(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
+  const prisma = await db();
   try {
     const url = new URL(req.url);
     const tagihanId = url.searchParams.get("tagihanId") || "";

@@ -7,8 +7,6 @@ import { CatatStatus, JadwalUiStatus } from "@prisma/client";
 import { getAuthUserId } from "@/lib/auth";
 import { startOfMonth, endOfMonth, parseISO, isValid } from "date-fns";
 
-const prisma = db(); 
-
 // ===== Helpers umum =====
 function isPeriodStr(p: string) {
   return /^\d{4}-(0[1-9]|1[0-2])$/.test(p);
@@ -33,6 +31,7 @@ function nextPeriodStr(p: string) {
   return toKodePeriode(d.getFullYear(), d.getMonth() + 1);
 }
 async function getLatestPeriode() {
+  const prisma = await db();
   return prisma.catatPeriode.findFirst({
     where: { deletedAt: null },
     orderBy: [{ tahun: "desc" }, { bulan: "desc" }],
@@ -47,6 +46,7 @@ async function getLatestPeriode() {
   });
 }
 async function recalcProgress(periodeId: string) {
+  const prisma = await db();
   const agg = await prisma.catatMeter.groupBy({
     by: ["status"],
     where: { periodeId, deletedAt: null },
@@ -66,6 +66,7 @@ async function recalcProgress(periodeId: string) {
 
 // ===== Sinkron progres jadwal per zona =====
 async function syncJadwalForZona(periodeId: string, zonaId?: string | null) {
+  const prisma = await db();
   if (!zonaId) return;
 
   const periode = await prisma.catatPeriode.findUnique({
@@ -136,6 +137,7 @@ function ymd(d: Date) {
 
 // ===== INIT (POST) =====
 export async function POST(req: NextRequest) {
+  const prisma = await db();
   const kodePeriode = req.nextUrl.searchParams.get("periode") ?? "";
   if (!isPeriodStr(kodePeriode)) {
     return NextResponse.json(
@@ -357,6 +359,7 @@ export async function POST(req: NextRequest) {
 
 // ===== LIST (GET) =====
 export async function GET(req: NextRequest) {
+  const prisma = await db();
   const kodePeriode = req.nextUrl.searchParams.get("periode") ?? "";
   const zonaParamRaw = (req.nextUrl.searchParams.get("zona") ?? "").trim();
   const zonaParam = zonaParamRaw ? zonaParamRaw : "";
@@ -523,6 +526,7 @@ export async function GET(req: NextRequest) {
 
 // ===== UPDATE (PUT) =====
 export async function PUT(req: NextRequest) {
+  const prisma = await db();
   try {
     const body = await req.json();
     const id: string | undefined = body?.id;
@@ -610,6 +614,7 @@ export async function PUT(req: NextRequest) {
 
 // ===== DELETE (hard) =====
 export async function DELETE(req: NextRequest) {
+  const prisma = await db();
   try {
     const urlId = req.nextUrl.searchParams.get("id") ?? undefined;
     const body = await req.json().catch(() => ({} as unknown));
