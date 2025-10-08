@@ -48,6 +48,7 @@ class TenantResolveController extends Controller
                 'db_url'       => $dbUrl,
                 'package_code' => $inst->package_code,
                 'app_url'      => $inst->app_url,
+                'subscription_instance_id' => $inst->subscription_instance_id,
             ]
         ]);
     }

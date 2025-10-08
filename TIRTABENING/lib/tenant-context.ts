@@ -1,4 +1,3 @@
-// lib/tenant-context.ts
 import "server-only";
 import { decodeCookie } from "@/lib/auth-session";
 import { prismaFor } from "@/lib/prisma-tenant";

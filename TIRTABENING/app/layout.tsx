@@ -7,6 +7,7 @@ import { Suspense } from "react";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { SiteFooter } from "@/components/site-footer";
+import { EntitlementsProvider } from "@/components/entitlements-provider";
 
 export const metadata: Metadata = {
   title: "Tirta Bening - Water Billing Management",
@@ -99,7 +100,7 @@ export default function RootLayout({
       <body
         className={`font-sans ${GeistSans.variable} ${GeistMono.variable} antialiased`}
       >
-        <Suspense fallback={null}>{children}</Suspense>
+        <Suspense fallback={null}><EntitlementsProvider>{children}</EntitlementsProvider></Suspense>
         <Analytics />
         <Toaster />
       </body>

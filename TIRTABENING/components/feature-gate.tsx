@@ -16,7 +16,7 @@ export function FeatureGate({
     mode?: Mode; // any: salah satu ada, all: semua harus ada
 }) {
     const { loading, canFeature, canAnyFeature } = useEntitlements();
-    if (loading) return null;
+    if (loading) return <>{fallback ?? null}</>;
 
     const ok = Array.isArray(code)
         ? mode === "all"

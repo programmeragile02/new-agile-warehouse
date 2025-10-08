@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\SubscriptionFeaturesController;
 use App\Http\Controllers\Api\TenantResolveController;
 use App\Http\Controllers\Gateway\OfferingGatewayController;
 use App\Http\Controllers\Provisioning\JobsController;
@@ -87,3 +88,6 @@ Route::get('/dev/test-wa', function (\App\Services\WhatsappSender $wa) {
 // TenantResolve Untuk Login Company
 Route::middleware(['throttle:30,1', RequireClientApiKey::class])
     ->get('/tenants/resolve', [TenantResolveController::class, 'show']);
+
+// addons ke aplikasi
+Route::middleware([RequireClientApiKey::class])->get('/subscriptions/{instanceId}/features', [SubscriptionFeaturesController::class, 'show']);
