@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Str;
@@ -53,6 +54,8 @@ class CustomerProductInstance extends Model
         'end_date'   => 'datetime',
         'is_active'  => 'boolean',
         'meta'       => 'array',
+        'renewal_reminder_last_sent_at' => 'datetime',
+        'renewal_reminder_sent_days'    => 'array',
     ];
 
     // computed attribute: aktif saat ini (flag true & belum lewat end_date)
@@ -85,5 +88,21 @@ class CustomerProductInstance extends Model
                      $qq->whereNull('end_date')
                         ->orWhereDate('end_date', '>=', $today);
                  });
+    }
+
+    /** Scope: Expiring in */
+    public function scopeExpiringIn(Builder $q, int $days): Builder
+    {
+        $tz = 'Asia/Jakarta';
+        $target = now($tz)->startOfDay()->addDays($days)->toDateString();
+        return $q->where('status', 'active')
+                 ->where('is_active', 1)
+                 ->whereDate('end_date', '=', $target);
+    }
+
+    /** Relasi ko profile */
+    public function profile()
+    {
+        return $this->hasOne(CustomerProductInstanceProfile::class, 'customer_product_instance_id');
     }
 }

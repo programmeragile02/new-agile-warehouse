@@ -11,8 +11,8 @@ class TenantResolveController extends Controller
 {
     public function show(Request $req)
     {
-        $companyId   = Str::upper((string) $req->query('company_id'));
-        $productCode = Str::upper((string) $req->query('product_code', ''));
+        $companyId   = (string) $req->query('company_id');
+        $productCode = (string) $req->query('product_code', '');
 
         if (!$companyId || !$productCode) {
             return response()->json(['ok'=>false,'error'=>'MISSING_PARAMS'], 422);

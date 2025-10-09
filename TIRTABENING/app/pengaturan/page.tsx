@@ -10,7 +10,7 @@ import { PermissionMatrix } from "@/components/permission-matrix";
 import { ScheduleSettingsForm } from "@/components/schedule-settings-form";
 export default function PengaturanPage() {
   return (
-    <AuthGuard requiredRole="admin">
+    <AuthGuard requiredRole="ADMIN">
       <AppShell>
         <div className="max-w-6xl mx-auto space-y-6">
           <AppHeader title="Pengaturan" />

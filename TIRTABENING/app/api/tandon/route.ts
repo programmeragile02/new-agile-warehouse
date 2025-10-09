@@ -1,9 +1,12 @@
+import { db } from "@/lib/db";
+import { NextResponse } from "next/server";
+
 // app/api/tandon/route.ts
-const prisma = db();
 const PREFIX = "TDN-";
 const PAD = 3; // TDN-001
 
 async function getNextTandonCode() {
+  const prisma = await db();
   const last = await prisma.tandon.findFirst({
     where: { kode: { startsWith: PREFIX } },
     orderBy: { kode: "desc" },
@@ -20,6 +23,7 @@ async function getNextTandonCode() {
  * - Next code: ?action=next-code
  */
 export async function GET(req: Request) {
+  const prisma = await db();
   try {
     const { searchParams } = new URL(req.url);
     const action = searchParams.get("action");
@@ -80,6 +84,7 @@ export async function GET(req: Request) {
  * - Jika kode kosong, akan auto-generate
  */
 export async function POST(req: Request) {
+  const prisma = await db();
   try {
     const b = await req.json().catch(() => ({}));
     const nama: string | undefined = b?.nama;
@@ -159,6 +164,7 @@ export async function POST(req: Request) {
  * Body: { id: string, kode?: string, nama?: string, deskripsi?: string|null, initialMeter?: number }
  */
 export async function PUT(req: Request) {
+  const prisma = await db();
   try {
     const b = await req.json().catch(() => ({}));
     const id: string | undefined = b?.id;
@@ -201,6 +207,7 @@ export async function PUT(req: Request) {
  * Body: { id: string }
  */
 export async function DELETE(req: Request) {
+  const prisma = await db();
   try {
     const b = await req.json().catch(() => ({}));
     const id: string | undefined = b?.id;

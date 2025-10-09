@@ -1,16 +1,5 @@
 <?php
 
-// namespace App\Services;
-
-// class WhatsappSender
-// {
-//     public function sendTemplate(string $to, string $text): void
-//     {
-//         // Integrasikan ke Twilio / Meta Cloud API / provider WA lain
-//         \Log::info('WA SENT', ['to'=>$to, 'text'=>$text]);
-//     }
-// }
-
 namespace App\Services;
 
 use Illuminate\Support\Facades\Http;

@@ -82,4 +82,22 @@ Add-on aktif seketika tanpa downtime.
 — *Agile Store Support*
         ");
     }
+
+    public static function renewReminderId(array $d): string
+    {
+        return trim("
+*⏰ Pengingat Perpanjangan — {$d['product_name']}*
+
+Hai {$d['customer_name']}, masa aktif langganan Anda akan *berakhir* pada:
+*{$d['end_date_fmt']}*.
+
+*Paket*      : {$d['package_code']}
+
+Untuk menghindari gangguan layanan, silakan perpanjang melalui tautan berikut:
+{$d['renew_url']}
+
+Butuh bantuan? Balas pesan ini—tim kami siap membantu.
+— *Agile Store Support*
+        ");
+    }
 }

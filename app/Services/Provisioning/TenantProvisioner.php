@@ -6,6 +6,7 @@ use App\Mail\AddonActivatedMail;
 use App\Mail\RenewMail;
 use App\Mail\UpgradeMail;
 use App\Models\CustomerProductInstance;
+use App\Models\CustomerProductInstanceProfile;
 use App\Models\ProvisioningJob;
 use App\Services\WhatsappTemplates;
 use App\Services\WhatsappSender;
@@ -132,7 +133,7 @@ class TenantProvisioner
         $subscriptionInstanceId = $job->subscription_instance_id ?: (string) Str::uuid();
 
         // Simpan mapping central (instance baru)
-        CustomerProductInstance::updateOrCreate(
+        $instance = CustomerProductInstance::updateOrCreate(
             ['order_id' => $job->order_id, 'product_code' => $job->product_code],
             [
                 'subscription_instance_id' => $subscriptionInstanceId,
@@ -159,6 +160,16 @@ class TenantProvisioner
                 'admin_email'            => $adminEmail,
                 'admin_username'         => $adminUser,
                 'admin_password_plain'   => $adminPass,       // opsional: null-kan setelah dikirim
+            ]
+        );
+
+        // upsert profil 1:1 dari meta
+        CustomerProductInstanceProfile::updateOrCreate(
+            ['customer_product_instance_id' => $instance->id],
+            [
+                'customer_name'  => data_get($job->meta, 'customer_name'),
+                'customer_email' => data_get($job->meta, 'customer_email'),
+                'customer_phone' => data_get($job->meta, 'customer_phone'),
             ]
         );
 
@@ -210,6 +221,20 @@ class TenantProvisioner
         $instance->midtrans_order_id = $job->midtrans_order_id ?: $instance->midtrans_order_id;
         $instance->status            = $instance->is_active ? 'active' : 'inactive';
         $instance->save();
+
+        // update informasi customer jika ada perubahan
+        $profileUpdates = array_filter([
+            'customer_name'  => data_get($job->meta, 'customer_name'),
+            'customer_email' => data_get($job->meta, 'customer_email'),
+            'customer_phone' => data_get($job->meta, 'customer_phone'),
+        ], fn($v) => !is_null($v));
+
+        if (!empty($profileUpdates)) {
+            CustomerProductInstanceProfile::updateOrCreate(
+                ['customer_product_instance_id' => $instance->id],
+                $profileUpdates
+            );
+        }
 
         // Sinkron ke tenant via driver: onRenew + enforceActiveState
         $manifest = $this->getManifest($job->product_code);
@@ -285,6 +310,20 @@ class TenantProvisioner
         $instance->midtrans_order_id = $job->midtrans_order_id ?: $instance->midtrans_order_id;
         $instance->status            = $instance->is_active ? 'active' : 'inactive';
         $instance->save();
+
+        // update informasi customer jika ada perubahan
+        $profileUpdates = array_filter([
+            'customer_name'  => data_get($job->meta, 'customer_name'),
+            'customer_email' => data_get($job->meta, 'customer_email'),
+            'customer_phone' => data_get($job->meta, 'customer_phone'),
+        ], fn($v) => !is_null($v));
+
+        if (!empty($profileUpdates)) {
+            CustomerProductInstanceProfile::updateOrCreate(
+                ['customer_product_instance_id' => $instance->id],
+                $profileUpdates
+            );
+        }
 
         // Sinkron ke tenant via driver: onUpgrade + enforceActiveState
         $manifest = $this->getManifest($job->product_code);

@@ -25,8 +25,8 @@ model User {
   updatedAt    DateTime @updatedAt
 
   // companyid
-  companyId    String?       @unique
-  company      MstCompany?   @relation("CompanyUser", fields: [companyId], references: [company_id], onUpdate: Cascade, onDelete: SetNull)
+  companyId    String?       
+  company      MstCompany?   @relation(fields: [companyId], references: [company_id], onUpdate: Cascade, onDelete: SetNull)
 
   // Back-relation 1↔1 ke Pelanggan (User PUNYA/terkait 1 Pelanggan)
   // Field FK-nya berada di model Pelanggan (userId), jadi di sini hanya back-relation.
@@ -57,6 +57,7 @@ model User {
   deletedUsers     User[]             @relation("DeletedByUserSelf") // daftar user yang dia hapus
   JadwalPencatatan JadwalPencatatan[]
 
+  @@index([companyId])
   @@index([tandonId])
   @@index([deletedAt]) // index untuk query cepat by deletedAt
   @@index([deletedBy]) // index untuk query cepat by deletedBy
@@ -315,12 +316,12 @@ model Setting {
   id                     Int      @id @default(1)
 
   // ——— Tarif & penagihan ———
-  tarifPerM3             Int      @default(3000)
-  abonemen               Int      @default(10000)
-  biayaAdmin             Int      @default(2500)
-  tglJatuhTempo          Int      @default(15)
-  dendaTelatBulanSama    Int      @default(5000)
-  dendaTelatBulanBerbeda Int      @default(10000)
+  tarifPerM3             Int?
+  abonemen               Int?
+  biayaAdmin             Int?
+  tglJatuhTempo          Int?
+  dendaTelatBulanSama    Int?
+  dendaTelatBulanBerbeda Int?
 
   // ——— Profil sistem ———
   namaPerusahaan String? @db.VarChar(120)
@@ -913,7 +914,7 @@ model MstCompany {
   updated_at     DateTime  @updatedAt
   deleted_at     DateTime?                          // softDeletes
 
-  user       User?    @relation("CompanyUser")
+  users      User[]
 
   @@map("mst_company")                              // map ke nama tabel asli
 }
