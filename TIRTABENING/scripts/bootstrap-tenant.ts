@@ -51,6 +51,7 @@ async function main() {
       role: 'ADMIN',
       name: 'Administrator',
       companyId: companyId,                  // <-- link ke MstCompany.company_id
+      mustChangePassword: true,
       updatedAt: new Date(),
     },
     create: {
@@ -60,6 +61,7 @@ async function main() {
       role: 'ADMIN',
       isActive: true,
       companyId: companyId,                  // <-- link ke MstCompany.company_id
+      mustChangePassword: true,
       // createdAt/updatedAt diisi Prisma
     },
   });

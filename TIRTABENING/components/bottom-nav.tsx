@@ -77,7 +77,8 @@ export function BottomNav() {
   if (
     pathname === "/" ||
     pathname === "/login" ||
-    pathname === "/company-login"
+    pathname === "/company-login" ||
+    pathname === "/first-login"
   )
     return null;
 

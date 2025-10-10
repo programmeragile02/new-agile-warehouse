@@ -51,6 +51,12 @@ export function LoginForm() {
             if (!res.ok || !data.ok)
                 throw new Error(data.message || "Login gagal");
 
+            if (data.requirePasswordChange) {
+                window.location.href = "/first-login";
+            } else {
+                window.location.href = "/dashboard";
+            }
+
             // simpan info ringan untuk UI (cookie JWT sudah diset httpOnly oleh server)
             localStorage.setItem("tb_user", JSON.stringify(data.user));
 
