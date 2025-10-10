@@ -1,9 +1,10 @@
-
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
 import { CatatStatus } from "@prisma/client";
 import { randomToken } from "@/lib/auth-utils";
 import puppeteer from "puppeteer";
+import { getWaTargets } from "@/lib/wa-targets";
+import { db } from "@/lib/db";
+
 export const runtime = "nodejs";
 
 /* =======================
@@ -160,6 +161,7 @@ function waText(p: {
 
 async function sendWaAndLog(tujuanRaw: string, text: string) {
   const prisma = await db();
+
   const to = tujuanRaw.replace(/\D/g, "").replace(/^0/, "62");
   const base = (process.env.WA_SENDER_URL || "").replace(/\/$/, "");
   const apiKey = process.env.WA_SENDER_API_KEY || "";
@@ -212,6 +214,7 @@ async function sendWaImageAndLog(
   caption?: string
 ) {
   const prisma = await db();
+
   const to = tujuanRaw.replace(/\D/g, "").replace(/^0/, "62");
   const base = (process.env.WA_SENDER_URL || "").replace(/\/$/, "");
   const apiKey = (process.env as any).WA_SENDER_API_KEY || "";
@@ -315,7 +318,14 @@ export async function POST(req: NextRequest) {
       include: {
         periode: true,
         pelanggan: {
-          select: { id: true, nama: true, wa: true, kode: true, userId: true },
+          select: {
+            id: true,
+            nama: true,
+            kode: true,
+            wa: true,
+            wa2: true, // <—— TAMBAH
+            userId: true,
+          },
         },
       },
     });
@@ -347,7 +357,7 @@ export async function POST(req: NextRequest) {
     // Periode tagihan = +1 bulan
     const billingPeriode = nextPeriod(periodeStr);
 
-    // Hitung total berdasar angka meter yang dicatat
+    // Hitung total
     const akhir = Math.max(row.meterAkhir ?? row.meterAwal, row.meterAwal);
     const pem = Math.max(0, akhir - row.meterAwal);
     const tarif = row.tarifPerM3 ?? row.periode.tarifPerM3 ?? 0;
@@ -355,17 +365,15 @@ export async function POST(req: NextRequest) {
     const biayaAdmin = setting.biayaAdmin ?? 0;
     const total = tarif * pem + abon + biayaAdmin;
 
-    // Due date di bulan billing (+1)
+    // Due date
     const [yy, mm] = billingPeriode.split("-").map(Number);
-    // const due = new Date(yy, mm - 1, Math.max(1, setting.tglJatuhTempo ?? 15));
     const day = Math.min(
       Math.max(1, setting.tglJatuhTempo ?? 15),
       new Date(yy, mm, 0).getDate()
     );
-    // versi lokal (WIB): tidak akan nyeret ke hari sebelumnya saat jadi UTC
     const due = new Date(yy, mm - 1, day, 12, 0, 0, 0);
 
-    // Carry-over dari bulan sebelum billing
+    // Carry-over
     const prevCode = prevPeriod(billingPeriode);
     const prevBill = await prisma.tagihan.findUnique({
       where: {
@@ -378,13 +386,12 @@ export async function POST(req: NextRequest) {
     });
     const carryFromPrev = prevBill?.sisaKurang ?? 0;
 
-    // Timestamp untuk ditampilkan di WA (tanpa disimpan DB)
+    // Timestamp tampilan WA
     const now = new Date();
 
     // Transaksi
     const { periodeId, pelanggan, tagihan } = await prisma.$transaction(
       async (tx) => {
-        // Lock row — TIDAK menyimpan tglCatat
         const updated = await tx.catatMeter.update({
           where: { id: row.id },
           data: {
@@ -399,7 +406,6 @@ export async function POST(req: NextRequest) {
           select: { periodeId: true },
         });
 
-        // Total pembayaran yang sudah ada untuk PERIODE BILLING (+1)
         const paidAgg = await tx.pembayaran.aggregate({
           where: {
             tagihan: { pelangganId: row.pelangganId, periode: billingPeriode },
@@ -409,7 +415,6 @@ export async function POST(req: NextRequest) {
         });
         const alreadyPaid = paidAgg._sum.jumlahBayar ?? 0;
 
-        // Upsert tagihan untuk PERIODE BILLING (+1)
         const t = await tx.tagihan.upsert({
           where: {
             pelangganId_periode: {
@@ -428,7 +433,7 @@ export async function POST(req: NextRequest) {
               total + carryFromPrev - alreadyPaid <= 0 ? "PAID" : "UNPAID",
             statusVerif: "UNVERIFIED",
             tglJatuhTempo: due,
-            catatMeterId: row.id, // ★ relasi ke catat meter
+            catatMeterId: row.id,
           },
           create: {
             pelangganId: row.pelangganId,
@@ -443,13 +448,10 @@ export async function POST(req: NextRequest) {
               total + carryFromPrev - alreadyPaid <= 0 ? "PAID" : "UNPAID",
             statusVerif: "UNVERIFIED",
             tglJatuhTempo: due,
-            catatMeterId: row.id, // ★ relasi ke catat meter
+            catatMeterId: row.id,
           },
         });
 
-        /* =======================
-         Update progress + auto FINAL & lock periode
-         ======================= */
         const agg = await tx.catatMeter.groupBy({
           by: ["status"],
           where: { periodeId: updated.periodeId, deletedAt: null },
@@ -461,7 +463,6 @@ export async function POST(req: NextRequest) {
         const pending =
           agg.find((a) => a.status === CatatStatus.PENDING)?._count._all ?? 0;
 
-        // Pastikan benar2 tidak ada row isLocked=false (lebih ketat)
         const unlockedCount = await tx.catatMeter.count({
           where: {
             periodeId: updated.periodeId,
@@ -470,10 +471,6 @@ export async function POST(req: NextRequest) {
           },
         });
 
-        // Semua baris terkunci bila:
-        // - tidak ada pending,
-        // - ada minimal 1 selesai,
-        // - dan tidak ada row yang masih isLocked=false
         const allLocked = pending === 0 && selesai > 0 && unlockedCount === 0;
 
         await tx.catatPeriode.update({
@@ -487,15 +484,11 @@ export async function POST(req: NextRequest) {
                   status: "FINAL",
                   isLocked: true,
                   lockedAt: new Date(),
-                  // lockedBy: currentUserId, // ← isi kalau kamu punya user id di context
                 }
               : {}),
           },
         });
 
-        /* ======================= */
-
-        // Dorong carry ke bulan setelah billing
         const nextCode = nextPeriod(billingPeriode);
         const nextExists = await tx.tagihan.findUnique({
           where: {
@@ -564,59 +557,73 @@ export async function POST(req: NextRequest) {
     const magicUrl =
       origin && `${origin}/api/auth/magic?token=${encodeURIComponent(token)}`;
 
-    // === Kirim WA (teks + gambar) ===
-    if (sendWa && pelanggan?.wa) {
-      const linkBaris = magicUrl
-        ? `\n\nUnggah bukti pembayaran dengan aman via tautan berikut:\n${magicUrl}`
-        : "";
+    // === Kirim WA (teks + gambar) ke wa / wa2 bila ada ===
+    if (sendWa) {
+      const targets = getWaTargets([pelanggan?.wa, pelanggan?.wa2]);
+      if (targets.length > 0) {
+        const linkBaris = magicUrl
+          ? `\n\nUnggah bukti pembayaran dengan aman via tautan berikut:\n${magicUrl}`
+          : "";
 
-      const text =
-        waText({
-          setting: {
-            namaPerusahaan: setting.namaPerusahaan,
-            telepon: setting.telepon,
-            email: setting.email,
-            alamat: setting.alamat,
-            anNorekPembayaran: setting.anNorekPembayaran,
-            namaBankPembayaran: setting.namaBankPembayaran,
-            namaBendahara: setting.namaBendahara,
-            norekPembayaran: setting.norekPembayaran,
-            whatsappCs: setting.whatsappCs,
-          },
-          nama: pelanggan.nama,
-          kode: pelanggan.kode || undefined,
-          periode: billingPeriode, // kirim periode billing (+1)
-          meterAwal: row.meterAwal,
-          meterAkhir: Math.max(row.meterAkhir ?? row.meterAwal, row.meterAwal),
-          pemakaian: Math.max(
-            0,
-            (row.meterAkhir ?? row.meterAwal) - row.meterAwal
-          ),
-          tarifPerM3: tarif,
-          abonemen: abon,
-          biayaAdmin,
-          tagihanLalu: tagihan.tagihanLalu,
-          tagihanBulanIni: tagihan.totalTagihan,
-          sisaKurang: tagihan.sisaKurang,
-          total,
-          due,
-          tglCatat: now, // hanya untuk ditampilkan di WA
-        }) + linkBaris;
+        const text =
+          waText({
+            setting: {
+              namaPerusahaan: setting.namaPerusahaan,
+              telepon: setting.telepon,
+              email: setting.email,
+              alamat: setting.alamat,
+              anNorekPembayaran: setting.anNorekPembayaran,
+              namaBankPembayaran: setting.namaBankPembayaran,
+              namaBendahara: setting.namaBendahara,
+              norekPembayaran: setting.norekPembayaran,
+              whatsappCs: setting.whatsappCs,
+            },
+            nama: pelanggan.nama,
+            kode: pelanggan.kode || undefined,
+            periode: billingPeriode,
+            meterAwal: row.meterAwal,
+            meterAkhir: Math.max(
+              row.meterAkhir ?? row.meterAwal,
+              row.meterAwal
+            ),
+            pemakaian: Math.max(
+              0,
+              (row.meterAkhir ?? row.meterAwal) - row.meterAwal
+            ),
+            tarifPerM3: tarif,
+            abonemen: abon,
+            biayaAdmin,
+            tagihanLalu: tagihan.tagihanLalu,
+            tagihanBulanIni: tagihan.totalTagihan,
+            sisaKurang: tagihan.sisaKurang,
+            total,
+            due,
+            tglCatat: now,
+          }) + linkBaris;
 
-      (async () => {
-        try {
-          await sendWaAndLog(pelanggan.wa!, text);
-        } catch {}
-        try {
+        (async () => {
+          await Promise.allSettled(
+            targets.map(async (to) => {
+              try {
+                await sendWaAndLog(to, text);
+              } catch {}
+            })
+          );
           const caption = `Tagihan Air Periode ${new Date(
             `${billingPeriode}-01`
           ).toLocaleDateString("id-ID", {
             month: "long",
             year: "numeric",
           })} - ${pelanggan.nama}`;
-          await sendWaImageAndLog(pelanggan.wa!, tagihan.id, caption);
-        } catch {}
-      })();
+          await Promise.allSettled(
+            targets.map(async (to) => {
+              try {
+                await sendWaImageAndLog(to, tagihan.id, caption);
+              } catch {}
+            })
+          );
+        })();
+      }
     }
 
     return NextResponse.json({ ok: true, locked: true, tagihan });

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
 import puppeteer from "puppeteer";
 import { randomToken } from "@/lib/auth-utils";
+import { getWaTargets } from "@/lib/wa-targets";
+import { db } from "@/lib/db";
 
 /* ============ Helpers ============ */
 function getAppOrigin(req: NextRequest) {
@@ -277,13 +278,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Ambil tagihan + pelanggan + relasi catat untuk angka meter (jika ada)
     const t = await prisma.tagihan.findUnique({
       where: { id: tagihanId },
       include: {
         pelanggan: {
-          select: { id: true, nama: true, kode: true, wa: true, userId: true },
-        },
+          select: {
+            id: true,
+            nama: true,
+            kode: true,
+            wa: true,
+            wa2: true,
+            userId: true,
+          },
+        }, // <— tambah wa2
         catatMeter: {
           select: {
             meterAwal: true,
@@ -300,7 +307,9 @@ export async function POST(req: NextRequest) {
         { status: 404 }
       );
     }
-    if (!t.pelanggan?.wa) {
+
+    const targets = getWaTargets([t.pelanggan?.wa, t.pelanggan?.wa2]);
+    if (targets.length === 0) {
       return NextResponse.json(
         { ok: false, message: "Nomor WhatsApp pelanggan belum diisi" },
         { status: 400 }
@@ -338,7 +347,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Magic link untuk pelunasan / upload bukti
+    // Magic link
     const token = randomToken(32);
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     await prisma.magicLinkToken.create({
@@ -388,19 +397,17 @@ export async function POST(req: NextRequest) {
         ? `\n\nUnggah bukti pembayaran dengan aman via tautan berikut:\n${magicUrl}`
         : "");
 
-    // Kirim WA teks + gambar (async fire-and-forget di server)
+    // Kirim WA teks + gambar ke semua target
     (async () => {
-      try {
-        await sendWaAndLog(t.pelanggan!.wa!, text);
-      } catch {}
-      try {
-        const caption = `Tagihan Air Periode ${new Date(
-          `${t.periode}-01`
-        ).toLocaleDateString("id-ID", { month: "long", year: "numeric" })} - ${
-          t.pelanggan?.nama
-        }`;
-        await sendWaImageAndLog(t.pelanggan!.wa!, t.id, caption);
-      } catch {}
+      await Promise.allSettled(targets.map((to) => sendWaAndLog(to, text)));
+      const caption = `Tagihan Air Periode ${new Date(
+        `${t.periode}-01`
+      ).toLocaleDateString("id-ID", { month: "long", year: "numeric" })} - ${
+        t.pelanggan?.nama
+      }`;
+      await Promise.allSettled(
+        targets.map((to) => sendWaImageAndLog(to, t.id, caption))
+      );
     })();
 
     return NextResponse.json({ ok: true, message: "WA tagihan dikirim" });

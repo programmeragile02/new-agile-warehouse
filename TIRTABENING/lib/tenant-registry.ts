@@ -54,21 +54,21 @@ export async function resolveTenantAuth(
     productCode: string,
     companyPassword: string
 ): Promise<TenantInfo | null> {
-    const url = `${apiBase()}/tenant/resolve-auth`;
-    const res = await fetch(url, {
-        method: "POST",
-        headers: {
-            "X-API-KEY": apiKey(),
-            "Content-Type": "application/json",
-            Accept: "application/json",
-        },
-        body: JSON.stringify({
-            company_id: String(companyId).toUpperCase(),
-            product_code: String(productCode).toUpperCase(),
-            company_password: companyPassword,
-        }),
-        cache: "no-store",
-    });
+  const url = `${apiBase()}/tenant/resolve-auth`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "X-API-KEY": apiKey(),
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({
+      company_id: String(companyId),
+      product_code: String(productCode),
+      company_password: companyPassword,
+    }),
+    cache: "no-store",
+  });
 
     if (!res.ok) return null;
     const j = await res.json().catch(() => null);

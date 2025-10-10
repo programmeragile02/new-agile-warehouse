@@ -1278,7 +1278,7 @@ export function CustomerEditModal({
                             </Button>
                             <Button
                                 type="submit"
-                                className="bg-primary hover:bg-primary/90"
+                                className="bg-primary hover:bg-primary/90 mb-10"
                                 disabled={saving}
                             >
                                 {saving ? "Menyimpan..." : "Simpan Perubahan"}

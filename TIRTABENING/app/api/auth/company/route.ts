@@ -209,21 +209,14 @@ export async function POST(req: Request) {
                 { status: 422 }
             );
 
-        // AUTH ke Warehouse (WAJIB password)
-        const info = await resolveTenantAuth(
-            String(companyId).toUpperCase(),
-            PRODUCT_CODE,
-            companyPassword
-        );
-        if (!info) {
-            return NextResponse.json(
-                {
-                    ok: false,
-                    message: "Company ID atau Password salah / tidak aktif",
-                },
-                { status: 401 }
-            );
-        }
+    // AUTH ke Warehouse (WAJIB password)
+    const info = await resolveTenantAuth(String(companyId), PRODUCT_CODE, companyPassword);
+    if (!info) {
+      return NextResponse.json(
+        { ok:false, message:"Company ID atau Password salah / tidak aktif" },
+        { status: 401 }
+      );
+    }
 
         const offering =
             PKG_TO_OFFERING[(info.packageCode || "").toUpperCase()] || "basic";

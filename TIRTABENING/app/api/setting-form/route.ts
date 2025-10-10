@@ -178,7 +178,7 @@ import { db } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-// "" -> null untuk field nullable (biar form enak)
+// "" -> null untuk field nullable
 const emptyToNull = <T extends z.ZodTypeAny>(schema: T) =>
     z.preprocess(
         (v) => (typeof v === "string" && v.trim() === "" ? null : v),
@@ -192,13 +192,19 @@ function cleanData<T extends Record<string, any>>(obj: T): Partial<T> {
     return out as Partial<T>;
 }
 
-// hanya field sistem/profil yang diedit form ini
+// sanitasi logoUrl: drop kalau blob:
+const sanitizeLogo = z.preprocess((v) => {
+    if (typeof v !== "string") return v;
+    if (v.startsWith("blob:")) return null; // <-- JANGAN SIMPAN blob:
+    return v.trim();
+}, z.string().max(255).nullable());
+
 const SystemSchema = z.object({
     namaPerusahaan: emptyToNull(z.string().max(120).nullable()).optional(),
     alamat: emptyToNull(z.string().max(255).nullable()).optional(),
     telepon: emptyToNull(z.string().max(30).nullable()).optional(),
     email: emptyToNull(z.string().email().max(120).nullable()).optional(),
-    logoUrl: emptyToNull(z.string().max(255).nullable()).optional(),
+    logoUrl: sanitizeLogo.optional(), // <-- pakai sanitizer
 
     namaBankPembayaran: emptyToNull(z.string().max(120).nullable()).optional(),
     norekPembayaran: emptyToNull(z.string().max(50).nullable()).optional(),
@@ -220,27 +226,14 @@ const selectFields = {
     whatsappCs: true,
 } as const;
 
-// GET: kembalikan row; kalau belum ada, buat minimal { id:1 } TANPA default tarif/abonemen
+// GET: buat row minimal bila belum ada
 export async function GET() {
     const prisma = await db();
     try {
-        const selectFields = {
-            namaPerusahaan: true,
-            alamat: true,
-            telepon: true,
-            email: true,
-            logoUrl: true,
-            namaBankPembayaran: true,
-            norekPembayaran: true,
-            anNorekPembayaran: true,
-            namaBendahara: true,
-            whatsappCs: true,
-        } as const;
-
         const row = await prisma.setting.upsert({
             where: { id: 1 },
-            update: {}, // tidak mengubah apa-apa kalau sudah ada
-            create: { id: 1 }, // buat minimal baris saat belum ada
+            update: {},
+            create: { id: 1 },
             select: selectFields,
         });
 
@@ -265,7 +258,7 @@ export async function GET() {
     }
 }
 
-// PUT: pastikan row ada (tanpa default tarif), lalu update partial hanya field form
+// PUT: update partial + sanitasi logoUrl
 export async function PUT(req: Request) {
     const prisma = await db();
     try {
@@ -280,11 +273,11 @@ export async function PUT(req: Request) {
 
         const data = cleanData(parsed.data);
 
-        // pastikan ada baris setting
+        // pastikan baris ada
         await prisma.setting.upsert({
             where: { id: 1 },
             update: {},
-            create: { id: 1 }, // <-- TANPA default tarif/abonemen/denda
+            create: { id: 1 },
         });
 
         const updated = await prisma.setting.update({
@@ -293,7 +286,6 @@ export async function PUT(req: Request) {
             select: selectFields,
         });
 
-        // kembalikan string kosong agar form langsung sinkron
         return NextResponse.json({
             namaPerusahaan: updated.namaPerusahaan ?? "",
             alamat: updated.alamat ?? "",

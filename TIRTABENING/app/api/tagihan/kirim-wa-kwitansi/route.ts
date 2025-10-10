@@ -1,13 +1,12 @@
-// app/api/tagihan/kirim-wa-kwitansi/route.ts
-
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
 import { getAuthUserId } from "@/lib/auth";
 import { renderKwitansiToJPG } from "@/lib/render-kwitansi";
 import { resolveUploadPath } from "@/lib/uploads";
 import fs from "node:fs/promises";
+import { getWaTargets } from "@/lib/wa-targets";
+import { db } from "@/lib/db";
 
-// ——— Helpers yang sama seperti PATCH verify (dipersingkat) ———
+// ——— Helpers ———
 function getAppOrigin(req: NextRequest) {
   const h = req.headers;
   return (
@@ -48,7 +47,7 @@ function formatRp(n: number) {
   return "Rp " + Number(n || 0).toLocaleString("id-ID");
 }
 
-// ——— Utility kirim WA (SAMAKAN dengan yang di PATCH verify) ———
+// ——— Utility kirim WA ———
 async function sendWaAndLog(tujuanRaw: string, text: string) {
   const prisma = await db();
   const to = tujuanRaw.replace(/\D/g, "").replace(/^0/, "62");
@@ -247,12 +246,12 @@ export async function POST(req: NextRequest) {
       }
     } catch {}
 
-    // Ambil tagihan + pelanggan
+    // Ambil tagihan + pelanggan (tambahkan wa2)
     const tagihan = await prisma.tagihan.findUnique({
       where: { id: tagihanId },
       include: {
         pelanggan: {
-          select: { nama: true, kode: true, wa: true, alamat: true },
+          select: { nama: true, kode: true, wa: true, wa2: true, alamat: true },
         },
       },
     });
@@ -265,18 +264,18 @@ export async function POST(req: NextRequest) {
     const closedBy = parseClosedByOrPaidBy(tagihan.info);
     const paidAtTag = parsePaidAt(tagihan.info);
 
-    // Ambil pembayaran terakhir (supaya METODE akurat)
+    // Ambil pembayaran terakhir (untuk METODE)
     let pembayaran = await prisma.pembayaran.findFirst({
       where: { tagihanId, deletedAt: null },
       orderBy: { tanggalBayar: "desc" },
     });
 
-    // Hitung total ditagihkan (bulan ini + carry)
+    // Hitung total ditagihkan
     const totalBulanIni = tagihan.totalTagihan ?? 0;
     const carryOver = tagihan.tagihanLalu ?? 0;
     const totalDitagihkan = totalBulanIni + carryOver;
 
-    // Jika belum ada pembayaran & CLOSED_BY → pakai virtual
+    // virtual payment jika CLOSED_BY
     if (!pembayaran && closedBy) {
       const anchor = await prisma.tagihan.findUnique({
         where: {
@@ -326,7 +325,7 @@ export async function POST(req: NextRequest) {
       } as any;
     }
 
-    // Validasi kondisi kirim kwitansi: harus sudah lunas (atau CLOSED_BY)
+    // Validasi lunas
     const sum = await prisma.pembayaran.aggregate({
       where: { tagihanId, deletedAt: null },
       _sum: { jumlahBayar: true },
@@ -343,36 +342,34 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!tagihan.pelanggan?.wa) {
+    const targets = getWaTargets([
+      tagihan.pelanggan?.wa,
+      tagihan.pelanggan?.wa2,
+    ]);
+    if (targets.length === 0) {
       return NextResponse.json(
         { ok: false, message: "Nomor WA pelanggan kosong" },
         { status: 400 }
       );
     }
-    if (!pembayaran) {
-      return NextResponse.json(
-        { ok: false, message: "Tidak ada data pembayaran/penutupan" },
-        { status: 400 }
-      );
-    }
 
-    // Balas cepat ke FE (non-blocking render & send)
+    // Balas cepat ke FE
     const origin = getAppOrigin(req);
     const res = NextResponse.json({ ok: true });
 
     setImmediate(async () => {
       try {
-        // 1) Render JPG (gunakan template /print/kwitansi/:id optionally ?payId=)
+        // Render JPG
         const payIdParam =
-          pembayaran.id && pembayaran.id !== "virtual"
-            ? `?payId=${pembayaran.id}`
+          pembayaran!.id && pembayaran!.id !== "virtual"
+            ? `?payId=${pembayaran!.id}`
             : "";
         const jpgUrl = await renderKwitansiToJPG({
           tplUrl: `${origin}/print/kwitansi/${tagihan.id}${payIdParam}`,
-          outName: `kwitansi-${tagihan.id}-${pembayaran.id || "auto"}.jpg`,
+          outName: `kwitansi-${tagihan.id}-${pembayaran!.id || "auto"}.jpg`,
         });
 
-        // 2) Kirim teks
+        // Kirim teks
         const setting = await prisma.setting.findUnique({ where: { id: 1 } });
         const text = waTextPembayaranVerified({
           setting: {
@@ -385,22 +382,27 @@ export async function POST(req: NextRequest) {
           nama: tagihan.pelanggan?.nama,
           kode: tagihan.pelanggan?.kode,
           periode: tagihan.periode,
-          tanggalBayar: pembayaran.tanggalBayar,
+          tanggalBayar: pembayaran!.tanggalBayar,
           metode: (pembayaran as any).metode ?? "—",
-          jumlahBayar: pembayaran.jumlahBayar,
+          jumlahBayar: pembayaran!.jumlahBayar,
           totalTagihan: totalDitagihkan,
         });
-        await sendWaAndLog(tagihan.pelanggan.wa!, text);
 
-        // 3) Kirim gambar
+        await Promise.allSettled(targets.map((to) => sendWaAndLog(to, text)));
+
+        // Kirim gambar
         const caption = `Kwitansi Pembayaran Periode ${periodLong(
           tagihan.periode
         )} - ${tagihan.pelanggan?.nama || ""}`;
-        await sendWaImageAndLog(
-          tagihan.pelanggan.wa!,
-          jpgUrl,
-          `kwitansi-${tagihan.id}-${pembayaran.id || "auto"}.jpg`,
-          caption
+        await Promise.allSettled(
+          targets.map((to) =>
+            sendWaImageAndLog(
+              to,
+              jpgUrl,
+              `kwitansi-${tagihan.id}-${pembayaran!.id || "auto"}.jpg`,
+              caption
+            )
+          )
         );
       } catch (e) {
         console.error("[kirim-wa-kwitansi] error:", e);

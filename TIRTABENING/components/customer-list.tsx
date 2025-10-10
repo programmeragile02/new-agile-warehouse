@@ -1152,10 +1152,12 @@ export function CustomerList() {
                                                         {/* WA utama + WA2 di bawahnya kecil (jika ada) */}
                                                         <div className="leading-tight">
                                                             <div>
+                                                                1.{" "}
                                                                 {customer.noWA}
                                                             </div>
                                                             {customer.noWA2 ? (
-                                                                <div className="text-xs text-muted-foreground">
+                                                                <div className="text-sm text-muted-foreground">
+                                                                    2.{" "}
                                                                     {
                                                                         customer.noWA2
                                                                     }
