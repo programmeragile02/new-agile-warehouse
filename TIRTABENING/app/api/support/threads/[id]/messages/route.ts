@@ -54,37 +54,38 @@
 
 // app/api/support/threads/[id]/messages/route.ts
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { botAutoReplyFor } from "@/app/api/support/_bot";
 
 export async function POST(
-  req: Request,
-  { params }: { params: { id: string } }
+    req: Request,
+    { params }: { params: { id: string } }
 ) {
-  const { body, authorType } = await req.json();
+    const prisma = await db();
+    const { body, authorType } = await req.json();
 
-  const saved = await prisma.supportMessage.create({
-    data: {
-      threadId: params.id,
-      authorType: authorType === "CS" ? "CS" : "ME",
-      body: String(body || ""),
-    },
-  });
-  await prisma.supportThread.update({
-    where: { id: params.id },
-    data: { updatedAt: new Date() },
-  });
+    const saved = await prisma.supportMessage.create({
+        data: {
+            threadId: params.id,
+            authorType: authorType === "CS" ? "CS" : "ME",
+            body: String(body || ""),
+        },
+    });
+    await prisma.supportThread.update({
+        where: { id: params.id },
+        data: { updatedAt: new Date() },
+    });
 
-  // Auto-reply bot hanya jika pengirimnya ME (user)
-  let autoReply = null;
-  if (authorType !== "CS") {
-    const bot = await botAutoReplyFor(String(body || ""), prisma);
-    if (bot) {
-      autoReply = await prisma.supportMessage.create({
-        data: { threadId: params.id, authorType: "CS", body: bot },
-      });
+    // Auto-reply bot hanya jika pengirimnya ME (user)
+    let autoReply = null;
+    if (authorType !== "CS") {
+        const bot = await botAutoReplyFor(String(body || ""), prisma);
+        if (bot) {
+            autoReply = await prisma.supportMessage.create({
+                data: { threadId: params.id, authorType: "CS", body: bot },
+            });
+        }
     }
-  }
 
-  return NextResponse.json({ ok: true, item: saved, autoReply });
+    return NextResponse.json({ ok: true, item: saved, autoReply });
 }

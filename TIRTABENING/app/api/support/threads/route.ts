@@ -83,50 +83,52 @@
 
 // app/api/support/threads/route.ts
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { botAutoReplyFor } from "@/app/api/support/_bot";
 
 export async function GET() {
-  const items = await prisma.supportThread.findMany({
-    orderBy: { updatedAt: "desc" },
-    select: {
-      id: true,
-      topic: true,
-      status: true,
-      updatedAt: true,
-      messages: {
-        select: { id: true },
-        take: 1,
-        orderBy: { createdAt: "desc" },
-      },
-    },
-  });
-  return NextResponse.json({ ok: true, items });
+    const prisma = await db();
+    const items = await prisma.supportThread.findMany({
+        orderBy: { updatedAt: "desc" },
+        select: {
+            id: true,
+            topic: true,
+            status: true,
+            updatedAt: true,
+            messages: {
+                select: { id: true },
+                take: 1,
+                orderBy: { createdAt: "desc" },
+            },
+        },
+    });
+    return NextResponse.json({ ok: true, items });
 }
 
 export async function POST(req: Request) {
-  const { topic, message } = await req.json();
+    const prisma = await db();
+    const { topic, message } = await req.json();
 
-  const thread = await prisma.supportThread.create({
-    data: {
-      topic: topic || null,
-      status: "OPEN",
-      messages: {
-        create: { body: String(message || ""), authorType: "ME" },
-      },
-    },
-    include: { messages: true },
-  });
-
-  // auto-reply bot (opsional)
-  const bot = await botAutoReplyFor(String(message || ""), prisma);
-  let autoReply = null;
-  if (bot) {
-    const msg = await prisma.supportMessage.create({
-      data: { threadId: thread.id, body: bot, authorType: "CS" },
+    const thread = await prisma.supportThread.create({
+        data: {
+            topic: topic || null,
+            status: "OPEN",
+            messages: {
+                create: { body: String(message || ""), authorType: "ME" },
+            },
+        },
+        include: { messages: true },
     });
-    autoReply = msg;
-  }
 
-  return NextResponse.json({ ok: true, item: thread, autoReply });
+    // auto-reply bot (opsional)
+    const bot = await botAutoReplyFor(String(message || ""), prisma);
+    let autoReply = null;
+    if (bot) {
+        const msg = await prisma.supportMessage.create({
+            data: { threadId: thread.id, body: bot, authorType: "CS" },
+        });
+        autoReply = msg;
+    }
+
+    return NextResponse.json({ ok: true, item: thread, autoReply });
 }
