@@ -75,6 +75,7 @@ model Pelanggan {
   kode         String   @unique
   nama         String
   wa           String?  @db.VarChar(20)
+  wa2          String?  @db.VarChar(20)
   alamat       String
   meterAwal    Int      @default(0)
   isResetMeter Boolean  @default(false)
