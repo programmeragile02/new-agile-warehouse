@@ -1,4 +1,4 @@
-@component('mail::message')
+{{-- @component('mail::message')
 # Renewal Reminder — {{ $product }}
 
 Hello {{ $recipientName }},
@@ -33,5 +33,32 @@ Documentation: **https://docs.agilestore.example**
 
 @slot('subcopy')
 > Security: Keep your *Company ID* confidential. Avoid sharing credentials via email/chat.
+@endslot
+@endcomponent --}}
+@component('mail::message')
+# ⏰ Pengingat Perpanjangan — {{ $product }}
+
+Halo {{ $recipientName }},
+
+Langganan kamu akan **berakhir** pada **{{ $endDateHuman }}**.  
+Agar layanan tetap berjalan tanpa gangguan, silakan perpanjang segera.
+
+@component('mail::panel')
+**📦 Produk:** {{ $product }}  
+**🗓️ Tanggal Berakhir:** {{ $endDateHuman }}
+@endcomponent
+
+@isset($renewUrl)
+@component('mail::button', ['url' => $renewUrl, 'color' => 'primary'])
+Perpanjang Sekarang
+@endcomponent
+@endisset
+
+@isset($appUrl)
+Kamu juga bisa mengakses aplikasi di: <a href="{{ $appUrl }}">{{ $appUrl }}</a>
+@endisset
+
+@slot('subcopy')
+🔐 **Keamanan:** Rahasiakan *Company ID*. Hindari berbagi kredensial via email/chat.
 @endslot
 @endcomponent

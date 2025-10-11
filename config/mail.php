@@ -113,10 +113,12 @@ return [
         'address' => env('MAIL_FROM_ADDRESS', 'programmeragile02@gmail.com'),
         'name' => env('MAIL_FROM_NAME', 'Agile Store'),
     ],
+    'logo_url' => env('MAIL_LOGO_URL', null),
 
     'markdown' => [
         'theme' => 'agile', // pakai tema kustom
         'paths' => [resource_path('views/vendor/mail')],
+        
     ],
 
 ];
