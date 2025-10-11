@@ -34,4 +34,11 @@ interface ProductProvisionerDriver
 
     /** Sinkron state aktif/nonaktif di tenant (opsional) */
     public function enforceActiveState(string $dbName, bool $isActive, array $manifest): void;
+
+    /** Create DB User & Password */
+    public function provisionDbUser(string $dbName): array;
+
+    /** Flush Previleges User DB */
+    public function hardenPrivileges(string $dbName, string $username): void;
+    public function getLastTenantCreds(): ?array; // optional cache
 }

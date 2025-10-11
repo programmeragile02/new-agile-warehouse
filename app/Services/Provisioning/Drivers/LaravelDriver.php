@@ -9,6 +9,8 @@ use Illuminate\Support\Str;
 
 class LaravelDriver implements ProductProvisionerDriver
 {
+    protected ?array $lastTenantCreds = null;
+
     public function ensureDatabase(string $dbName): void
     {
         $exists = DB::select(
@@ -22,15 +24,28 @@ class LaravelDriver implements ProductProvisionerDriver
         }
     }
 
-    protected function setTenantConn(string $dbName): void
+    protected function adminConn()
+    {
+        return DB::connection('mysql');
+    }
+
+    protected function safeIdent(string $s): string
+    {
+        if (!preg_match('/^[A-Za-z0-9_]+$/', $s)) {
+            throw new \InvalidArgumentException("Invalid identifier: {$s}");
+        }
+        return $s;
+    }
+
+    protected function setTenantConn(string $dbName, ?array $creds = null): void
     {
         config(['database.connections.tenant' => [
             'driver'   => 'mysql',
             'host'     => env('DB_HOST','127.0.0.1'),
             'port'     => env('DB_PORT','3306'),
             'database' => $dbName,
-            'username' => env('DB_USERNAME','root'),
-            'password' => env('DB_PASSWORD',''),
+            'username' => $creds['username'] ?? env('DB_USERNAME','root'),
+            'password' => $creds['password'] ?? env('DB_PASSWORD',''),
             'charset'  => 'utf8mb4',
             'collation'=> 'utf8mb4_unicode_ci',
             'prefix'   => '',
@@ -42,9 +57,45 @@ class LaravelDriver implements ProductProvisionerDriver
         Schema::connection('tenant')->getConnection()->reconnect();
     }
 
+    public function provisionDbUser(string $dbName): array
+    {
+        $db   = $this->safeIdent($dbName);
+        $user = 'u_'.Str::lower(Str::random(12));
+        $pass = Str::password(24, true, true, true);
+
+        // Escape single-quote di password
+        $passQ = str_replace("'", "\\'", $pass);
+
+        // Penting: gunakan SINGLE QUOTE utk user & host; JANGAN backtick
+        // Dan JANGAN pakai placeholder ? di CREATE USER / GRANT
+        $this->adminConn()->statement("CREATE USER IF NOT EXISTS '{$user}'@'%' IDENTIFIED BY '{$passQ}'");
+
+        // Saat provisioning: ALL biar migrate/seed lancar
+        $this->adminConn()->statement("GRANT ALL PRIVILEGES ON `{$db}`.* TO '{$user}'@'%'");
+
+        return $this->lastTenantCreds = ['username'=>$user, 'password'=>$pass];
+    }
+
+    public function hardenPrivileges(string $dbName, string $username): void
+    {
+        $db = $this->safeIdent($dbName);
+        $u  = $this->safeIdent($username);
+
+        $this->adminConn()->statement("REVOKE ALL PRIVILEGES, GRANT OPTION FROM '{$u}'@'%'");
+        $this->adminConn()->statement("
+            GRANT SELECT, INSERT, UPDATE, DELETE, EXECUTE, SHOW VIEW,
+                CREATE TEMPORARY TABLES, REFERENCES
+            ON `{$db}`.* TO '{$u}'@'%'
+        ");
+    }
+
     public function runMigrations(string $dbName, array $manifest): void
     {
-        $this->setTenantConn($dbName);
+        // 1) Buat user tenant
+        $creds = $this->provisionDbUser($dbName);
+
+        // 2) Migrate pakai user tenant
+        $this->setTenantConn($dbName, $creds);
 
         $relPath = $manifest['paths']['migrations'] ?? null;
         if (!$relPath || !is_dir(base_path($relPath))) {
@@ -56,12 +107,14 @@ class LaravelDriver implements ProductProvisionerDriver
             '--path'     => $relPath,
             '--force'    => true,
         ]);
+
+        // 3) Hardening privileges runtime
+        $this->hardenPrivileges($dbName, $creds['username']);
     }
 
     public function seedTenant(string $dbName, array $manifest): void
     {
-        $this->setTenantConn($dbName);
-
+        // gunakan koneksi tenant (sudah diset saat runMigrations)
         foreach (($manifest['paths']['seeders'] ?? []) as $file) {
             $full = base_path($file);
             if (file_exists($full)) {
@@ -86,10 +139,14 @@ class LaravelDriver implements ProductProvisionerDriver
         string $adminUser,
         string $adminPlainPass,
         array  $manifest
-    ): void {
-        $this->setTenantConn($dbName);
+    ): void
+    {
+        // Koneksi tenant sudah di-set di runMigrations (pakai user tenant)
+        // Upsert company + super admin seperti versi Anda sebelumnya
 
-        // Upsert company (sesuaikan nama tabel kolom)
+        $this->setTenantConn($dbName, $this->getLastTenantCreds());
+
+        // Upsert company
         $q   = DB::connection('tenant')->table('mst_company');
         $row = $q->first();
         $now = now();
@@ -111,7 +168,7 @@ class LaravelDriver implements ProductProvisionerDriver
             ]);
         }
 
-        // Buat super admin (sesuaikan tabel)
+        // Buat super admin (tabel fleksibel)
         $hash = \Illuminate\Support\Facades\Hash::make($adminPlainPass);
 
         $userTable = Schema::connection('tenant')->hasTable('user_management')
@@ -173,6 +230,11 @@ class LaravelDriver implements ProductProvisionerDriver
         //     'is_active'  => $isActive,
         //     'updated_at' => now(),
         // ]);
+    }
+
+    public function getLastTenantCreds(): ?array
+    {
+        return $this->lastTenantCreds;
     }
 
     // BELUM KEPAKAI MISAL NANTI UNTUK DI UPGRADE PAKET
