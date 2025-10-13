@@ -86,8 +86,7 @@ Route::get('/dev/test-wa', function (\App\Services\WhatsappSender $wa) {
 });
 
 // TenantResolve Untuk Login Company
-
-Route::post('/tenant/resolve-auth', [TenantResolveController::class, 'authenticate'])
+Route::post('tenant/resolve-auth', [TenantResolveController::class, 'authenticate'])
     ->middleware(['throttle:60,1']);
 
 // addons ke aplikasi

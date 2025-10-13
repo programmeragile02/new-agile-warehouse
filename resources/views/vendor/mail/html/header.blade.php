@@ -12,8 +12,8 @@
 @endphp
 <tr>
   <!-- bgcolor = fallback untuk client yang abaikan CSS -->
-  <td class="header" bgcolor="#0b1437"
-      style="padding:28px 0;background-color:#243ea7;">
+  <td class="header"
+      style="padding:28px 0;background-color:#cdf5ec;">
     <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
       <tr>
         <td align="left" style="padding:0 24px;">

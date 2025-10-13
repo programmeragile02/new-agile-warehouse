@@ -2,7 +2,7 @@
 :root {
     --text: #0f172a; /* teks utama */
     --muted: #475569;
-    --bg-navy: #0b1437; /* latar luar (wrapper/body) */
+    --bg-navy: #9aa7d8; /* latar luar (wrapper/body) */
     --card: #ffffff; /* kartu isi */
     --link: #2563eb;
     --btn-border: #1d4ed8;
@@ -12,7 +12,7 @@
 
     --grad-header: linear-gradient(
         135deg,
-        #0f1e5a,
+        #55639b,
         #cdd928
     ); /* biru tua → ungu */
     --grad-btn: linear-gradient(135deg, #e0e7ff, #e9d5ff); /* tombol terang */
