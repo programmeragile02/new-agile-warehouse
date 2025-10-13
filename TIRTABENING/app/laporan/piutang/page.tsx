@@ -605,7 +605,7 @@ export default function PiutangPage() {
                                 </Button> */}
                                 {/* === Tombol Export: digate pakai fitur === */}
                                 <FeatureGate
-                                    code="export.excel.laporan.piutang"
+                                    code="export.excel"
                                     fallback={
                                         <Button
                                             disabled

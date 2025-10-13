@@ -356,7 +356,7 @@ export default function LaporanCatatMeterPage() {
                     </GlassCard> */}
                             {/* === Tombol Export: digate pakai fitur === */}
                             <FeatureGate
-                                code="export.excel.laporan.catat.meter"
+                                code="export.excel"
                                 fallback={
                                     <Button
                                         disabled

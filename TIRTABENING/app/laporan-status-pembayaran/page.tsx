@@ -408,7 +408,7 @@ export default function LaporanStatusPembayaranPage() {
               </Button> */}
                             {/* === Tombol Export: digate pakai fitur === */}
                             <FeatureGate
-                                code="export.excel.laporan.status.pembayaran"
+                                code="export.excel"
                                 fallback={
                                     <Button
                                         disabled

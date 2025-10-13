@@ -1421,26 +1421,39 @@ export default function LaporanKeuanganPage() {
                                             : "Terapkan Filter"}
                                     </Button>
 
-                                    {/* Export Excel dengan FeatureGate */}
+                                    {/* === Tombol Export: digate pakai fitur === */}
                                     <FeatureGate
-                                        code="export.excel.laporan.keuangan" /* mode default: any */
+                                        code="export.excel"
+                                        fallback={
+                                            <Button
+                                                disabled
+                                                className="opacity-60 cursor-not-allowed"
+                                            >
+                                                <Download className="h-4 w-4 mr-2" />
+                                                Export Excel (Tidak termasuk
+                                                paket)
+                                            </Button>
+                                        }
                                     >
-                                        {/* allowed: tombol aktif normal, tapi tetap disabled jika tidak ada data */}
                                         <Button
-                                            onClick={exportExcel}
+                                            onClick={() => {
+                                                if (!rows.length) {
+                                                    toast.info(
+                                                        "Tidak ada data untuk diekspor"
+                                                    );
+                                                    return;
+                                                }
+                                                exportExcel();
+                                                toast.success(
+                                                    "Data berhasil diekspor ke Excel"
+                                                );
+                                            }}
                                             className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                                            disabled={!filtered.length}
-                                            title={
-                                                !filtered.length
-                                                    ? "Tidak ada data untuk diekspor"
-                                                    : undefined
-                                            }
                                         >
-                                            <Download className="h-4 w-4 mr-2" />{" "}
+                                            <Download className="h-4 w-4 mr-2" />
                                             Export Excel
                                         </Button>
                                     </FeatureGate>
-
                                     {/* Fallback kalau fitur tidak ada: tampilkan tombol yang sama tapi locked */}
                                     {/* <FeatureGate
                                         code="TB_EXPORT_EXCEL"
