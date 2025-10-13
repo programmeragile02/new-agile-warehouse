@@ -8,6 +8,8 @@ use App\Mail\UpgradeMail;
 use App\Models\CustomerProductInstance;
 use App\Models\CustomerProductInstanceProfile;
 use App\Models\ProvisioningJob;
+use App\Models\SubscriptionAddon;
+use App\Models\SubscriptionFeatureOverride;
 use App\Services\WhatsappTemplates;
 use App\Services\WhatsappSender;
 use Carbon\Carbon;
@@ -395,46 +397,49 @@ class TenantProvisioner
             throw new \InvalidArgumentException('Missing subscription_instance_id for addon.');
         }
 
-        // Ambil daftar fitur dari meta.addons
-        $addons = data_get($job->meta, 'addons.features', []);
-        if (!is_array($addons) || empty($addons)) {
-            // Tidak ada fitur — tidak perlu apa-apa
-            return;
-        }
+        $parents = data_get($job->meta, 'addons.parents', []); // array of {feature_code,name,price}
+        $grant   = data_get($job->meta, 'addons.grant', []);   // array of codes (parent + children)
 
-        // Upsert per fitur ke subscription_addons
-        foreach ($addons as $f) {
-            $code   = (string) ($f['feature_code'] ?? '');
+        \Log::info('TP: addon payload', [
+            'parents_count' => count($parents),
+            'grant_count'   => is_array($grant) ? count($grant) : 0,
+        ]);
+
+        // 1) Catat pembelian parent berharga → subscription_addons
+        foreach ($parents as $p) {
+            $code  = (string)($p['feature_code'] ?? '');
             if ($code === '') continue;
 
-            $name   = (string) ($f['name'] ?? $code);
-            $price  = (int) ($f['price'] ?? 0);
-
-            \App\Models\SubscriptionAddon::updateOrCreate(
+            SubscriptionAddon::updateOrCreate(
                 [
                     'subscription_instance_id' => $instanceId,
                     'feature_code'             => $code,
                 ],
                 [
-                    'feature_name'     => $name,
-                    'price_amount'     => $price,
-                    'currency'         => 'IDR',
-                    'order_id'         => $job->order_id,
-                    'midtrans_order_id'=> $job->midtrans_order_id,
-                    'purchased_at'     => now(),
+                    'feature_name'      => (string)($p['name'] ?? $code),
+                    'price_amount'      => (int)($p['price'] ?? 0),
+                    'currency'          => 'IDR',
+                    'order_id'          => $job->order_id,
+                    'midtrans_order_id' => $job->midtrans_order_id,
+                    'purchased_at'      => now(),
                 ]
             );
+        }
 
-            // Tandai override → enabled=true
-            \App\Models\SubscriptionFeatureOverride::updateOrCreate(
+        // 2) Enable seluruh fitur yang digrant (parent + anak) → overrides
+        foreach ((array)$grant as $code) {
+            $code = (string)$code;
+            if ($code === '') continue;
+
+            SubscriptionFeatureOverride::updateOrCreate(
                 [
                     'subscription_instance_id' => $instanceId,
                     'feature_code'             => $code,
                 ],
                 [
-                    'enabled'   => true,
-                    'source'    => 'addon',
-                    'updated_at'=> now(),
+                    'enabled'    => true,
+                    'source'     => 'addon',
+                    'updated_at' => now(),
                 ]
             );
         }
@@ -450,31 +455,63 @@ class TenantProvisioner
 
         // Anggap add-on selalu non-downtime & tanpa ubah status job instance.
 
-        // kirim email
-        $email = data_get($job->meta, 'customer_email');
-        if ($email) {
+        // --- Notifikasi: Email & WhatsApp (tidak memblok proses) ---
+        try {
+            $email    = data_get($job->meta, 'customer_email');
+            $phone    = data_get($job->meta, 'customer_phone');
+            $custName = data_get($job->meta, 'customer_name', 'Customer');
+
+            // URL aplikasi (opsional, untuk tombol di email & info di WA)
             $instance = CustomerProductInstance::where('subscription_instance_id', $instanceId)->first();
-            $addonsForMail = collect($addons)->map(fn($a) => [
-                'name'  => $a['name'] ?? ($a['feature_code'] ?? '-'),
-                'price' => (int)($a['price'] ?? 0),
-            ])->values()->all();
+            $appUrl   = $instance?->app_url ?? '#';
 
-            Mail::to($email)->send(new AddonActivatedMail(
-                product:       $job->product_name ?? $job->product_code,
-                appUrl:        $instance?->app_url ?? '#',
-                recipientName: data_get($job->meta, 'customer_name', 'Customer'),
-                addons:        $addonsForMail,
-            ));
-        }
+            // Ambil parent berbayar untuk notifikasi (nama + harga)
+            $parentsForNotify = collect($parents)
+                ->map(fn($p) => [
+                    'name'  => (string)($p['name'] ?? ($p['feature_code'] ?? '-')),
+                    'price' => (int)($p['price'] ?? 0),
+                ])
+                ->values()
+                ->all();
 
-        // kirim wa
-        if ($phone = data_get($job->meta, 'customer_phone')) {
-            $text = WhatsappTemplates::addon([
-                'product_name'  => $job->product_name ?? $job->product_code,
-                'customer_name' => data_get($job->meta, 'customer_name', 'Pelanggan'),
-                'addons'        => array_values($addons), // array of ['name','price']
-            ]);
-            app(WhatsappSender::class)->sendTemplate(to: $phone, text: $text);
+            // ==== EMAIL ====
+            if ($email && !empty($parentsForNotify)) {
+                try {
+                    // gunakan queue agar provisioning cepat & idempotent
+                    Mail::to($email)->send(new AddonActivatedMail(
+                        product:       $job->product_name ?? $job->product_code,
+                        appUrl:        $appUrl,
+                        recipientName: $custName,
+                        addons:        $parentsForNotify // parent saja
+                    ));
+                } catch (\Throwable $e) {
+                    Log::warning('TP: send AddonActivatedMail failed', ['err' => $e->getMessage()]);
+                }
+            }
+
+            // ==== WHATSAPP ====
+            if ($phone && !empty($parentsForNotify)) {
+                try {
+                    // Kirim sesuai kontrak WhatsappTemplates::addon => expects ['addons' => [ ['name','price'], ... ]]
+                    $waText = WhatsappTemplates::addon([
+                        'product_name'  => $job->product_name ?? $job->product_code,
+                        'customer_name' => $custName,
+                        'addons'        => $parentsForNotify,   // parent saja
+                        // opsional, jika mau dipakai di template:
+                        'app_url'       => $appUrl,
+                        'granted_total' => is_array($grant) ? count($grant) : 0,
+                    ]);
+
+                    app(WhatsappSender::class)->sendTemplate(
+                        to:   $phone,
+                        text: $waText
+                    );
+                } catch (\Throwable $e) {
+                    Log::warning('TP: send WA addon failed', ['err' => $e->getMessage()]);
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('TP: notification (email/wa) wrapper failed', ['err' => $e->getMessage()]);
         }
     }
 

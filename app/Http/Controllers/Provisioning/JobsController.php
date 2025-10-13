@@ -61,11 +61,13 @@ class JobsController extends Controller
             'customer_email' => 'required|email',
             'customer_phone' => 'nullable|string|max:30',
 
-            'addons'                          => 'nullable|array',
-            'addons.features'                 => 'nullable|array',
-            'addons.features.*.feature_code'  => 'required_with:addons.features|string',
-            'addons.features.*.name'          => 'nullable|string',
-            'addons.features.*.price'         => 'nullable|integer',
+            'addons'                           => 'nullable|array',
+            'addons.parents'                   => 'nullable|array',
+            'addons.parents.*.feature_code'    => 'required_with:addons.parents|string',
+            'addons.parents.*.name'            => 'nullable|string',
+            'addons.parents.*.price'           => 'nullable|integer',
+            'addons.grant'                     => 'nullable|array',
+            'addons.grant.*'                   => 'string',
         ]);
 
         // Idempotent insert

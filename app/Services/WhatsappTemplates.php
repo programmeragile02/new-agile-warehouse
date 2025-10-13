@@ -68,20 +68,28 @@ Perubahan fitur akan aktif tanpa downtime. Silakan *refresh* aplikasi bila perlu
     public static function addon(array $d): string
     {
         $list = collect($d['addons'] ?? [])
-            ->map(fn($i) => "• {$i['name']} (IDR ".number_format($i['price'] ?? 0, 0, ',', '.')."/bln)")
+            ->map(fn($i) => "• {$i['name']} (IDR ".number_format($i['price'] ?? 0, 0, ',', '.'))
             ->implode("\n");
+
+        $extra = '';
+        if (!empty($d['granted_total'])) {
+            $extra .= "\nTotal fitur aktif (parent + subfitur): {$d['granted_total']}";
+        }
+        if (!empty($d['app_url'])) {
+            $extra .= "\n\nAkses aplikasi: {$d['app_url']}";
+        }
 
         return trim("
 *➕ Add-on Diaktifkan — {$d['product_name']}*
 
-Hai {$d['customer_name']}, add-on berikut telah *diaktifkan* untuk produk {$d['product_name']}:
+Hai {$d['customer_name']}, add-on berikut telah *diaktifkan*:
 
-{$list}
+{$list}{$extra}
 
-Add-on aktif seketika tanpa downtime. 
+Add-on aktif seketika tanpa downtime.
 — *Agile Store Support*
-        ");
-    }
+    ");
+    }   
 
     public static function renewReminderId(array $d): string
     {
