@@ -318,7 +318,8 @@ export function BottomNav() {
     const hide =
         pathname === "/" ||
         pathname === "/login" ||
-        pathname === "/company-login";
+        pathname === "/company-login" ||
+        pathname === "/first-login";
     if (!role || hide) return null;
 
     return (

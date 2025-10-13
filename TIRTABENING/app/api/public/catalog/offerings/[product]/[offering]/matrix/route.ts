@@ -68,11 +68,15 @@
 // app/api/public/catalog/offerings/[product]/[offering]/matrix/route.ts
 import { NextResponse } from "next/server";
 
+type MatrixParams = { product: string; offering: string };
+
 export async function GET(
     req: Request,
-    { params }: { params: { product: string; offering: string } }
+    ctx: { params: Promise<MatrixParams> } // ⬅️ params sekarang Promise
 ) {
-    const { product, offering } = params || ({} as any);
+    // ⬅️ WAJIB await sebelum dipakai
+    const { product, offering } = await ctx.params;
+
     if (!product || !offering) {
         return NextResponse.json(
             { ok: false, error: "Missing product/offering params" },
@@ -80,18 +84,21 @@ export async function GET(
         );
     }
 
-    const include = new URL(req.url).searchParams.get("include") ?? "";
-    const base = (
-        process.env.WAREHOUSE_BASE_OFFERING || "http://localhost:9000/api"
-    ).replace(/\/+$/, ""); // trim trailing /
+    const url = new URL(req.url);
+    const include = url.searchParams.get("include") ?? "";
+
+    const rawBase =
+        process.env.WAREHOUSE_BASE_OFFERING || "http://localhost:9000/api";
+    const base = rawBase.replace(/\/+$/, ""); // trim trailing slash
     const clientKey = process.env.WAREHOUSE_CLIENT_KEY || "";
 
     const path = `/catalog/offerings/${encodeURIComponent(
         product
     )}/${encodeURIComponent(offering)}/matrix`;
-    const whUrl = `${base}${path}${
-        include ? `?include=${encodeURIComponent(include)}` : ""
-    }`;
+    const whUrl =
+        base +
+        path +
+        (include ? `?include=${encodeURIComponent(include)}` : "");
 
     try {
         const res = await fetch(whUrl, {
@@ -102,12 +109,20 @@ export async function GET(
             cache: "no-store",
         });
 
-        const json = await res.json().catch(() => ({}));
+        // Upstream kadang balikin non-JSON saat error; jaga-jaga pakai try
+        let json: any = {};
+        try {
+            json = await res.json();
+        } catch {
+            json = {};
+        }
+
         if (!res.ok || json?.ok === false) {
             const message =
                 json?.message ||
                 json?.error ||
                 `Upstream error (${res.status} ${res.statusText})`;
+
             return NextResponse.json(
                 {
                     ok: false,
@@ -125,13 +140,14 @@ export async function GET(
             { ok: true, product, offering, data: json.data ?? json },
             { status: 200 }
         );
-    } catch (e: any) {
+    } catch (e) {
+        const err = e as Error;
         return NextResponse.json(
             {
                 ok: false,
                 product,
                 offering,
-                error: e?.message || "Network error to Warehouse",
+                error: err?.message || "Network error to Warehouse",
                 upstream_url: whUrl,
             },
             { status: 502 }

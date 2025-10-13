@@ -237,7 +237,7 @@ export default function LaporanHutangPage() {
                             </Button> */}
                             {/* === Tombol Export: digate pakai fitur === */}
                             <FeatureGate
-                                code="export.excel.piutang"
+                                code="export.excel.laporan.hutang"
                                 fallback={
                                     <Button
                                         disabled

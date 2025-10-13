@@ -39,18 +39,18 @@ class NextPrismaDriver implements ProductProvisionerDriver
 
     protected function composeDatabaseUrl(string $dbName): string
     {
-        $user = env('DB_USERNAME','root');
-        $pass = env('DB_PASSWORD','');
-        $host = env('DB_HOST','127.0.0.1');
-        $port = env('DB_PORT','3306');
+        $user = rawurlencode((string) env('DB_USERNAME','root'));
+        $pass = rawurlencode((string) env('DB_PASSWORD',''));
+        $host = trim((string) env('DB_HOST','127.0.0.1'));
+        $port = preg_replace('/\D/', '', (string) trim((string) env('DB_PORT','3306'))) ?: '3306';
         return "mysql://{$user}:{$pass}@{$host}:{$port}/{$dbName}";
     }
 
     protected function composeDatabaseUrlWithCreds(string $dbName, string $user, string $pass): string
     {
-        $host = env('DB_HOST','127.0.0.1');
-        $port = env('DB_PORT','3306');
-        return "mysql://{$user}:{$pass}@{$host}:{$port}/{$dbName}";
+        $host = trim((string) env('DB_HOST','127.0.0.1'));
+        $port = preg_replace('/\D/', '', (string) trim((string) env('DB_PORT','3306'))) ?: '3306';
+        return "mysql://".rawurlencode($user).":".rawurlencode($pass)."@{$host}:{$port}/{$dbName}";
     }
 
     protected function run(array $cmd, string $cwd, array $env = []): void
@@ -104,9 +104,13 @@ class NextPrismaDriver implements ProductProvisionerDriver
 
         // Jalankan prisma dengan user tenant
         $dbUrl = $this->composeDatabaseUrlWithCreds($dbName, $creds['username'], $creds['password']);
-        $this->run(['npx','prisma','generate'], $project, ['DATABASE_URL'=>$dbUrl]);
-        $this->run(['npx','prisma','migrate','deploy'], $project, ['DATABASE_URL'=>$dbUrl]);
-        $this->run(['npx','prisma','db','push', '--accept-data-loss'], $project, ['DATABASE_URL'=>$dbUrl]);
+        $dbUrl = trim(str_replace(["\r", "\n"], '', $dbUrl));
+        \Log::info('TP: Prisma migrate DSN', ['dsn' => preg_replace('#(mysql://[^:]+:)[^@]+(@)#', '$1****$2', $dbUrl)]);
+        $this->run(['npx','prisma','generate'], $project, ['DATABASE_URL'=>$dbUrl, 'DB_PORT' => '3306',]);
+        \Log::info('TP: Prisma migrate DSN', ['dsn' => preg_replace('#(mysql://[^:]+:)[^@]+(@)#', '$1****$2', $dbUrl)]);
+        $this->run(['npx','prisma','migrate','deploy'], $project, ['DATABASE_URL'=>$dbUrl, 'DB_PORT' => '3306',]);
+        \Log::info('TP: Prisma migrate DSN', ['dsn' => preg_replace('#(mysql://[^:]+:)[^@]+(@)#', '$1****$2', $dbUrl)]);
+        $this->run(['npx','prisma','db','push', '--accept-data-loss'], $project, ['DATABASE_URL'=>$dbUrl, 'DB_PORT' => '3306',]);
 
         // Hardening privilege untuk runtime
         $this->hardenPrivileges($dbName, $creds['username']);
