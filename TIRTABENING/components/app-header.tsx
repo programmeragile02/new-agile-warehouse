@@ -1164,6 +1164,938 @@
 // }
 
 // components/app-header.tsx
+// "use client";
+
+// import React, { useEffect, useMemo, useState } from "react";
+// import {
+//     ArrowLeft,
+//     Menu as MenuIcon,
+//     Home,
+//     Users,
+//     ClipboardList,
+//     CreditCard,
+//     Settings,
+//     LogOut,
+//     MapPin,
+//     FileText,
+//     CalendarDays,
+//     RotateCcw,
+//     FolderOpen,
+//     BarChart3,
+//     DollarSign,
+//     IdCard,
+//     HistoryIcon,
+//     Phone,
+//     LibraryIcon,
+//     Droplet,
+//     TrendingUp,
+//     FileBarChart,
+//     ChevronRight,
+//     Droplets,
+//     HandCoins,
+//     Network,
+// } from "lucide-react";
+// import { Button } from "@/components/ui/button";
+// import { useRouter, usePathname } from "next/navigation";
+// import Link from "next/link";
+// import {
+//     DropdownMenu,
+//     DropdownMenuContent,
+//     DropdownMenuItem,
+//     DropdownMenuTrigger,
+// } from "@/components/ui/dropdown-menu";
+// import {
+//     Breadcrumb,
+//     BreadcrumbItem,
+//     BreadcrumbLink,
+//     BreadcrumbList,
+//     BreadcrumbPage,
+//     BreadcrumbSeparator,
+// } from "@/components/ui/breadcrumb";
+// import { GlassCard } from "./glass-card";
+// import { useToast } from "@/hooks/use-toast";
+
+// /* ============== ENV & helpers ============== */
+// const PRODUCT_CODE =
+//     process.env.NEXT_PUBLIC_PRODUCT_CODE ||
+//     process.env.PRODUCT_CODE ||
+//     "TIRTABENING";
+
+// // offering/paket aktif: prioritas cookie (server), fallback localStorage (client), default "basic"
+// function getOfferingClient(): string {
+//     try {
+//         const cookieMatch = document.cookie
+//             .split("; ")
+//             .find((x) => x.startsWith("tb_offering="));
+//         if (cookieMatch) {
+//             const v = decodeURIComponent(cookieMatch.split("=")[1] || "");
+//             if (v) return v;
+//         }
+//     } catch {}
+//     try {
+//         const v = localStorage.getItem("tb_offering");
+//         if (v) return v;
+//     } catch {}
+//     return "basic";
+// }
+
+// // alias path lokal → route_path upstream (kalau tidak 1:1)
+// const ROUTE_ALIASES: Record<string, string> = {
+//     "/warga-dashboard": "/warga",
+//     "/hutang-pembayaran": "/keuangan/pembayaran-hutang",
+// };
+
+// // beberapa route yang selalu tampil walau tidak ada di matrix
+// const ALWAYS_SHOW = new Set<string>(["/dashboard"]);
+
+// /* ============== Types ============== */
+// type Role = "ADMIN" | "OPERATOR" | "PETUGAS" | "WARGA";
+// type LiteUser = { id: string; name: string; role: Role };
+
+// type MenuItem = {
+//     href: string;
+//     label: string;
+//     icon: React.ComponentType<any>;
+//     roles?: Role[];
+//     group: "Admin" | "Petugas" | "Warga";
+//     section?: string;
+// };
+
+// /* ============== Master Menu (produk) ============== */
+// const MENU_ITEMS: MenuItem[] = [
+//     {
+//         href: "/dashboard",
+//         label: "Dashboard",
+//         icon: Home,
+//         roles: ["ADMIN", "OPERATOR"],
+//         group: "Admin",
+//     },
+
+//     // Admin > Master
+//     {
+//         href: "/pelanggan",
+//         label: "Pelanggan",
+//         icon: Users,
+//         roles: ["ADMIN", "OPERATOR"],
+//         group: "Admin",
+//         section: "Master",
+//     },
+//     {
+//         href: "/tandon",
+//         label: "Tandon",
+//         icon: Droplet,
+//         roles: ["ADMIN", "OPERATOR"],
+//         group: "Admin",
+//         section: "Master",
+//     },
+//     {
+//         href: "/zona",
+//         label: "Blok",
+//         icon: MapPin,
+//         roles: ["ADMIN", "OPERATOR"],
+//         group: "Admin",
+//         section: "Master",
+//     },
+//     {
+//         href: "/inventaris",
+//         label: "Inventaris",
+//         icon: LibraryIcon,
+//         roles: ["ADMIN", "OPERATOR", "PETUGAS"],
+//         group: "Admin",
+//         section: "Master",
+//     },
+
+//     // Admin > Operasional
+//     {
+//         href: "/jadwal-pencatatan",
+//         label: "Jadwal Pencatatan",
+//         icon: CalendarDays,
+//         roles: ["ADMIN", "PETUGAS"],
+//         group: "Admin",
+//         section: "Operasional",
+//     },
+//     {
+//         href: "/catat-meter",
+//         label: "Catat Meter",
+//         icon: ClipboardList,
+//         roles: ["ADMIN", "OPERATOR", "PETUGAS"],
+//         group: "Admin",
+//         section: "Operasional",
+//     },
+//     {
+//         href: "/catat-tandon",
+//         label: "Catat Meter Tandon",
+//         icon: ClipboardList,
+//         roles: ["ADMIN", "OPERATOR", "PETUGAS"],
+//         group: "Admin",
+//         section: "Meteran",
+//     },
+//     {
+//         href: "/catat-blok",
+//         label: "Catat Meter Blok",
+//         icon: ClipboardList,
+//         roles: ["ADMIN", "OPERATOR", "PETUGAS"],
+//         group: "Admin",
+//         section: "Meteran",
+//     },
+//     {
+//         href: "/reset-meteran",
+//         label: "Reset Meteran",
+//         icon: RotateCcw,
+//         roles: ["ADMIN", "OPERATOR"],
+//         group: "Admin",
+//         section: "Operasional",
+//     },
+
+//     // Admin > Keuangan
+//     {
+//         href: "/tagihan-pembayaran",
+//         label: "Tagihan & Pembayaran",
+//         icon: FileText,
+//         roles: ["ADMIN", "OPERATOR", "WARGA"],
+//         group: "Admin",
+//         section: "Keuangan",
+//     },
+//     {
+//         href: "/biaya",
+//         label: "Biaya",
+//         icon: FolderOpen,
+//         roles: ["ADMIN", "OPERATOR"],
+//         group: "Admin",
+//         section: "Keuangan",
+//     },
+//     {
+//         href: "/pengeluaran",
+//         label: "Pengeluaran",
+//         icon: CreditCard,
+//         roles: ["ADMIN", "OPERATOR"],
+//         group: "Admin",
+//         section: "Keuangan",
+//     },
+//     {
+//         href: "/hutang",
+//         label: "Hutang",
+//         icon: CreditCard,
+//         roles: ["ADMIN", "OPERATOR"],
+//         group: "Admin",
+//         section: "Keuangan",
+//     },
+//     {
+//         href: "/hutang-pembayaran",
+//         label: "Pembayaran Hutang",
+//         icon: HandCoins,
+//         roles: ["ADMIN", "OPERATOR"],
+//         group: "Admin",
+//         section: "Keuangan",
+//     },
+
+//     // Admin > Laporan
+//     {
+//         href: "/laporan-catat-meter",
+//         label: "Laporan Catat Meter",
+//         icon: FileText,
+//         roles: ["ADMIN", "PETUGAS"],
+//         group: "Admin",
+//         section: "Laporan",
+//     },
+//     {
+//         href: "/laporan-summary",
+//         label: "Laporan Summary",
+//         icon: BarChart3,
+//         roles: ["ADMIN", "OPERATOR"],
+//         group: "Admin",
+//         section: "Laporan",
+//     },
+//     {
+//         href: "/laporan/konsumsi-zona",
+//         label: "Laporan Konsumsi Blok",
+//         icon: Droplet,
+//         roles: ["ADMIN", "OPERATOR"],
+//         group: "Admin",
+//         section: "Laporan",
+//     },
+//     {
+//         href: "/laporan-status-pembayaran",
+//         label: "Laporan Status Pembayaran",
+//         icon: FileText,
+//         roles: ["ADMIN"],
+//         group: "Admin",
+//         section: "Laporan",
+//     },
+//     {
+//         href: "/laporan/laba-rugi",
+//         label: "Laporan Laba & Rugi",
+//         icon: TrendingUp,
+//         roles: ["ADMIN"],
+//         group: "Admin",
+//         section: "Laporan",
+//     },
+//     {
+//         href: "/laporan/hutang",
+//         label: "Laporan Hutang",
+//         icon: FileBarChart,
+//         roles: ["ADMIN"],
+//         group: "Admin",
+//         section: "Laporan",
+//     },
+//     {
+//         href: "/laporan/keuangan",
+//         label: "Laporan Keuangan",
+//         icon: DollarSign,
+//         roles: ["ADMIN"],
+//         group: "Admin",
+//         section: "Laporan",
+//     },
+//     {
+//         href: "/laporan/piutang",
+//         label: "Laporan Piutang",
+//         icon: FileText,
+//         roles: ["ADMIN", "OPERATOR"],
+//         group: "Admin",
+//         section: "Laporan",
+//     },
+
+//     // Admin > Distribusi
+//     {
+//         href: "/distribusi/hirarki",
+//         label: "Hirarki",
+//         icon: Network,
+//         roles: ["ADMIN"],
+//         group: "Admin",
+//         section: "Distribusi",
+//     },
+//     {
+//         href: "/distribusi/rekonsiliasi",
+//         label: "Rekonsiliasi",
+//         icon: BarChart3,
+//         roles: ["ADMIN"],
+//         group: "Admin",
+//         section: "Distribusi",
+//     },
+//     {
+//         href: "/distribusi/peta",
+//         label: "Peta Pemakaian Air",
+//         icon: Droplets,
+//         roles: ["ADMIN"],
+//         group: "Admin",
+//         section: "Distribusi",
+//     },
+
+//     // Admin > Pengaturan
+//     {
+//         href: "/pengaturan",
+//         label: "Pengaturan",
+//         icon: Settings,
+//         roles: ["ADMIN"],
+//         group: "Admin",
+//         section: "Pengaturan",
+//     },
+//     {
+//         href: "/whatsapp-setting",
+//         label: "WhatsApp Setting",
+//         icon: Phone,
+//         roles: ["ADMIN"],
+//         group: "Admin",
+//         section: "Pengaturan",
+//     },
+
+//     // Petugas
+//     {
+//         href: "/petugas/riwayat",
+//         label: "Riwayat Petugas",
+//         icon: HistoryIcon,
+//         roles: ["PETUGAS"],
+//         group: "Petugas",
+//         section: "Operasional",
+//     },
+//     {
+//         href: "/petugas/profil",
+//         label: "Profil Petugas",
+//         icon: IdCard,
+//         roles: ["PETUGAS"],
+//         group: "Petugas",
+//         section: "Akun",
+//     },
+
+//     // Warga
+//     {
+//         href: "/warga-dashboard",
+//         label: "Dashboard Warga",
+//         icon: Home,
+//         roles: ["WARGA"],
+//         group: "Warga",
+//         section: "Beranda",
+//     },
+//     {
+//         href: "/warga-profil",
+//         label: "Profil Warga",
+//         icon: Users,
+//         roles: ["WARGA"],
+//         group: "Warga",
+//         section: "Akun",
+//     },
+// ];
+
+// /* ====== Urutan section & sub menu ====== */
+// const SECTION_ORDER = [
+//     "Master",
+//     "Operasional",
+//     "Meteran",
+//     "Keuangan",
+//     "Laporan",
+//     "Distribusi",
+//     "Pengaturan",
+//     "Petugas",
+// ];
+// const getSectionOrder = (s: string) => {
+//     const i = SECTION_ORDER.indexOf(s);
+//     return i === -1 ? 1000 : i;
+// };
+
+// const SECTION_ITEM_ORDER: Record<string, string[]> = {
+//     Operasional: ["/jadwal-pencatatan", "/catat-meter", "/reset-meteran"],
+//     Master: ["/pelanggan", "/zona", "/inventaris"],
+//     Meteran: ["/catat-tandon", "/catat-blok"], // fix: sebelumnya /catat-meter-blok
+//     Keuangan: ["/tagihan-pembayaran", "/biaya", "/pengeluaran", "/hutang"],
+//     Laporan: [
+//         "/laporan-catat-meter",
+//         "/laporan-summary",
+//         "/laporan/konsumsi-zona",
+//         "/laporan-status-pembayaran",
+//         "/laporan/laba-rugi",
+//         "/laporan/hutang",
+//         "/laporan/keuangan",
+//         "/laporan/piutang",
+//     ],
+//     Distribusi: [
+//         // fix: key kapital agar match section
+//         "/distribusi/hirarki",
+//         "/distribusi/rekonsiliasi",
+//         "/distribusi/peta",
+//     ],
+//     Pengaturan: ["/pengaturan", "/whatsapp-setting", "/tools/import-export"],
+// };
+// const getItemOrder = (section: string, href: string) => {
+//     const arr = SECTION_ITEM_ORDER[section];
+//     if (!arr) return 1000;
+//     const idx = arr.indexOf(href);
+//     return idx === -1 ? 900 : idx;
+// };
+
+// /* ============== Breadcrumb Labels ============== */
+// const PATH_LABELS: Record<string, string> = {
+//     "/dashboard": "Dashboard",
+//     "/pelanggan": "Pelanggan",
+//     "/zona": "Blok",
+//     "/jadwal-pencatatan": "Jadwal Pencatatan",
+//     "/catat-meter": "Catat Meter",
+//     "/catat-meter-blok": "Catat Meter Blok",
+//     "/tagihan-pembayaran": "Tagihan & Pembayaran",
+//     "/warga-profil": "Profil Warga",
+//     "/petugas/riwayat": "Riwayat Petugas",
+//     "/petugas/profil": "Profil Petugas",
+//     "/reset-meteran": "Reset Meteran",
+//     "/biaya": "Biaya",
+//     "/pengeluaran": "Pengeluaran",
+//     "/hutang": "Hutang",
+//     "/laporan-summary": "Laporan Summary",
+//     "/laporan/konsumsi-zona": "Laporan Konsumsi Blok",
+//     "/laporan-status-pembayaran": "Laporan Status Pembayaran",
+//     "/laporan/laba-rugi": "Laporan Laba & Rugi",
+//     "/laporan/hutang": "Laporan Hutang",
+//     "/laporan/keuangan": "Laporan Keuangan",
+//     "/laporan-catat-meter": "Laporan Catat Meter",
+//     "/laporan/piutang": "Laporan Piutang",
+//     "/distribusi/hirarki": "Hirarki",
+//     "/distribusi/rekonsiliasi": "Rekonsiliasi",
+//     "/distribusi/peta": "Peta Pemakaian Air",
+//     "/pengaturan": "Pengaturan",
+//     "/tools/import-export": "Import/Export",
+//     "/warga-dashboard": "Dashboard Warga",
+//     "/login": "Login",
+// };
+
+// interface AppHeaderProps {
+//     title: string;
+//     showBackButton?: boolean;
+//     showBreadcrumb?: boolean;
+// }
+
+// /* ===================== Component ===================== */
+// export function AppHeader({
+//     title,
+//     showBackButton = true,
+//     showBreadcrumb = true,
+// }: AppHeaderProps) {
+//     const router = useRouter();
+//     const pathname = usePathname();
+//     const { toast } = useToast();
+//     const [user, setUser] = useState<LiteUser | null>(null);
+
+//     // user dari localStorage
+//     useEffect(() => {
+//         try {
+//             const raw = localStorage.getItem("tb_user");
+//             if (raw) setUser(JSON.parse(raw));
+//         } catch {}
+//     }, []);
+//     const role: Role | undefined = user?.role;
+
+//     // Offering state (supaya bisa refetch ketika berubah)
+//     const [offering, setOffering] = useState<string>("basic");
+//     useEffect(() => {
+//         setOffering(getOfferingClient());
+//         const onStorage = (e: StorageEvent) => {
+//             if (e.key === "tb_offering") setOffering(getOfferingClient());
+//         };
+//         const onFocus = () => setOffering(getOfferingClient());
+//         window.addEventListener("storage", onStorage);
+//         window.addEventListener("focus", onFocus);
+//         return () => {
+//             window.removeEventListener("storage", onStorage);
+//             window.removeEventListener("focus", onFocus);
+//         };
+//     }, []);
+
+//     // Matrix: allowed route_path
+//     const [allowedPaths, setAllowedPaths] = useState<Set<string> | null>(null);
+//     const [matrixLoaded, setMatrixLoaded] = useState(false);
+
+//     useEffect(() => {
+//         let cancelled = false;
+//         (async () => {
+//             try {
+//                 const url = `/api/public/catalog/offerings/${encodeURIComponent(
+//                     PRODUCT_CODE
+//                 )}/${encodeURIComponent(offering)}/matrix?include=menus`;
+
+//                 const res = await fetch(url, { cache: "no-store" });
+//                 const json = await res.json().catch(() => ({}));
+
+//                 if (!res.ok || json?.ok === false) {
+//                     // FAIL-OPEN (biarkan semua menu tampil bila upstream error)
+//                     if (!cancelled) {
+//                         setAllowedPaths(null);
+//                         setMatrixLoaded(true);
+//                     }
+//                     return;
+//                 }
+
+//                 const menus: Array<{
+//                     route_path?: string;
+//                     is_active?: boolean;
+//                 }> = json?.data?.menus || json?.menus || [];
+
+//                 const s = new Set<string>();
+//                 for (const m of menus) {
+//                     const p = (m?.route_path || "").trim();
+//                     if (!p) continue;
+//                     if (m.is_active === false) continue;
+//                     s.add(p);
+//                 }
+
+//                 if (!cancelled) {
+//                     setAllowedPaths(s);
+//                     setMatrixLoaded(true);
+//                 }
+//             } catch {
+//                 if (!cancelled) {
+//                     setAllowedPaths(null); // FAIL-OPEN; untuk fail-closed → set to new Set()
+//                     setMatrixLoaded(true);
+//                 }
+//             }
+//         })();
+//         return () => {
+//             cancelled = true;
+//         };
+//     }, [offering]); // << refetch ketika offering berubah
+
+//     // Filter by role + matrix
+//     const visibleMenu = useMemo(() => {
+//         // filter role
+//         let base = MENU_ITEMS.filter((m) => {
+//             if (!m.roles || m.roles.length === 0) return true;
+//             if (!role) return false;
+//             return m.roles.includes(role);
+//         });
+
+//         // matrix belum siap → jangan hide dulu biar tidak flicker
+//         if (!matrixLoaded) return base;
+
+//         // kalau allowedPaths === null → anggap gagal fetch, biarkan semua tampil
+//         if (allowedPaths === null) return base;
+
+//         const isAllowed = (href: string) => {
+//             if (ALWAYS_SHOW.has(href)) return true;
+//             const upstreamPath = ROUTE_ALIASES[href] || href;
+//             return allowedPaths.has(upstreamPath);
+//         };
+
+//         base = base.filter((m) => isAllowed(m.href));
+//         return base;
+//     }, [role, matrixLoaded, allowedPaths]);
+
+//     // Susun kelompok & urutan
+//     const standaloneAdmin = useMemo(
+//         () =>
+//             visibleMenu
+//                 .filter((m) => m.group === "Admin" && !m.section)
+//                 .sort((a, b) => a.label.localeCompare(b.label)),
+//         [visibleMenu]
+//     );
+
+//     const adminSections = useMemo(() => {
+//         const map = new Map<string, MenuItem[]>();
+//         for (const item of visibleMenu) {
+//             if (item.group !== "Admin" || !item.section) continue;
+//             if (!map.has(item.section)) map.set(item.section, []);
+//             map.get(item.section)!.push(item);
+//         }
+
+//         return Array.from(map.entries())
+//             .map(([section, items]) => ({
+//                 section,
+//                 items: items.sort((a, b) => {
+//                     const oa = getItemOrder(section, a.href);
+//                     const ob = getItemOrder(section, b.href);
+//                     if (oa !== ob) return oa - ob;
+//                     return a.label.localeCompare(b.label);
+//                 }),
+//             }))
+//             .sort((a, b) => {
+//                 const oa = getSectionOrder(a.section);
+//                 const ob = getSectionOrder(b.section);
+//                 if (oa !== ob) return oa - ob;
+//                 return a.section.localeCompare(b.section);
+//             });
+//     }, [visibleMenu]);
+
+//     const petugasItems = useMemo(
+//         () =>
+//             visibleMenu
+//                 .filter((m) => m.group === "Petugas")
+//                 .sort((a, b) => a.label.localeCompare(b.label)),
+//         [visibleMenu]
+//     );
+//     const wargaItems = useMemo(
+//         () =>
+//             visibleMenu
+//                 .filter((m) => m.group === "Warga")
+//                 .sort((a, b) => a.label.localeCompare(b.label)),
+//         [visibleMenu]
+//     );
+
+//     // UI handlers
+//     const [openSections, setOpenSections] = useState<Set<string>>(new Set());
+//     const toggleSection = (sec: string) => {
+//         setOpenSections((prev) => {
+//             const next = new Set(prev);
+//             next.has(sec) ? next.delete(sec) : next.add(sec);
+//             return next;
+//         });
+//     };
+
+//     const handleBack = () => {
+//         if (pathname === "/dashboard") router.push("/");
+//         else router.back();
+//     };
+
+//     const handleLogoutUser = async () => {
+//         try {
+//             await fetch("/api/auth/logout", { method: "POST" });
+//             toast({
+//                 title: "Logout berhasil",
+//                 description: "Silakan login ulang.",
+//             });
+//         } catch {
+//             toast({
+//                 title: "Logout gagal",
+//                 description: "Terjadi error, coba lagi.",
+//                 variant: "destructive",
+//             });
+//         } finally {
+//             localStorage.removeItem("tb_user"); // opsional
+//             router.push("/login"); // company masih tersimpan (remember device)
+//         }
+//     };
+
+//     const handleLogoutCompany = async () => {
+//         try {
+//             await fetch("/api/auth/logout-company", { method: "DELETE" });
+//             toast({
+//                 title: "Keluar dari Company",
+//                 description: "Anda dapat memilih company lain.",
+//             });
+//         } catch {
+//             toast({
+//                 title: "Gagal keluar company",
+//                 description: "Terjadi error, coba lagi.",
+//                 variant: "destructive",
+//             });
+//         } finally {
+//             localStorage.removeItem("tb_user"); // opsional
+//             router.push("/company-login"); // tenant context direset
+//         }
+//     };
+
+//     const getBreadcrumbItems = () => {
+//         const items = [{ href: "/dashboard", label: "Dashboard" }];
+//         if (pathname !== "/dashboard") {
+//             const currentLabel = PATH_LABELS[pathname] || title;
+//             items.push({ href: pathname, label: currentLabel });
+//         }
+//         return items;
+//     };
+
+//     return (
+//         <GlassCard className="mb-6 p-4">
+//             <div className="flex items-center justify-between">
+//                 <div className="flex items-center gap-4">
+//                     {showBackButton && (
+//                         <Button
+//                             variant="ghost"
+//                             size="icon"
+//                             onClick={handleBack}
+//                             className="shrink-0 hover:bg-white/20"
+//                         >
+//                             <ArrowLeft className="h-5 w-5" />
+//                         </Button>
+//                     )}
+
+//                     <div className="flex-1">
+//                         <h1 className="text-2xl font-bold text-foreground">
+//                             {title}
+//                         </h1>
+//                         {showBreadcrumb && pathname !== "/dashboard" && (
+//                             <Breadcrumb className="mt-1">
+//                                 <BreadcrumbList>
+//                                     {getBreadcrumbItems().map(
+//                                         (item, index, arr) => (
+//                                             <div
+//                                                 key={item.href}
+//                                                 className="flex items-center"
+//                                             >
+//                                                 {index > 0 && (
+//                                                     <BreadcrumbSeparator />
+//                                                 )}
+//                                                 <BreadcrumbItem>
+//                                                     {index ===
+//                                                     arr.length - 1 ? (
+//                                                         <BreadcrumbPage className="text-sm">
+//                                                             {item.label}
+//                                                         </BreadcrumbPage>
+//                                                     ) : (
+//                                                         <BreadcrumbLink asChild>
+//                                                             <Link
+//                                                                 href={item.href}
+//                                                                 className="text-sm hover:text-primary"
+//                                                             >
+//                                                                 {item.label}
+//                                                             </Link>
+//                                                         </BreadcrumbLink>
+//                                                     )}
+//                                                 </BreadcrumbItem>
+//                                             </div>
+//                                         )
+//                                     )}
+//                                 </BreadcrumbList>
+//                             </Breadcrumb>
+//                         )}
+//                     </div>
+//                 </div>
+
+//                 <DropdownMenu>
+//                     <DropdownMenuTrigger asChild>
+//                         <Button
+//                             variant="ghost"
+//                             size="icon"
+//                             className="hover:bg-white/20"
+//                         >
+//                             <MenuIcon className="h-5 w-5" />
+//                         </Button>
+//                     </DropdownMenuTrigger>
+
+//                     <DropdownMenuContent
+//                         align="end"
+//                         className="w-72 bg-white/95 backdrop-blur-md border-0 shadow-lg rounded-lg p-1"
+//                     >
+//                         {/* user header */}
+//                         <div className="px-3 py-2 text-xs text-muted-foreground">
+//                             {user ? (
+//                                 <>
+//                                     Masuk sebagai{" "}
+//                                     <b className="text-foreground">
+//                                         {user.name}
+//                                     </b>{" "}
+//                                     ({user.role})
+//                                 </>
+//                             ) : (
+//                                 "Belum login"
+//                             )}
+//                         </div>
+
+//                         {(role === "ADMIN" || role === "OPERATOR") && (
+//                             <>
+//                                 {standaloneAdmin.map((item) => {
+//                                     const Icon = item.icon;
+//                                     return (
+//                                         <DropdownMenuItem
+//                                             key={item.href}
+//                                             asChild
+//                                             className="cursor-pointer rounded-md"
+//                                         >
+//                                             <Link
+//                                                 href={item.href}
+//                                                 className="flex items-center gap-2"
+//                                             >
+//                                                 <Icon className="h-4 w-4" />
+//                                                 <span>{item.label}</span>
+//                                             </Link>
+//                                         </DropdownMenuItem>
+//                                     );
+//                                 })}
+
+//                                 {standaloneAdmin.length > 0 &&
+//                                     adminSections.length > 0 && (
+//                                         <div className="h-1" />
+//                                     )}
+
+//                                 {adminSections.map(
+//                                     ({ section, items }, idx) => (
+//                                         <div key={section}>
+//                                             <DropdownMenuItem
+//                                                 className="justify-between font-medium rounded-md"
+//                                                 onSelect={(e) =>
+//                                                     e.preventDefault()
+//                                                 }
+//                                                 onClick={() =>
+//                                                     toggleSection(section)
+//                                                 }
+//                                             >
+//                                                 <span>{section}</span>
+//                                                 <ChevronRight
+//                                                     className={`h-4 w-4 transition-transform ${
+//                                                         openSections.has(
+//                                                             section
+//                                                         )
+//                                                             ? "rotate-90"
+//                                                             : ""
+//                                                     }`}
+//                                                 />
+//                                             </DropdownMenuItem>
+
+//                                             {openSections.has(section) && (
+//                                                 <div className="py-1">
+//                                                     {items.map((item) => {
+//                                                         const Icon = item.icon;
+//                                                         return (
+//                                                             <DropdownMenuItem
+//                                                                 key={item.href}
+//                                                                 asChild
+//                                                                 className="pl-6 pr-2 py-2 rounded-md"
+//                                                             >
+//                                                                 <Link
+//                                                                     href={
+//                                                                         item.href
+//                                                                     }
+//                                                                     className="flex items-center gap-2 cursor-pointer"
+//                                                                 >
+//                                                                     <Icon className="h-4 w-4" />
+//                                                                     <span>
+//                                                                         {
+//                                                                             item.label
+//                                                                         }
+//                                                                     </span>
+//                                                                 </Link>
+//                                                             </DropdownMenuItem>
+//                                                         );
+//                                                     })}
+//                                                 </div>
+//                                             )}
+
+//                                             {idx < adminSections.length - 1 && (
+//                                                 <div className="h-1" />
+//                                             )}
+//                                         </div>
+//                                     )
+//                                 )}
+//                             </>
+//                         )}
+
+//                         {role === "PETUGAS" &&
+//                             petugasItems.map((item) => {
+//                                 const Icon = item.icon;
+//                                 return (
+//                                     <DropdownMenuItem
+//                                         key={item.href}
+//                                         asChild
+//                                         className="cursor-pointer rounded-md"
+//                                     >
+//                                         <Link
+//                                             href={item.href}
+//                                             className="flex items-center gap-2"
+//                                         >
+//                                             <Icon className="h-4 w-4" />
+//                                             <span>{item.label}</span>
+//                                         </Link>
+//                                     </DropdownMenuItem>
+//                                 );
+//                             })}
+
+//                         {role === "WARGA" &&
+//                             wargaItems.map((item) => {
+//                                 const Icon = item.icon;
+//                                 return (
+//                                     <DropdownMenuItem
+//                                         key={item.href}
+//                                         asChild
+//                                         className="cursor-pointer rounded-md"
+//                                     >
+//                                         <Link
+//                                             href={item.href}
+//                                             className="flex items-center gap-2"
+//                                         >
+//                                             <Icon className="h-4 w-4" />
+//                                             <span>{item.label}</span>
+//                                         </Link>
+//                                     </DropdownMenuItem>
+//                                 );
+//                             })}
+
+//                         <div className="h-1" />
+
+//                         {/* <DropdownMenuItem
+//               onClick={handleLogout}
+//               className="flex items-center gap-2 cursor-pointer text-red-600 rounded-md"
+//             >
+//               <LogOut className="h-4 w-4" />
+//               <span>Logout</span>
+//             </DropdownMenuItem> */}
+//                         {/* Logout user saja */}
+//                         <DropdownMenuItem
+//                             onClick={handleLogoutUser}
+//                             className="flex items-center gap-2 cursor-pointer text-red-600 rounded-md"
+//                         >
+//                             <LogOut className="h-4 w-4" />
+//                             <span>Logout</span>
+//                         </DropdownMenuItem>
+
+//                         {/* Switch company / Logout company */}
+//                         {/* <DropdownMenuItem
+//                             onClick={handleLogoutCompany}
+//                             className="flex items-center gap-2 cursor-pointer rounded-md"
+//                         >
+//                             <LogOut className="h-4 w-4 rotate-180" />
+//                             <span>Keluar Company / Ganti Company</span>
+//                         </DropdownMenuItem> */}
+//                     </DropdownMenuContent>
+//                 </DropdownMenu>
+//             </div>
+//         </GlassCard>
+//     );
+// }
+
+// components/app-header.tsx
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
@@ -1270,7 +2202,6 @@ const MENU_ITEMS: MenuItem[] = [
         roles: ["ADMIN", "OPERATOR"],
         group: "Admin",
     },
-
     // Admin > Master
     {
         href: "/pelanggan",
@@ -1555,7 +2486,7 @@ const getSectionOrder = (s: string) => {
 const SECTION_ITEM_ORDER: Record<string, string[]> = {
     Operasional: ["/jadwal-pencatatan", "/catat-meter", "/reset-meteran"],
     Master: ["/pelanggan", "/zona", "/inventaris"],
-    Meteran: ["/catat-tandon", "/catat-blok"], // fix: sebelumnya /catat-meter-blok
+    Meteran: ["/catat-tandon", "/catat-blok"],
     Keuangan: ["/tagihan-pembayaran", "/biaya", "/pengeluaran", "/hutang"],
     Laporan: [
         "/laporan-catat-meter",
@@ -1568,7 +2499,6 @@ const SECTION_ITEM_ORDER: Record<string, string[]> = {
         "/laporan/piutang",
     ],
     Distribusi: [
-        // fix: key kapital agar match section
         "/distribusi/hirarki",
         "/distribusi/rekonsiliasi",
         "/distribusi/peta",
@@ -1619,6 +2549,8 @@ interface AppHeaderProps {
     title: string;
     showBackButton?: boolean;
     showBreadcrumb?: boolean;
+    /** ⬅️ Tambahan: bisa sisipkan komponen kecil (mis. tooltip icon) di sebelah judul */
+    titleExtra?: React.ReactNode;
 }
 
 /* ===================== Component ===================== */
@@ -1626,6 +2558,7 @@ export function AppHeader({
     title,
     showBackButton = true,
     showBreadcrumb = true,
+    titleExtra, // ⬅️ new
 }: AppHeaderProps) {
     const router = useRouter();
     const pathname = usePathname();
@@ -1641,7 +2574,7 @@ export function AppHeader({
     }, []);
     const role: Role | undefined = user?.role;
 
-    // Offering state (supaya bisa refetch ketika berubah)
+    // Offering state
     const [offering, setOffering] = useState<string>("basic");
     useEffect(() => {
         setOffering(getOfferingClient());
@@ -1673,7 +2606,6 @@ export function AppHeader({
                 const json = await res.json().catch(() => ({}));
 
                 if (!res.ok || json?.ok === false) {
-                    // FAIL-OPEN (biarkan semua menu tampil bila upstream error)
                     if (!cancelled) {
                         setAllowedPaths(null);
                         setMatrixLoaded(true);
@@ -1700,7 +2632,7 @@ export function AppHeader({
                 }
             } catch {
                 if (!cancelled) {
-                    setAllowedPaths(null); // FAIL-OPEN; untuk fail-closed → set to new Set()
+                    setAllowedPaths(null); // FAIL-OPEN
                     setMatrixLoaded(true);
                 }
             }
@@ -1708,21 +2640,17 @@ export function AppHeader({
         return () => {
             cancelled = true;
         };
-    }, [offering]); // << refetch ketika offering berubah
+    }, [offering]);
 
     // Filter by role + matrix
     const visibleMenu = useMemo(() => {
-        // filter role
         let base = MENU_ITEMS.filter((m) => {
             if (!m.roles || m.roles.length === 0) return true;
             if (!role) return false;
             return m.roles.includes(role);
         });
 
-        // matrix belum siap → jangan hide dulu biar tidak flicker
         if (!matrixLoaded) return base;
-
-        // kalau allowedPaths === null → anggap gagal fetch, biarkan semua tampil
         if (allowedPaths === null) return base;
 
         const isAllowed = (href: string) => {
@@ -1814,27 +2742,8 @@ export function AppHeader({
                 variant: "destructive",
             });
         } finally {
-            localStorage.removeItem("tb_user"); // opsional
-            router.push("/login"); // company masih tersimpan (remember device)
-        }
-    };
-
-    const handleLogoutCompany = async () => {
-        try {
-            await fetch("/api/auth/logout-company", { method: "DELETE" });
-            toast({
-                title: "Keluar dari Company",
-                description: "Anda dapat memilih company lain.",
-            });
-        } catch {
-            toast({
-                title: "Gagal keluar company",
-                description: "Terjadi error, coba lagi.",
-                variant: "destructive",
-            });
-        } finally {
-            localStorage.removeItem("tb_user"); // opsional
-            router.push("/company-login"); // tenant context direset
+            localStorage.removeItem("tb_user");
+            router.push("/login");
         }
     };
 
@@ -1863,9 +2772,17 @@ export function AppHeader({
                     )}
 
                     <div className="flex-1">
-                        <h1 className="text-2xl font-bold text-foreground">
-                            {title}
-                        </h1>
+                        {/* Judul + extra (tooltip/icon kecil) */}
+                        <div className="flex items-center gap-2">
+                            <h1 className="text-2xl font-bold text-foreground">
+                                {title}
+                            </h1>
+                            {/* ⬇️ Title extra disisipkan di sini, misalnya tombol Info/Tooltip */}
+                            {titleExtra ? (
+                                <div className="shrink-0">{titleExtra}</div>
+                            ) : null}
+                        </div>
+
                         {showBreadcrumb && pathname !== "/dashboard" && (
                             <Breadcrumb className="mt-1">
                                 <BreadcrumbList>
@@ -1934,6 +2851,9 @@ export function AppHeader({
                             )}
                         </div>
 
+                        {/* …(konten dropdown tetap sama persis)… */}
+                        {/* Untuk singkatnya, isi menu admin/petugas/warga & logout dibiarkan sama */}
+                        {/* Standalone Admin */}
                         {(role === "ADMIN" || role === "OPERATOR") && (
                             <>
                                 {standaloneAdmin.map((item) => {
@@ -2023,55 +2943,53 @@ export function AppHeader({
                         )}
 
                         {role === "PETUGAS" &&
-                            petugasItems.map((item) => {
-                                const Icon = item.icon;
-                                return (
-                                    <DropdownMenuItem
-                                        key={item.href}
-                                        asChild
-                                        className="cursor-pointer rounded-md"
-                                    >
-                                        <Link
-                                            href={item.href}
-                                            className="flex items-center gap-2"
+                            visibleMenu
+                                .filter((m) => m.group === "Petugas")
+                                .sort((a, b) => a.label.localeCompare(b.label))
+                                .map((item) => {
+                                    const Icon = item.icon;
+                                    return (
+                                        <DropdownMenuItem
+                                            key={item.href}
+                                            asChild
+                                            className="cursor-pointer rounded-md"
                                         >
-                                            <Icon className="h-4 w-4" />
-                                            <span>{item.label}</span>
-                                        </Link>
-                                    </DropdownMenuItem>
-                                );
-                            })}
+                                            <Link
+                                                href={item.href}
+                                                className="flex items-center gap-2"
+                                            >
+                                                <Icon className="h-4 w-4" />
+                                                <span>{item.label}</span>
+                                            </Link>
+                                        </DropdownMenuItem>
+                                    );
+                                })}
 
                         {role === "WARGA" &&
-                            wargaItems.map((item) => {
-                                const Icon = item.icon;
-                                return (
-                                    <DropdownMenuItem
-                                        key={item.href}
-                                        asChild
-                                        className="cursor-pointer rounded-md"
-                                    >
-                                        <Link
-                                            href={item.href}
-                                            className="flex items-center gap-2"
+                            visibleMenu
+                                .filter((m) => m.group === "Warga")
+                                .sort((a, b) => a.label.localeCompare(b.label))
+                                .map((item) => {
+                                    const Icon = item.icon;
+                                    return (
+                                        <DropdownMenuItem
+                                            key={item.href}
+                                            asChild
+                                            className="cursor-pointer rounded-md"
                                         >
-                                            <Icon className="h-4 w-4" />
-                                            <span>{item.label}</span>
-                                        </Link>
-                                    </DropdownMenuItem>
-                                );
-                            })}
+                                            <Link
+                                                href={item.href}
+                                                className="flex items-center gap-2"
+                                            >
+                                                <Icon className="h-4 w-4" />
+                                                <span>{item.label}</span>
+                                            </Link>
+                                        </DropdownMenuItem>
+                                    );
+                                })}
 
                         <div className="h-1" />
 
-                        {/* <DropdownMenuItem
-              onClick={handleLogout}
-              className="flex items-center gap-2 cursor-pointer text-red-600 rounded-md"
-            >
-              <LogOut className="h-4 w-4" />
-              <span>Logout</span>
-            </DropdownMenuItem> */}
-                        {/* Logout user saja */}
                         <DropdownMenuItem
                             onClick={handleLogoutUser}
                             className="flex items-center gap-2 cursor-pointer text-red-600 rounded-md"
@@ -2079,15 +2997,6 @@ export function AppHeader({
                             <LogOut className="h-4 w-4" />
                             <span>Logout</span>
                         </DropdownMenuItem>
-
-                        {/* Switch company / Logout company */}
-                        {/* <DropdownMenuItem
-                            onClick={handleLogoutCompany}
-                            className="flex items-center gap-2 cursor-pointer rounded-md"
-                        >
-                            <LogOut className="h-4 w-4 rotate-180" />
-                            <span>Keluar Company / Ganti Company</span>
-                        </DropdownMenuItem> */}
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
