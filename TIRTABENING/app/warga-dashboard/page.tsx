@@ -87,14 +87,30 @@ export default function WargaDashboardPage() {
     }
   }, [resident?.customerId, getIssuesByCustomer]);
 
-  const handleLogout = () => {
-    // kalau kamu sudah punya endpoint logout, panggil di sini
-    // sementara cukup clear local item & reload
+const handleLogout = async () => {
+  // cegah double click pakai state kalau perlu
+  try {
+    // hapus cookie server-side: tb_session, tb_token, tb_tenant, tb_offering, tb_addons__*
+    await fetch("/api/auth/logout", {
+      method: "POST",
+      credentials: "include", // penting: kirim cookies
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+    });
+  } catch (_) {
+    // kalau gagal jaringan, tetap lanjut bersihkan sisi client
+  } finally {
+    // bersihkan jejak di client (yang non-HttpOnly)
     try {
       localStorage.removeItem("tb_user");
+      localStorage.removeItem("tb_offering");
     } catch {}
-    window.location.href = "/";
-  };
+
+    // redirect ke login (Company ID otomatis terisi dari tb_company yang kita biarkan)
+    window.location.href = "/login"; // atau router.replace("/login")
+  }
+};
+
 
   const getStatusBadge = (status: string) => {
     switch (status) {

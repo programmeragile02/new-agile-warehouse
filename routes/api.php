@@ -85,7 +85,10 @@ Route::get('/dev/test-wa', function (\App\Services\WhatsappSender $wa) {
     return ['ok' => true];
 });
 
-// TenantResolve Untuk Login Company
+// TenantResolve Untuk Login di aplikasi
+Route::middleware([RequireClientApiKey::class])
+    ->get('/tenants/resolve', [TenantResolveController::class, 'resolve']);
+
 Route::post('tenant/resolve-auth', [TenantResolveController::class, 'authenticate'])
     ->middleware(['throttle:60,1']);
 

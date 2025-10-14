@@ -3,10 +3,7 @@ import { GlassCard } from "@/components/glass-card";
 import { Button } from "@/components/ui/button";
 import { TirtaLogo } from "@/components/tirta-logo";
 import Link from "next/link";
-import { cookies } from "next/headers";
 export default function HomePage() {
-  const hasTenant = !!cookies().get("tb_tenant")?.value;
-  const loginHref = hasTenant ? "/login" : "/company-login";
 
   return (
     <AppShell>
@@ -33,7 +30,7 @@ export default function HomePage() {
               Kelola tagihan air dengan mudah dan efisien
             </p>
             <Button asChild className="w-full text-lg py-6" size="lg">
-              <Link href={loginHref}>Masuk ke Sistem</Link>
+              <Link href="/login">Masuk ke Sistem</Link>
             </Button>
           </div>
         </GlassCard>
