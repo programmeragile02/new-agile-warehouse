@@ -1358,6 +1358,7 @@
 // }
 
 // components/customer-form.tsx
+// components/customer-form.tsx
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -1372,9 +1373,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Crosshair } from "lucide-react";
 import { defaultLeafletIcon } from "@/lib/leaflet-icons";
-import { FeatureGate } from "@/components/feature-gate"; // ⬅️ sesuaikan jika path berbeda
+import { FeatureGate } from "@/components/feature-gate";
 
-/* ===================== Map (client-only) ===================== */
 const MapContainer = dynamic(
     async () => (await import("react-leaflet")).MapContainer,
     { ssr: false }
@@ -1401,23 +1401,21 @@ const DefaultIcon = L.icon({
 });
 (L.Marker.prototype as any).options.icon = DefaultIcon;
 
-/* ===================== Types & helpers ===================== */
 type ZonaLite = { id: string; nama: string; kode: string; deskripsi?: string };
 
 type CustomerData = {
     nama: string;
     noWA: string;
-    noWA2: string; // WA kedua
+    noWA2: string;
     kodeCustomer: string;
     alamat: string;
     meterAwal: string;
-    zonaId: string; // "" = tidak dipilih
+    zonaId: string;
     lat: string;
     lng: string;
 };
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
-
 function normalizeWA(v: string) {
     const digits = v.replace(/\D/g, "");
     if (!digits) return "";
@@ -1438,7 +1436,6 @@ const numOrNull = (v: string): number | null => {
     return Number.isFinite(n) ? n : null;
 };
 
-/* ===================== Komponen kecil: click picker ===================== */
 function ClickPicker({
     onPick,
 }: {
@@ -1454,7 +1451,6 @@ function ClickPicker({
     return null;
 }
 
-/* ===== Fallback banner saat fitur dimatikan via FeatureGate ===== */
 function FeatureDisabledBanner() {
     return (
         <div className="p-4 border border-red-300 bg-red-50 text-red-900 rounded-md">
@@ -1470,7 +1466,6 @@ function FeatureDisabledBanner() {
     );
 }
 
-/* ===================== Form ===================== */
 export function CustomerForm() {
     const [isLoading, setIsLoading] = useState(false);
     const [formData, setFormData] = useState<CustomerData>({
@@ -1488,30 +1483,26 @@ export function CustomerForm() {
     const { toast } = useToast();
     const { mutate } = useSWRConfig();
 
-    // zona list
     const {
         data: zonaResp,
         isLoading: loadingZona,
         error: zonaError,
-    } = useSWR<{
-        ok: boolean;
-        items: ZonaLite[];
-    }>("/api/zona?page=1&pageSize=500&q=", fetcher, {
-        revalidateOnFocus: false,
-    });
+    } = useSWR<{ ok: boolean; items: ZonaLite[] }>(
+        "/api/zona?page=1&pageSize=500&q=",
+        fetcher,
+        { revalidateOnFocus: false }
+    );
     const zonaList = Array.isArray(zonaResp?.items) ? zonaResp!.items : [];
 
-    // ====== QUOTA: ambil sisa kuota pelanggan ======
+    // QUOTA
     const { data: quotaResp } = useSWR<{
         ok: boolean;
         quota: { used: number; max: number; remaining: number };
     }>("/api/pelanggan?quota=1", fetcher, { revalidateOnFocus: true });
-
     const remaining = quotaResp?.quota?.remaining ?? Infinity;
     const quotaHabis = Number.isFinite(remaining) && remaining <= 0;
 
     const mapRef = useRef<L.Map | null>(null);
-
     const latNum = useMemo(() => numOrNull(formData.lat), [formData.lat]);
     const lngNum = useMemo(() => numOrNull(formData.lng), [formData.lng]);
     const hasCoord = latNum != null && lngNum != null;
@@ -1660,7 +1651,6 @@ export function CustomerForm() {
             fallback={<FeatureDisabledBanner />}
         >
             <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Banner kuota */}
                 {quotaHabis && (
                     <div className="p-4 border border-amber-300 bg-amber-50 text-amber-900 rounded-md">
                         <div className="font-medium">Kuota pelanggan habis</div>
@@ -1675,7 +1665,6 @@ export function CustomerForm() {
                     </div>
                 )}
 
-                {/* Grid 2 kolom */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                         <Label htmlFor="nama" className="text-base font-medium">
@@ -1705,7 +1694,6 @@ export function CustomerForm() {
                         />
                     </div>
 
-                    {/* WA kedua */}
                     <div className="space-y-2">
                         <Label
                             htmlFor="noWA2"
@@ -1772,7 +1760,6 @@ export function CustomerForm() {
                         />
                     </div>
 
-                    {/* Zona */}
                     <div className="space-y-2 md:col-span-2">
                         <Label htmlFor="zona" className="text-base font-medium">
                             Blok
@@ -1804,7 +1791,6 @@ export function CustomerForm() {
                     </div>
                 </div>
 
-                {/* Alamat */}
                 <div className="space-y-2">
                     <Label htmlFor="alamat" className="text-base font-medium">
                         Alamat Lengkap *
@@ -1819,7 +1805,6 @@ export function CustomerForm() {
                     />
                 </div>
 
-                {/* Koordinat */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                         <Label htmlFor="lat" className="text-base font-medium">
@@ -1855,7 +1840,6 @@ export function CustomerForm() {
                     </div>
                 </div>
 
-                {/* Aksi lokasi */}
                 <div className="flex items-center gap-2">
                     <Button
                         type="button"
@@ -1878,7 +1862,6 @@ export function CustomerForm() {
                     </div>
                 </div>
 
-                {/* Map Picker */}
                 <div className="rounded-md overflow-hidden border border-primary/20">
                     <div className="h-64">
                         {typeof window !== "undefined" && (
@@ -1925,7 +1908,6 @@ export function CustomerForm() {
                     </div>
                 </div>
 
-                {/* Submit */}
                 <div className="flex justify-end">
                     <Button
                         type="submit"
