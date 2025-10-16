@@ -11,14 +11,14 @@ import { Plus } from "lucide-react"; // Ikon "Plus" (tanda tambah) dari lucide-r
 
 // Komponen halaman utama untuk modul pelanggan
 export default function PelangganPage() {
-  return (
-    <AuthGuard requiredRole="ADMIN">
-      {/* Semua isi halaman dilindungi oleh AuthGuard */}
-      <AppShell>
-        {/* AppShell memberi kerangka layout aplikasi */}
-        <div className="max-w-6xl mx-auto space-y-6">
-          {/* Bagian header halaman dengan judul */}
-          <AppHeader title="Kelola Pelanggan" />
+    return (
+        <AuthGuard requiredRole="ADMIN">
+            {/* Semua isi halaman dilindungi oleh AuthGuard */}
+            <AppShell>
+                {/* AppShell memberi kerangka layout aplikasi */}
+                <div className="max-w-6xl mx-auto space-y-6">
+                    {/* Bagian header halaman dengan judul */}
+                    <AppHeader title="Kelola Pelanggan" />
 
           {/* Baris aksi header: deskripsi singkat + tombol tambah */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -31,21 +31,21 @@ export default function PelangganPage() {
             </Button> */}
           </div>
 
-          {/* Kartu berisi form tambah pelanggan baru */}
-          <GlassCard className="p-6">
-            <h2 className="text-xl font-semibold text-foreground mb-4">
-              Tambah Pelanggan Baru
-            </h2>
-            <CustomerForm />
-          </GlassCard>
+                    {/* Kartu berisi form tambah pelanggan baru */}
+                    <GlassCard className="p-6">
+                        <h2 className="text-xl font-semibold text-foreground mb-4">
+                            Tambah Pelanggan Baru
+                        </h2>
+                        <CustomerForm />
+                    </GlassCard>
 
-          {/* Baris aksi (client component) */}
-          <MassResetBar />
+                    {/* Baris aksi (client component) */}
+                    <MassResetBar />
 
-          {/* Daftar pelanggan ditampilkan di bawah form */}
-          <CustomerList />
-        </div>
-      </AppShell>
-    </AuthGuard>
-  );
+                    {/* Daftar pelanggan ditampilkan di bawah form */}
+                    <CustomerList />
+                </div>
+            </AppShell>
+        </AuthGuard>
+    );
 }
