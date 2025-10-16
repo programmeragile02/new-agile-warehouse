@@ -12,14 +12,12 @@ class WhatsappTemplates
 Hai {$d['customer_name']}, akun aplikasi Anda sudah *aktif* dan siap dipakai.
 
 *URL Aplikasi*  : {$d['app_url']}
-*Company ID*    : {$d['company_id']}
-*Company Pass*  : {$d['company_password']}
-*Admin User*    : {$d['admin_username']}
+*Admin Email / Username*  : {$d['admin_username']}
 *Admin Pass*    : {$d['admin_password']}
 
 Langkah awal:
 1) Login ke {$d['app_url']}
-2) Masuk pakai *Company ID* di atas
+2) Masuk pakai *Email & Password* di atas
 3) Ubah kata sandi Admin sesegera mungkin
 
 Bantuan & Panduan:

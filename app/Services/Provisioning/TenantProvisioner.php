@@ -7,6 +7,7 @@ use App\Mail\RenewMail;
 use App\Mail\UpgradeMail;
 use App\Models\CustomerProductInstance;
 use App\Models\CustomerProductInstanceProfile;
+use App\Models\CustomerProductInstanceUser;
 use App\Models\ProvisioningJob;
 use App\Models\SubscriptionAddon;
 use App\Models\SubscriptionFeatureOverride;
@@ -118,7 +119,7 @@ class TenantProvisioner
         $companyPassword = Str::password(12, true, true, false);
         $companyPassHash = Hash::make($companyPassword);
 
-        $adminUser = 'admin@'.$dbName;
+        $adminUser = $adminEmail;
         $adminPass = Str::password(12, true, true, false);
 
         // Bootstrap tenant (company + super admin) via driver
@@ -169,6 +170,21 @@ class TenantProvisioner
             ]
         );
 
+        CustomerProductInstanceUser::updateOrCreate(
+            [
+                'product_code' => $job->product_code,
+                'email'        => strtolower($adminEmail),   // constraint: uq_cpiu_prod_email
+            ],
+            [
+                'company_id'    => $companyId,
+                'password_hash' => Hash::make($adminPass),
+                'password_plain'=> $adminPass,               // OPSIONAL, untuk transisi/onboarding
+                'is_active'     => true,
+                'updated_at'    => null,
+                'created_at'    => now(),                    
+            ]
+        );
+
         // Simpan kredensial DB per-tenant (terenkripsi)
         if ($creds) {
             $instance->database_username     = $creds['username'] ?? null;
@@ -193,9 +209,7 @@ class TenantProvisioner
             Mail::to($adminEmail)->send(new ProvisionedMail(
                 product: $job->product_code,
                 appUrl:  $appUrl,
-                companyId: $companyId,
-                companyPassword: $companyPassword,
-                username: $adminUser,
+                username: $adminEmail,
                 password: $adminPass,
                 recipientName: $customerName,
             ));
@@ -210,9 +224,7 @@ class TenantProvisioner
                 'product_name'     => $job->product_name ?? $job->product_code,
                 'customer_name'    => data_get($job->meta, 'customer_name', 'Pelanggan'),
                 'app_url'          => $appUrl,
-                'company_id'       => $companyId,
-                'company_password' => $companyPassword,
-                'admin_username'   => $adminUser,
+                'admin_username'   => $adminEmail,
                 'admin_password'   => $adminPass,
             ]);
 

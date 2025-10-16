@@ -1260,6 +1260,7 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { Prisma } from "@prisma/client";
 import jwt from "jsonwebtoken";
+import { warehouseUpsertCpiu } from "@/lib/warehouse-users";
 
 /* ===================== ENV & DEFAULTS ===================== */
 const WAREHOUSE_API_BASE =
@@ -1497,7 +1498,190 @@ async function countActiveCustomers(prisma: any): Promise<number> {
     return prisma.pelanggan.count({ where: { deletedAt: null } });
 }
 
-/* ===================== POST ===================== */
+/* ===================== Handlers ===================== */
+// export async function POST(req: NextRequest) {
+//     const prisma = await db();
+//     try {
+//         const json = await req.json();
+//         const parsed = bodySchema.safeParse(json);
+//         if (!parsed.success) {
+//             const msg = parsed.error.issues.map((i) => i.message).join(", ");
+//             return NextResponse.json(
+//                 { ok: false, message: msg },
+//                 { status: 400 }
+//             );
+//         }
+
+//         const {
+//             nama,
+//             wa,
+//             wa2,
+//             alamat,
+//             meterAwal,
+//             username,
+//             password,
+//             lat: latIn,
+//             lng: lngIn,
+//         } = parsed.data;
+
+//         const zonaId = parsed.data.zonaId ? parsed.data.zonaId : null;
+//         let noUrutRumah = parsed.data.noUrutRumah ?? null;
+
+//         const lat = latIn ?? null;
+//         const lng = lngIn ?? null;
+
+//         if (zonaId) {
+//             const existsZona = await prisma.zona.findUnique({
+//                 where: { id: zonaId },
+//                 select: { id: true },
+//             });
+//             if (!existsZona) {
+//                 return NextResponse.json(
+//                     { ok: false, message: "Zona tidak ditemukan" },
+//                     { status: 404 }
+//                 );
+//             }
+//         }
+
+//         const kode = genCustomerCode(nama);
+//         const finalUsername = username ?? genUsername(nama);
+
+//         const normalizeWA = (v?: string) => {
+//             if (!v) return undefined;
+//             const digits = v.replace(/\D/g, "");
+//             if (!digits) return "";
+//             if (digits.startsWith("0")) return `62${digits.slice(1)}`;
+//             if (digits.startsWith("62")) return digits;
+//             return digits;
+//         };
+
+//         const waNorm = normalizeWA(wa) ?? null;
+//         const wa2Norm = normalizeWA(wa2) ?? null;
+
+//         const rawPassword =
+//             (password && String(password)) ||
+//             `tb-${Math.random().toString(36).slice(2, 8)}`;
+//         const passwordHash = await bcrypt.hash(rawPassword, 10);
+
+//         const companyId = getCompanyIdFromCookie(req);
+
+//         // ====== KUOTA: cek dalam transaksi (anti race) ======
+//         const out = await prisma.$transaction(async (tx) => {
+//             const max = await resolveMaxCustomers(tx, companyId);
+//             const used = await countActiveCustomers(tx);
+//             if (used >= max) {
+//                 return { blocked: true as const, used, max };
+//             }
+
+//             // 1) create user
+//             const user = await tx.user.create({
+//                 data: {
+//                     username: finalUsername,
+//                     passwordHash,
+//                     name: nama,
+//                     phone: waNorm ?? null,
+//                     role: "WARGA",
+//                     isActive: true,
+//                 },
+//                 select: { id: true, username: true, name: true },
+//             });
+
+//             // 2) auto noUrutRumah jika perlu
+//             if (zonaId && noUrutRumah === null) {
+//                 const maxNo = await tx.pelanggan.aggregate({
+//                     where: { zonaId, deletedAt: null },
+//                     _max: { noUrutRumah: true },
+//                 });
+//                 noUrutRumah = (maxNo._max.noUrutRumah ?? 0) + 1;
+//             }
+
+//             // 3) create pelanggan
+//             const pelanggan = await tx.pelanggan.create({
+//                 data: {
+//                     kode,
+//                     nama,
+//                     wa: waNorm,
+//                     wa2: wa2Norm,
+//                     alamat,
+//                     meterAwal: meterAwal ?? 0,
+//                     userId: user.id,
+//                     statusAktif: true,
+//                     zonaId,
+//                     noUrutRumah,
+//                     passwordPlain: rawPassword,
+//                     lat,
+//                     lng,
+//                 },
+//                 select: {
+//                     id: true,
+//                     kode: true,
+//                     nama: true,
+//                     zonaId: true,
+//                     noUrutRumah: true,
+//                     lat: true,
+//                     lng: true,
+//                 },
+//             });
+
+//             return {
+//                 blocked: false as const,
+//                 user,
+//                 pelanggan,
+//                 max,
+//                 used: used + 1,
+//             };
+//         });
+
+//         if (out.blocked) {
+//             return NextResponse.json(
+//                 {
+//                     ok: false,
+//                     code: "QUOTA_EXCEEDED",
+//                     message: `Kuota pelanggan habis. Paket ini maksimum ${out.max} pelanggan. Silakan hapus pelanggan yang tidak aktif atau upgrade paket.`,
+//                     meta: {
+//                         used: out.used,
+//                         max: out.max,
+//                         remaining: Math.max(0, out.max - out.used),
+//                     },
+//                 },
+//                 { status: 403 }
+//             );
+//         }
+
+//         return NextResponse.json(
+//             {
+//                 ok: true,
+//                 data: {
+//                     pelanggan: out.pelanggan,
+//                     user: { username: out.user.username },
+//                     tempPassword: rawPassword,
+//                     quota: {
+//                         used: out.used,
+//                         max: out.max,
+//                         remaining: Math.max(0, out.max - out.used),
+//                     },
+//                 },
+//                 message: "Pelanggan & user berhasil dibuat",
+//             },
+//             { status: 201 }
+//         );
+//     } catch (e: any) {
+//         if (e?.code === "P2002") {
+//             return NextResponse.json(
+//                 {
+//                     ok: false,
+//                     message:
+//                         "Data bentrok (username/kode atau nomor urut di zona).",
+//                 },
+//                 { status: 409 }
+//             );
+//         }
+//         return NextResponse.json(
+//             { ok: false, message: e?.message ?? "Server error" },
+//             { status: 500 }
+//         );
+//     }
+// }
 export async function POST(req: NextRequest) {
     const prisma = await db();
     try {
@@ -1570,6 +1754,7 @@ export async function POST(req: NextRequest) {
                     phone: waNorm ?? null,
                     role: "WARGA",
                     isActive: true,
+                    companyId: companyId, // <-- penting: kaitkan user dengan company
                 },
                 select: { id: true, username: true, name: true },
             });
@@ -1634,12 +1819,54 @@ export async function POST(req: NextRequest) {
             );
         }
 
+        // Setelah transaksi commit, sink ke Warehouse.
+        // Jika sink gagal -> rollback manual: hapus user & pelanggan yang baru dibuat.
+        try {
+            await warehouseUpsertCpiu({
+                email: out.user.username,
+                companyId,
+                passwordPlain: rawPassword,
+                passwordHash,
+                isActive: true,
+            });
+        } catch (err: any) {
+            // cleanup: hapus user + pelanggan yang baru dibuat (hard delete)
+            try {
+                await prisma.user.delete({ where: { id: out.user.id } });
+            } catch (e) {
+                console.error(
+                    "Cleanup: failed delete user after warehouse error:",
+                    e
+                );
+            }
+            try {
+                await prisma.pelanggan.delete({
+                    where: { id: out.pelanggan.id },
+                });
+            } catch (e) {
+                console.error(
+                    "Cleanup: failed delete pelanggan after warehouse error:",
+                    e
+                );
+            }
+
+            return NextResponse.json(
+                {
+                    ok: false,
+                    message: "Sync ke Warehouse gagal",
+                    detail: String(err?.message ?? err),
+                },
+                { status: 502 }
+            );
+        }
+
+        // sukses semua
         return NextResponse.json(
             {
                 ok: true,
                 data: {
                     pelanggan: out.pelanggan,
-                    user: { username: out.user.username },
+                    user: { username: out.user.username, id: out.user.id },
                     tempPassword: rawPassword,
                     quota: {
                         used: out.used,
@@ -1647,7 +1874,8 @@ export async function POST(req: NextRequest) {
                         remaining: Math.max(0, out.max - out.used),
                     },
                 },
-                message: "Pelanggan & user berhasil dibuat",
+                message:
+                    "Pelanggan & user berhasil dibuat dan disinkronkan ke Warehouse",
             },
             { status: 201 }
         );
@@ -1662,6 +1890,7 @@ export async function POST(req: NextRequest) {
                 { status: 409 }
             );
         }
+        console.error("POST /api/pelanggan error:", e);
         return NextResponse.json(
             { ok: false, message: e?.message ?? "Server error" },
             { status: 500 }

@@ -46,9 +46,7 @@ Berikut kredensial login:
 
 @component('mail::panel')
 **🔗 URL Aplikasi:** <a href="{{ $appUrl }}">{{ $appUrl }}</a>  
-**🏷️ Company ID:** {{ $companyId }}  
-**🔒 Company Password:** {{ $companyPassword }}  
-**👤 Username / Email:** {{ $username }}  
+**👤 Email / Username:** {{ $username }}  
 **🔑 Password:** {{ $password }}
 @endcomponent
 

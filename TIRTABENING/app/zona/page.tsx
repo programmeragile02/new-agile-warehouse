@@ -145,11 +145,6 @@ export default function ZonaPage() {
             <div className="text-muted-foreground inline-flex items-center gap-2">
               <span>Manajemen data blok &amp; penanggung jawab (petugas).</span>
             </div>
-
-            <Button className="flex items-center gap-2" form="zona-form">
-              <Plus className="w-4 h-4" />
-              Tambah Blok
-            </Button>
           </div>
 
           <GlassCard className="p-6">

@@ -16,6 +16,7 @@ import {
     Grid3x3,
     CheckCircle2,
     ChevronRight,
+    CalendarCheck,
 } from "lucide-react";
 
 /** kunci langkah agar konsisten dengan backend */
@@ -24,9 +25,10 @@ export type StepKey =
     | "pengaturan"
     | "jadwal"
     | "user"
-    | "pelanggan"
     | "tandon"
-    | "blok";
+    | "blok"
+    | "pelanggan"
+    | "jadwal-catat";
 
 type Step = {
     key: StepKey;
@@ -59,38 +61,45 @@ export default function OnboardingGetStarted(props: {
             },
             {
                 key: "jadwal",
-                title: "Pengaturan Jadwal",
-                desc: "Buat jadwal/periode pencatatan untuk bulan berjalan atau berikutnya.",
+                title: "Pengaturan Jadwal Pencatatan",
+                desc: "Buat jadwal(hari) pencatatan meter untuk bulan berjalan.",
                 href: "/pengaturan",
                 icon: CalendarClock,
             },
             {
                 key: "user",
                 title: "Tambah User (Petugas)",
-                desc: "Buat akun petugas lapangan.",
+                desc: "Buat akun petugas lapangan yang digunakan untuk penugasan per blok(zona).",
                 href: "/pengaturan",
                 icon: UserPlus,
             },
             {
-                key: "pelanggan",
-                title: "Master Pelanggan",
-                desc: "Daftarkan pelanggan dan hubungkan ke zona (blok) serta golongan tarif.",
-                href: "/pelanggan",
-                icon: Users,
-            },
-            {
                 key: "tandon",
                 title: "Master Tandon",
-                desc: "Catat tandon/sumber air untuk monitoring distribusi & analisis.",
+                desc: "Buat master tandon/sumber air untuk monitoring distribusi & analisis.",
                 href: "/tandon",
                 icon: Container,
             },
             {
                 key: "blok",
                 title: "Master Blok (Zona)",
-                desc: "Buat blok/cluster rute pencatatan",
+                desc: "Buat master blok/zona untuk pembagian pencatatan.",
                 href: "/zona",
                 icon: Grid3x3,
+            },
+            {
+                key: "pelanggan",
+                title: "Tambah Pelanggan",
+                desc: "Daftarkan pelanggan dan hubungkan ke zona (blok).",
+                href: "/pelanggan",
+                icon: Users,
+            },
+            {
+                key: "jadwal-catat",
+                title: "Generate Jadwal Pencatatan",
+                desc: "Tekan Generate Jadwal untuk buat jadwal pencatatan otomatis dan mulai catat meter.",
+                href: "/jadwal-pencatatan",
+                icon: CalendarCheck,
             },
         ],
         []
@@ -108,8 +117,8 @@ export default function OnboardingGetStarted(props: {
                         Mulai Pakai Aplikasi
                     </h2>
                     <p className="mt-1 text-sm text-muted-foreground">
-                        Lengkapi beberapa langkah singkat supaya Tirta Bening
-                        siap.
+                        Lengkapi beberapa langkah singkat supaya Nata Banyu
+                        siap digunakan dan mulai pencatatan meter air.
                     </p>
                 </div>
                 <Badge variant="secondary" className="self-start sm:self-auto">

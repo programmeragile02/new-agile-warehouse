@@ -1,31 +1,4 @@
-// import { NextResponse } from "next/server";
-// function build() {
-//   const res = NextResponse.json({ ok: true, message: "Logout berhasil" });
-//   // Hapus sesi user
-//   res.cookies.set("tb_session", "", {
-//     httpOnly: true,
-//     sameSite: "lax",
-//     secure: process.env.NODE_ENV === "production",
-//     path: "/",
-//     expires: new Date(0),
-//   });
-//   // (Kalau kamu masih pakai JWT lama, hapus juga)
-//   res.cookies.set("tb_token", "", {
-//     httpOnly: true,
-//     sameSite: "lax",
-//     secure: process.env.NODE_ENV === "production",
-//     path: "/",
-//     expires: new Date(0),
-//   });
-//   return res;
-// }
 
-// export async function POST() {
-//   return build();
-// }
-// export async function GET() {
-//   return build();
-// }
 
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
@@ -35,7 +8,7 @@ const ALLOW_DELETE = new Set([
     "tb_token",
     "tb_tenant",
     "tb_offering",
-    // jangan masukkan "tb_company"
+    "tb_company",
 ]);
 
 function shouldDelete(name: string) {

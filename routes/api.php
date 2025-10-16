@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Controllers\Api\AuthSyncController;
 use App\Http\Controllers\Api\SubscriptionFeaturesController;
+use App\Http\Controllers\Api\SyncUserController;
 use App\Http\Controllers\Api\TenantResolveController;
 use App\Http\Controllers\Gateway\OfferingGatewayController;
 use App\Http\Controllers\Provisioning\JobsController;
@@ -89,8 +91,20 @@ Route::get('/dev/test-wa', function (\App\Services\WhatsappSender $wa) {
 Route::middleware([RequireClientApiKey::class])
     ->get('/tenants/resolve', [TenantResolveController::class, 'resolve']);
 
-Route::post('tenant/resolve-auth', [TenantResolveController::class, 'authenticate'])
+Route::post('/tenant/resolve-auth', [TenantResolveController::class, 'authenticate'])
     ->middleware(['throttle:60,1']);
+
+Route::post('/tenant/resolve-login', [TenantResolveController::class, 'resolveLogin'])
+  ->middleware(['throttle:60,1', RequireClientApiKey::class]);
+
+Route::post('/tenant/sync-user-password', [AuthSyncController::class, 'syncUserPassword'])
+  ->middleware(['throttle:60,1', RequireClientApiKey::class]);
+
+// upsert user dari aplikasi catatmeter
+Route::middleware([RequireClientApiKey::class])->group(function () {
+    // SATU endpoint untuk upsert/aktif/nonaktif user CPIU
+    Route::post('/tenant/sync-user', [SyncUserController::class, 'store']);
+});
 
 // addons ke aplikasi
 Route::middleware([RequireClientApiKey::class])->get('/subscriptions/{instanceId}/features', [SubscriptionFeaturesController::class, 'show']);

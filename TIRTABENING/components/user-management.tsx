@@ -218,7 +218,7 @@ export function UserManagement() {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <Label htmlFor="username">Username</Label>
+                <Label htmlFor="username">Email / Username</Label>
                 <Input
                   id="username"
                   value={formData.username}
@@ -353,7 +353,7 @@ export function UserManagement() {
                       </DialogHeader>
                       <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
-                          <Label htmlFor="e-username">Username</Label>
+                          <Label htmlFor="e-username">Email / Username</Label>
                           <Input
                             id="e-username"
                             value={formData.username}
@@ -364,6 +364,7 @@ export function UserManagement() {
                               }))
                             }
                             required
+                            disabled
                           />
                         </div>
                         <div>

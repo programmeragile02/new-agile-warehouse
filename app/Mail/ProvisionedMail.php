@@ -12,8 +12,6 @@ class ProvisionedMail extends Mailable
     public function __construct(
         public string $product,
         public string $appUrl,
-        public string $companyId,
-        public string $companyPassword,
         public string $username,
         public string $password,
         public string $recipientName,

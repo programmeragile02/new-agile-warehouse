@@ -23,13 +23,12 @@ export default function PelangganPage() {
           {/* Baris aksi header: deskripsi singkat + tombol tambah */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <p className="text-muted-foreground">
-              Manajemen data pelanggan Tirta Bening
+              Manajemen data pelanggan Nata Banyu
             </p>
-            <Button className="flex items-center gap-2">
-              {/* Ikon tambah + teks */}
+            {/* <Button className="flex items-center gap-2">
               <Plus className="w-4 h-4" />
               Tambah Pelanggan
-            </Button>
+            </Button> */}
           </div>
 
           {/* Kartu berisi form tambah pelanggan baru */}

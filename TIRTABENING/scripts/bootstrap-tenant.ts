@@ -14,7 +14,8 @@ async function main() {
 
   const companyId  = arg('companyId')!;            // contoh: TIRTABENING_365939
   let companyPassHash = arg('companyPassHash');     // hash dari Warehouse; boleh kosong
-  const adminUser  = arg('adminUser')!;            // ini masuk ke User.username
+  // const adminUser  = arg('adminUser')!;            
+  const adminEmail = arg('adminEmail')!; // masuk ke username
   const adminPass  = arg('adminPass')!;
 
   if (!companyPassHash && adminPass) {
@@ -44,7 +45,7 @@ async function main() {
   const adminHash = await bcrypt.hash(adminPass, 12);
 
   await prisma.user.upsert({
-    where: { username: adminUser },
+    where: { username: adminEmail },
     update: {
       passwordHash: adminHash,
       isActive: true,
@@ -55,7 +56,7 @@ async function main() {
       updatedAt: new Date(),
     },
     create: {
-      username: adminUser,
+      username: adminEmail,
       passwordHash: adminHash,
       name: 'Administrator',
       role: 'ADMIN',

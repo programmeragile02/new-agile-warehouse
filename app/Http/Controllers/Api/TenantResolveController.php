@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
@@ -12,6 +13,149 @@ use Illuminate\Validation\ValidationException;
 
 class TenantResolveController extends Controller
 {
+    /**
+     * POST /api/tenant/resolve-login
+     * body: { product_code, email, password }
+     * return: { ok:true, data:{ company_id, product_code, db_url, package_code, app_url, subscription_instance_id } }
+     */
+    public function resolveLogin(Request $req)
+    {
+        $req->validate([
+            'product_code' => 'required|string',
+            'email'        => 'required|string',
+            'password'     => 'required|string',
+        ]);
+
+        $pc    = trim((string) $req->input('product_code'));
+        $email = strtolower(trim((string) $req->input('email')));
+        $pass  = (string) $req->input('password');
+
+        // Ambil baris user unik (constraint uq_cpiu_prod_email memastikan tunggal)
+        $rows = DB::table('customer_product_instance_users as u')
+            ->join('customer_product_instances as i', function ($j) {
+                $j->on('i.company_id', '=', 'u.company_id')
+                ->on('i.product_code', '=', 'u.product_code');
+            })
+            ->where('u.product_code', $pc)
+            ->whereRaw('LOWER(u.email) = ?', [$email])
+            ->where('u.is_active', 1)
+            ->where('i.is_active', 1)
+            ->orderByDesc('i.created_at')
+            ->select(
+                'u.id as u_id',
+                'u.company_id', 'u.password_plain', 'u.password_hash',
+                'i.product_code','i.package_code','i.app_url',
+                'i.subscription_instance_id','i.database_name',
+                'i.database_host','i.database_port',
+                'i.database_username','i.database_password_enc','i.end_date'
+            )
+            ->get();
+
+        if ($rows->isEmpty()) {
+            usleep(180 * 1000);
+            return response()->json(['ok'=>false,'error'=>'USER_NOT_FOUND'], 404);
+        }
+        if ($rows->count() > 1) {
+            // Harusnya tidak terjadi karena uq_cpiu_prod_email
+            return response()->json(['ok'=>false,'error'=>'DUPLICATE_EMAIL_CONFLICT'], 409);
+        }
+
+        $r = $rows->first();
+
+        // === VERIFIKASI AMAN ===
+        $ok = false;
+        $hash = (string)($r->password_hash ?? '');
+        $plainStored = (string)($r->password_plain ?? '');
+
+        // 1) Jika ada hash: periksa apakah kelihatan BCRYPT (cek prefix / password_get_info)
+        if ($hash !== '') {
+            $info = password_get_info($hash);
+            $algoName = $info['algoName'] ?? '';
+
+            // aturan sederhana: terima jika algoName == 'bcrypt' atau prefix $2y$/$2a$/$2b$
+            $looksLikeBcrypt = $algoName === 'bcrypt' ||
+                str_starts_with($hash, '$2y$') ||
+                str_starts_with($hash, '$2a$') ||
+                str_starts_with($hash, '$2b$');
+
+            if ($looksLikeBcrypt) {
+                try {
+                    $ok = Hash::check($pass, $hash);
+                } catch (\Throwable $e) {
+                    // proteksi tambahan: kalau Hash::check melempar, jadikan false dan fallback ke plaintext
+                    $ok = false;
+                }
+            } else {
+                // hash ada tapi bukan bcrypt → jangan panggil Hash::check() (unsafe)
+                $ok = false;
+            }
+        }
+
+        // 2) Fallback ke password_plain (legacy). Jika cocok, lakukan self-heal: buat bcrypt dan simpan.
+        if (!$ok && $plainStored !== '') {
+            // gunakan hash_equals untuk menghindari timing attack
+            if (hash_equals($plainStored, $pass)) {
+                $ok = true;
+                try {
+                    // self-heal: simpan bcrypt agar berikutnya aman
+                    $newHash = Hash::make($pass);
+                    DB::table('customer_product_instance_users')
+                        ->where('product_code', $pc)
+                        ->whereRaw('LOWER(email) = ?', [$email])
+                        ->update(['password_hash' => $newHash, 'updated_at' => now()]);
+                } catch (\Throwable $e) {
+                    // logging tapi jangan gagal login karena self-heal gagal
+                    \Log::warning('CPIU self-heal failed', ['email'=>$email,'err'=>$e->getMessage()]);
+                }
+            }
+        }
+
+        if (!$ok) {
+            usleep(180 * 1000);
+            return response()->json(['ok'=>false,'error'=>'INVALID_CREDENTIALS'], 401);
+        }
+
+        // cek masa berlaku instance
+        if (!empty($r->end_date)) {
+            $active = now()->lte(Carbon::parse($r->end_date)->endOfDay());
+            if (!$active) {
+                return response()->json(['ok'=>false,'error'=>'INSTANCE_INACTIVE_OR_EXPIRED'], 403);
+            }
+        }
+
+        // compose DSN
+        $dbName = (string)($r->database_name ?? '');
+        if ($dbName === '') {
+            return response()->json(['ok'=>false,'error'=>'DB_NAME_MISSING'], 500);
+        }
+        $host  = (string)($r->database_host ?? env('DB_HOST','127.0.0.1'));
+        $port  = (string)($r->database_port ?? env('DB_PORT','3306'));
+        $dbUsr = (string)($r->database_username ?? env('DB_USERNAME','root'));
+        $dbPwd = null;
+        if (!empty($r->database_password_enc)) {
+            try { $dbPwd = Crypt::decryptString((string)$r->database_password_enc); } catch (\Throwable $e) { $dbPwd = null; }
+        }
+        if ($dbPwd === null) $dbPwd = env('DB_PASSWORD','');
+
+        $dsn = sprintf(
+            'mysql://%s:%s@%s:%s/%s',
+            rawurlencode($dbUsr), rawurlencode($dbPwd),
+            $host, $port, $dbName
+        );
+
+        return response()->json([
+            'ok'   => true,
+            'data' => [
+                'company_id'               => (string)$r->company_id,
+                'product_code'             => (string)$r->product_code,
+                'db_url'                   => $dsn,
+                'package_code'             => (string)($r->package_code ?? ''),
+                'app_url'                  => (string)($r->app_url ?? ''),
+                'subscription_instance_id' => (string)($r->subscription_instance_id ?? ''),
+            ]
+        ]);
+    }
+
     /**
      * GET /api/tenants/resolve?company_id=...&product_code=...
      * Tanpa password company. Hanya untuk discovery tenant DB & paket.

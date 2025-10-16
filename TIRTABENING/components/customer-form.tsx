@@ -1857,9 +1857,6 @@ export function CustomerForm() {
                     >
                         Hapus Koordinat
                     </Button>
-                    <div className="text-xs text-muted-foreground">
-                        Tip: klik peta untuk memilih titik, marker bisa digeser.
-                    </div>
                 </div>
 
                 <div className="rounded-md overflow-hidden border border-primary/20">
@@ -1906,6 +1903,9 @@ export function CustomerForm() {
                             </MapContainer>
                         )}
                     </div>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                    Tip: klik peta untuk memilih titik, marker bisa digeser.
                 </div>
 
                 <div className="flex justify-end">

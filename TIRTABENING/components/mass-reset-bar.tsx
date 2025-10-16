@@ -47,14 +47,14 @@ export function MassResetBar() {
   return (
     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
       <p className="text-muted-foreground">
-        Manajemen data pelanggan Tirta Bening
+        Manajemen data pelanggan Nata Banyu
       </p>
       <div className="flex items-center gap-2">
         {/* Tombol tambah pelanggan (tetap ada, UI tidak diubah) */}
-        <Button className="flex items-center gap-2">
+        {/* <Button className="flex items-center gap-2">
           <Plus className="w-4 h-4" />
           Tambah Pelanggan
-        </Button>
+        </Button> */}
 
         {/* Reset Password Massal */}
         <Button variant="outline" onClick={doMassReset}>
