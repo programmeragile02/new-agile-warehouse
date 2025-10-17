@@ -351,7 +351,7 @@ const CtxDefault: Ctx = {
 const EntitlementsCtx = createContext<Ctx>(CtxDefault);
 
 const PRODUCT_CODE =
-  process.env.NEXT_PUBLIC_PRODUCT_CODE || process.env.PRODUCT_CODE || "TIRTABENING";
+  process.env.NEXT_PUBLIC_PRODUCT_CODE || process.env.PRODUCT_CODE || "NATABANYU";
 
 const norm = (s: unknown) => String(s ?? "").trim().toLowerCase();
 

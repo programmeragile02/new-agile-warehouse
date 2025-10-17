@@ -28,9 +28,9 @@ export async function GET() {
             },
             body: JSON.stringify({
                 product_code:
-                    process.env.NEXT_PUBLIC_PRODUCT_CODE || "TIRTABENING",
+                    process.env.NEXT_PUBLIC_PRODUCT_CODE || "NATABANYU",
                 email: "debug@ping.local",
-                company_id: "TIRTABENING_214562", // akan 422 kalau tidak ada, tak apa yg penting konek
+                company_id: "NATABANYU_214562", // akan 422 kalau tidak ada, tak apa yg penting konek
                 is_active: true,
             }),
             cache: "no-store",

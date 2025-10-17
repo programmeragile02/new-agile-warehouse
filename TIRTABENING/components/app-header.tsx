@@ -2151,7 +2151,7 @@ import { useToast } from "@/hooks/use-toast";
 const PRODUCT_CODE =
     process.env.NEXT_PUBLIC_PRODUCT_CODE ||
     process.env.PRODUCT_CODE ||
-    "TIRTABENING";
+    "NATABANYU";
 
 // offering/paket aktif: prioritas cookie (server), fallback localStorage (client), default "basic"
 function getOfferingClient(): string {

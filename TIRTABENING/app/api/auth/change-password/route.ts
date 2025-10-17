@@ -174,7 +174,7 @@ export async function POST(req: Request) {
         // 2) Sync ke Warehouse (best-effort; tidak memblok sukses lokal)
         try {
             const tenantCtx = await getTenantContext(
-                process.env.NEXT_PUBLIC_PRODUCT_CODE || "TIRTABENING"
+                process.env.NEXT_PUBLIC_PRODUCT_CODE || "NATABANYU"
             );
             if (!tenantCtx)
                 return NextResponse.json(
@@ -182,7 +182,6 @@ export async function POST(req: Request) {
                     { status: 401 }
                 );
 
-                
             await syncUserPasswordToWarehouse({
                 productCode: tenantCtx?.productCode,
                 companyId: tenantCtx?.companyId,

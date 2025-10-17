@@ -14,9 +14,9 @@ class SyncUserController extends Controller
     /**
      * Payload dari Next:
      * {
-     *   "product_code": "TIRTABENING",
+     *   "product_code": "NATABANYU",
      *   "email": "user@x.com",
-     *   "company_id": "TIRTABENING_207400",
+     *   "company_id": "NATABANYU_207400",
      *   "password_plain": "Rahasia123",   // optional
      *   "password_hash": "$2y$12$...",    // optional
      *   "is_active": true                 // optional

@@ -96,7 +96,7 @@
 // lib/warehouse-users.ts
 import "server-only";
 
-const PRODUCT_CODE = process.env.NEXT_PUBLIC_PRODUCT_CODE || "TIRTABENING";
+const PRODUCT_CODE = process.env.NEXT_PUBLIC_PRODUCT_CODE || "NATABANYU";
 
 function apiBase(): string {
     const api = (process.env.WAREHOUSE_API || "").trim(); // ex: http://localhost:9000/api

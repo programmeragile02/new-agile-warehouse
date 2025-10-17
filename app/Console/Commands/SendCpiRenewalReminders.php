@@ -121,7 +121,7 @@ class SendCpiRenewalReminders extends Command
     {
         $base = config('app.store_checkout_base', env('STORE_CHECKOUT_BASE', 'http://localhost:3000/checkout'));
         $params = http_build_query([
-            'product'  => $cpi->product_code ?? 'TIRTABENING',
+            'product'  => $cpi->product_code ?? 'NATABANYU',
             'package'  => $cpi->package_code ?? 'basic',
             'duration' => $cpi->duration_code ?? 'DUR-12',
             'action'   => 'renew',

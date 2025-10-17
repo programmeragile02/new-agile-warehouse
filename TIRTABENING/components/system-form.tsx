@@ -219,7 +219,7 @@ export function SystemForm() {
                             namaPerusahaan: e.target.value,
                         }))
                     }
-                    placeholder="Tirta Bening"
+                    placeholder="Nata Banyu"
                 />
             </div>
 
@@ -256,7 +256,7 @@ export function SystemForm() {
                     onChange={(e) =>
                         setFormData((p) => ({ ...p, email: e.target.value }))
                     }
-                    placeholder="info@tirtabening.com"
+                    placeholder="info@natabanyu.com"
                 />
             </div>
 

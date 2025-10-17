@@ -3,7 +3,7 @@ import { PrismaClient, MenuType } from "@prisma/client";
 const prisma = new PrismaClient();
 
 const PRODUCT_ID = "ec23de55-565f-432e-836e-83d5c336d23f";
-const PRODUCT_CODE = "TIRTABENING";
+const PRODUCT_CODE = "NATABANYU";
 
 // helper: simpan node + children (rekursif)
 async function createNode(

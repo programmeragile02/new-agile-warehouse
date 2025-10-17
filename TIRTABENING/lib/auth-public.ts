@@ -5,7 +5,7 @@ import type { NextRequest } from "next/server";
  * Validasi akses endpoint publik (read-only) antar layanan.
  * Header yang diterima: X-PRODUCT-KEY atau X-PUBLIC-KEY
  *
- * .env (Tirta Bening):
+ * .env (Nata Banyu):
  *   PRODUCT_PUBLIC_KEY="tb-public-key-123"
  */
 export function assertProductKey(req: Request | NextRequest) {

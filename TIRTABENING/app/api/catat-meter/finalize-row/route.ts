@@ -717,7 +717,7 @@ function waText(p: {
     sisaKurang?: number;
     tglCatat?: Date; // hanya untuk ditampilkan
 }) {
-    const perusahaan = p.setting?.namaPerusahaan || "Tirtabening";
+    const perusahaan = p.setting?.namaPerusahaan || "NataBanyu";
     const bulan = new Date(p.periode + "-01").toLocaleDateString("id-ID", {
         month: "long",
         year: "numeric",

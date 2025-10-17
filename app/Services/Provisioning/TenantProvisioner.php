@@ -92,7 +92,7 @@ class TenantProvisioner
         // Tentukan dbName sekali (idempoten)
         $dbName = data_get($job->meta, 'db_name');
         if (!$dbName) {
-            $short  = Str::lower($job->product_code);        // mis. rentvix / tirtabening
+            $short  = Str::lower($job->product_code);        // mis. rentvix / natabanyu
             $suffix = substr(Str::uuid()->toString(), 0, 8); // ab12cd34
             $dbName = "{$short}_{$suffix}";
 
@@ -585,7 +585,7 @@ class TenantProvisioner
      */
     protected function generateUniqueCompanyId(string $productCode): string
     {
-        $prefix = strtoupper(preg_replace('/[^A-Z0-9]/i', '', $productCode)); // RENTVIX / TIRTABENING
+        $prefix = strtoupper(preg_replace('/[^A-Z0-9]/i', '', $productCode)); // RENTVIX / NATABANYU
         for ($i=0; $i<30; $i++) {
             $suffix = (string) random_int(1000, 999999);
             $candidate = "{$prefix}_{$suffix}";
@@ -599,7 +599,7 @@ class TenantProvisioner
 
     /**
      * Bentuk URL app memakai url_template dari manifest (fallback ke deriveAppUrl lama).
-     * url_template contoh: '{base}/tirtabening-{suffix}'
+     * url_template contoh: '{base}/natabanyu-{suffix}'
      */
     protected function deriveAppUrlUsingManifest(array $manifest, string $productCode, string $suffix): string
     {

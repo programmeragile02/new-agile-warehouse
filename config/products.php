@@ -14,8 +14,8 @@ return [
         'url_template' => '{base}/rentvix-{suffix}',
     ],
 
-    'TIRTABENING' => [
-        'name'  => 'Tirta Bening',
+    'NATABANYU' => [
+        'name'  => 'Nata Banyu',
         'stack' => 'next-prisma',
         'paths' => [
             // ROOT folder project Next.js + Prisma
@@ -30,6 +30,6 @@ return [
         'bootstrap' => [
             'script' => 'scripts/bootstrap-tenant.ts'
         ],
-        'url_template' => '{base}/tirtabening-{suffix}',
+        'url_template' => '{base}/natabanyu-{suffix}',
     ],
 ];

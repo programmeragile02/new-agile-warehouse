@@ -126,8 +126,8 @@ export function mapMenuRow(r: any) {
 
 export function productMeta() {
     return {
-        product_code: String(process.env.PRODUCT_CODE ?? "TIRTABENING"),
-        product_name: String(process.env.PRODUCT_NAME ?? "Tirta Bening"),
+        product_code: String(process.env.PRODUCT_CODE ?? "NATABANYU"),
+        product_name: String(process.env.PRODUCT_NAME ?? "Nata Banyu"),
         description: "Water metering & billing.",
         category: "Utilities",
         status: "Active",

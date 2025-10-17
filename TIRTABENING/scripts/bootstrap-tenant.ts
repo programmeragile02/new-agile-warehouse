@@ -12,7 +12,7 @@ function arg(name: string, def: string | null = null) {
 async function main() {
   const prisma = new PrismaClient();
 
-  const companyId  = arg('companyId')!;            // contoh: TIRTABENING_365939
+  const companyId  = arg('companyId')!;            
   let companyPassHash = arg('companyPassHash');     // hash dari Warehouse; boleh kosong
   // const adminUser  = arg('adminUser')!;            
   const adminEmail = arg('adminEmail')!; // masuk ke username

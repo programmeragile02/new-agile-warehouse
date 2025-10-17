@@ -857,7 +857,7 @@ model MstMenu {
 }
 
 /// ======================
-///  Feature Master (Tirta Bening, multi-product ready)
+///  Feature Master (Nata Banyu, multi-product ready)
 /// ======================
 model Feature {
   id              BigInt      @id @default(autoincrement()) @map("id")
@@ -927,7 +927,7 @@ model SupportThread {
   id              String           @id @default(cuid())
   // identitas tenant/produk (opsional jika sudah diisolasi per-DB)
   companyId       String?
-  productCode     String?          // "TIRTABENING" dsb
+  productCode     String?          
 
   topic           String?          @db.VarChar(200)
   status          ThreadStatus     @default(OPEN) // OPEN, PENDING, RESOLVED, CLOSED

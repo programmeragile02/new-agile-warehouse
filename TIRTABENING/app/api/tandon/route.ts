@@ -235,7 +235,7 @@ import { NextResponse } from "next/server";
 const WAREHOUSE_API_BASE =
     process.env.WAREHOUSE_API_BASE || "http://localhost:9000";
 const WAREHOUSE_API_KEY = process.env.WAREHOUSE_API_KEY || "";
-const PRODUCT_CODE = process.env.PRODUCT_CODE || "TIRTABENING";
+const PRODUCT_CODE = process.env.PRODUCT_CODE || "NATABANYU";
 const DEFAULT_MAX_TANDON = Number(process.env.DEFAULT_MAX_TANDON ?? 10);
 
 /* ===================== Helpers kode ===================== */

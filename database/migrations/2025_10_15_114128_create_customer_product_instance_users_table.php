@@ -14,8 +14,8 @@ return new class extends Migration
         Schema::create('customer_product_instance_users', function (Blueprint $table) {
             $table->uuid('id')->primary();
 
-            $table->string('product_code', 64);          // contoh: TIRTABENING
-            $table->string('company_id', 64);            // contoh: TIRTABENING_903048
+            $table->string('product_code', 64);          
+            $table->string('company_id', 64);           
 
             $table->string('email', 191);                // email original (as is)
             $table->string('password_plain', 255)->nullable();

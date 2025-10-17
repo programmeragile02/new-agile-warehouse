@@ -393,7 +393,7 @@ export async function PUT(req: Request, context: { params: { id: string } }) {
     // Sync ke Warehouse kalau ada password baru / perubahan status lain yang relevan
     try {
         const tenant = await getTenantContextOrThrow(
-            process.env.NEXT_PUBLIC_PRODUCT_CODE || "TIRTABENING"
+            process.env.NEXT_PUBLIC_PRODUCT_CODE || "NATABANYU"
         );
 
         if (passwordHash) {
@@ -453,7 +453,7 @@ export async function PATCH(req: Request, context: { params: { id: string } }) {
     // Sync status aktif ke CPIU (best effort)
     try {
         const tenant = await getTenantContextOrThrow(
-            process.env.NEXT_PUBLIC_PRODUCT_CODE || "TIRTABENING"
+            process.env.NEXT_PUBLIC_PRODUCT_CODE || "NATABANYU"
         );
         await warehouseSetCpiuActive({
             email: user.username,
@@ -497,7 +497,7 @@ export async function DELETE(
     // Sinkron: set is_active=false di CPIU (best effort)
     try {
         const tenant = await getTenantContextOrThrow(
-            process.env.NEXT_PUBLIC_PRODUCT_CODE || "TIRTABENING"
+            process.env.NEXT_PUBLIC_PRODUCT_CODE || "NATABANYU"
         );
         await warehouseSetCpiuActive({
             email: user.username,

@@ -92,7 +92,7 @@ export async function resolveTenantAuth(
 export async function resolveLoginByEmail(
     email: string,
     password: string,
-    productCode = process.env.NEXT_PUBLIC_PRODUCT_CODE || "TIRTABENING"
+    productCode = process.env.NEXT_PUBLIC_PRODUCT_CODE || "NATABANYU"
 ): Promise<
     | { ok: true; data: TenantInfo }
     | { ok: false; status: number; message: string }
@@ -160,7 +160,7 @@ export async function syncUserPasswordToWarehouse(params: {
             product_code:
                 params.productCode ||
                 process.env.NEXT_PUBLIC_PRODUCT_CODE ||
-                "TIRTABENING",
+                "NATABANYU",
             email: String(params.email).toLowerCase().trim(),
             new_password: params.newPassword,
             company_id: params.companyId || undefined,

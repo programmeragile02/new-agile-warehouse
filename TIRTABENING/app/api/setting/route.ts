@@ -53,7 +53,7 @@
 //           tglJatuhTempo: 15,
 //           dendaTelatBulanSama: 5000,
 //           dendaTelatBulanBerbeda: 10000,
-//           namaPerusahaan: "Tirta Bening",
+//           namaPerusahaan: "Nata Banyu",
 //           alamat: "",
 //           telepon: "",
 //           email: "",
