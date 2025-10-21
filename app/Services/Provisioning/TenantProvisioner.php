@@ -604,21 +604,8 @@ class TenantProvisioner
     protected function deriveAppUrlUsingManifest(array $manifest, string $productCode, string $suffix): string
     {
         $base = rtrim(config('app.front_app_base', 'https://apps.agile.local'), '/');
-
-        if (!empty($manifest['url_template'])) {
-            $tpl = $manifest['url_template'];
-            $repl = [
-                '{base}'   => $base,
-                '{suffix}' => $suffix,
-                '{slug}'   => strtolower($productCode),
-                '{code}'   => strtoupper($productCode),
-            ];
-            return strtr($tpl, $repl);
-        }
-
-        // fallback gaya lama
-        $slug = strtolower($productCode);
-        return "{$base}/{$slug}-{$suffix}";
+            
+        return $base;
     }
 
     /**

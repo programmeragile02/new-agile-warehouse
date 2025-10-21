@@ -1,8 +1,11 @@
+import { db } from "@/lib/db";
+import { NextResponse } from "next/server";
+
 // app/api/jadwal/options/zona/route.ts
-const prisma = db();
 export const runtime = "nodejs";
 
 export async function GET() {
+  const prisma = await db();
   try {
     const zonas = await prisma.zona.findMany({
       select: { id: true, nama: true },

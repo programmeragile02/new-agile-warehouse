@@ -39,6 +39,6 @@ interface ProductProvisionerDriver
     public function provisionDbUser(string $dbName): array;
 
     /** Flush Previleges User DB */
-    public function hardenPrivileges(string $dbName, string $username): void;
+    // public function hardenPrivileges(string $dbName, string $username): void;
     public function getLastTenantCreds(): ?array; // optional cache
 }

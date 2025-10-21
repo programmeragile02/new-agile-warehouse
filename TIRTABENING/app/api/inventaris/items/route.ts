@@ -4,7 +4,7 @@ import { z } from "zod";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const prisma = await db();
+// const prisma = await db();
 
 const CreateItemSchema = z.object({
   nama: z.string().min(1, "Nama wajib diisi"),
@@ -15,7 +15,9 @@ const CreateItemSchema = z.object({
 const PREFIX = "INV";
 const WIDTH = 4;
 
-async function generateNextKode(tx: typeof prisma) {
+async function generateNextKode(tx: any) {
+  const prisma = await db();
+  tx = typeof prisma;
   const last = await tx.item.findFirst({
     where: { deletedAt: null, kode: { startsWith: PREFIX } },
     orderBy: { kode: "desc" },

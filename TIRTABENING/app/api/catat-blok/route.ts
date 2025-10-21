@@ -3,7 +3,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { addMonths } from "date-fns";
-const prisma = await db();
+// const prisma = await db();
 const NAMA_BULAN = [
   "Januari",
   "Februari",
@@ -30,6 +30,7 @@ const prevYm = (ym: string) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 };
 const tanggalCatatFromSetting = async (ym: string) => {
+  const prisma = await db();
   const { y, m } = ymParts(ym);
   const setting = await prisma.setting
     .findFirst({ where: { id: 1 } })
@@ -43,6 +44,7 @@ const tanggalCatatFromSetting = async (ym: string) => {
 
 // Buat/ambil periode + seed BlokReading utk semua zona di tandon tsb
 async function ensureBlokReadings(periodeYm: string, tandonId: string) {
+  const prisma = await db();
   let periode = await prisma.catatPeriode.findUnique({
     where: { kodePeriode: periodeYm },
   });

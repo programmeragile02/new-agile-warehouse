@@ -1,8 +1,11 @@
+import { db } from "@/lib/db";
+import { NextResponse } from "next/server";
+
 // app/api/jadwal/options/petugas/route.ts
-const prisma = db();
 export const runtime = "nodejs";
 
 export async function GET() {
+const prisma = await db();
   try {
     const users = await prisma.user.findMany({
       where: { role: "PETUGAS" },

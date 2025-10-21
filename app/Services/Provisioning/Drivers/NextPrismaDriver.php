@@ -63,34 +63,36 @@ class NextPrismaDriver implements ProductProvisionerDriver
     public function provisionDbUser(string $dbName): array
     {
         $db   = $this->safeIdent($dbName);
-        $user = 'u_'.Str::lower(Str::random(12));
-        $pass = Str::password(24, true, true, true);
+        $user = env('DB_USERNAME','root');
+        $pass = env('DB_PASSWORD','');
 
         // Escape single-quote di password
         $passQ = str_replace("'", "\\'", $pass);
 
         // Penting: gunakan SINGLE QUOTE utk user & host; JANGAN backtick
         // Dan JANGAN pakai placeholder ? di CREATE USER / GRANT
-        $this->adminConn()->statement("CREATE USER IF NOT EXISTS '{$user}'@'%' IDENTIFIED BY '{$passQ}'");
+        $this->adminConn()->statement("CREATE USER IF NOT EXISTS '{$user}'@'localhost' IDENTIFIED BY '{$passQ}'");
 
         // Saat provisioning: ALL biar migrate/seed lancar
-        $this->adminConn()->statement("GRANT ALL PRIVILEGES ON `{$db}`.* TO '{$user}'@'%'");
+        $this->adminConn()->statement("GRANT ALL PRIVILEGES ON `{$db}`.* TO '{$user}'@'localhost'");
+
+        $this->adminConn()->statement("FLUSH PRIVILEGES");
 
         return $this->lastTenantCreds = ['username'=>$user, 'password'=>$pass];
     }
 
-    public function hardenPrivileges(string $dbName, string $username): void
-    {
-        $db = $this->safeIdent($dbName);
-        $u  = $this->safeIdent($username);
+    // public function hardenPrivileges(string $dbName, string $username): void
+    // {
+    //     $db = $this->safeIdent($dbName);
+    //     $u  = $this->safeIdent($username);
 
-        $this->adminConn()->statement("REVOKE ALL PRIVILEGES, GRANT OPTION FROM '{$u}'@'%'");
-        $this->adminConn()->statement("
-            GRANT SELECT, INSERT, UPDATE, DELETE, EXECUTE, SHOW VIEW,
-                CREATE TEMPORARY TABLES, REFERENCES
-            ON `{$db}`.* TO '{$u}'@'%'
-        ");
-    }
+    //     $this->adminConn()->statement("REVOKE ALL PRIVILEGES, GRANT OPTION FROM '{$u}'@'localhost'");
+    //     $this->adminConn()->statement("
+    //         GRANT SELECT, INSERT, UPDATE, DELETE, EXECUTE, SHOW VIEW,
+    //             CREATE TEMPORARY TABLES, REFERENCES
+    //         ON `{$db}`.* TO '{$u}'@'%'
+    //     ");
+    // }
 
     public function runMigrations(string $dbName, array $manifest): void
     {
@@ -113,7 +115,7 @@ class NextPrismaDriver implements ProductProvisionerDriver
         $this->run(['npx','prisma','db','push', '--accept-data-loss'], $project, ['DATABASE_URL'=>$dbUrl, 'DB_PORT' => '3306',]);
 
         // Hardening privilege untuk runtime
-        $this->hardenPrivileges($dbName, $creds['username']);
+        // $this->hardenPrivileges($dbName, $creds['username']);
 
         // if (!empty($manifest['seed']['use_prisma_seed'])) {
         //     // Prisma default seed (prisma/seed.ts)

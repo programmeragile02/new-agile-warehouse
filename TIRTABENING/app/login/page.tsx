@@ -33,7 +33,7 @@ export default function LoginPage() {
                 </GlassCard>
 
                 <div className="text-center text-sm text-muted-foreground">
-                    © {new Date().getFullYear()} Tirta Banyu. Semua hak
+                    © {new Date().getFullYear()} Nata Banyu. Semua hak
                     dilindungi.
                 </div>
             </div>

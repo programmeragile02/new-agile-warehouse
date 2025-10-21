@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { z } from "zod";
 import { startOfMonth, endOfMonth, parseISO, isValid } from "date-fns";
-const prisma = await db();
+// const prisma = await db();
 
 function monthRange(ym?: string) {
   if (!ym) return {};
@@ -23,12 +23,13 @@ const postSchema = z.object({
 
 /** Upsert & hitung ulang jadwal satu zona untuk satu periode (dalam transaksi) */
 async function upsertJadwalPerZona(
-  trx: typeof prisma,
+  trx: any,
   periodeId: string,
   kodePeriode: string,
   zonaId: string
 ) {
   const prisma = await db();
+  trx = typeof prisma
   // target = jumlah pelanggan aktif di zona
   const [target, progress] = await Promise.all([
     trx.pelanggan.count({
