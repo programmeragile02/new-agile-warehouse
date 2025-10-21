@@ -1,1171 +1,5 @@
 // "use client";
 
-// import {
-//   ArrowLeft,
-//   Menu,
-//   Home,
-//   Users,
-//   ClipboardList,
-//   CreditCard,
-//   Settings,
-//   LogOut,
-//   MapPin,
-//   FileSpreadsheet,
-//   FileText,
-//   CalendarDays,
-//   RotateCcw,
-//   FolderOpen,
-//   BarChart3,
-//   DollarSign,
-//   IdCard,
-//   HistoryIcon,
-//   Phone,
-//   LibraryIcon,
-//   Droplet,
-//   TrendingUp,
-//   FileBarChart,
-//   Grid3X3,
-// } from "lucide-react";
-// import { Button } from "@/components/ui/button";
-// import { useRouter, usePathname } from "next/navigation";
-// import Link from "next/link";
-// import {
-//   DropdownMenu,
-//   DropdownMenuContent,
-//   DropdownMenuItem,
-//   DropdownMenuSeparator,
-//   DropdownMenuTrigger,
-// } from "@/components/ui/dropdown-menu";
-// import {
-//   Breadcrumb,
-//   BreadcrumbItem,
-//   BreadcrumbLink,
-//   BreadcrumbList,
-//   BreadcrumbPage,
-//   BreadcrumbSeparator,
-// } from "@/components/ui/breadcrumb";
-// import { GlassCard } from "./glass-card";
-// import { useToast } from "@/hooks/use-toast";
-// import { useEffect, useMemo, useState } from "react";
-
-// // ===== Role & User-lite =====
-// type Role = "ADMIN" | "OPERATOR" | "PETUGAS" | "WARGA";
-// type LiteUser = { id: string; name: string; role: Role };
-
-// // ===== Menu config (satu sumber kebenaran) =====
-// type MenuItem = {
-//   href: string;
-//   label: string;
-//   icon: React.ComponentType<any>;
-//   roles?: Role[]; // siapa yang boleh lihat
-// };
-
-// // NOTE: rute mengikuti yang sudah kamu pakai saat ini (pengaturan)
-// const MENU_ITEMS: MenuItem[] = [
-//   {
-//     href: "/dashboard",
-//     label: "Dashboard",
-//     icon: Home,
-//     roles: ["ADMIN", "OPERATOR"],
-//   },
-//   {
-//     href: "/warga-dashboard",
-//     label: "Dashboard Warga",
-//     icon: Home,
-//     roles: ["WARGA"],
-//   },
-//   {
-//     href: "/pelanggan",
-//     label: "Pelanggan",
-//     icon: Users,
-//     roles: ["ADMIN", "OPERATOR"],
-//   },
-//   { href: "/zona", label: "Zona", icon: MapPin, roles: ["ADMIN", "OPERATOR"] },
-//   {
-//     href: "/jadwal-pencatatan",
-//     label: "Jadwal Pencatatan",
-//     icon: CalendarDays,
-//     roles: ["ADMIN", "PETUGAS"],
-//   },
-//   {
-//     href: "/catat-meter",
-//     label: "Catat Meter",
-//     icon: ClipboardList,
-//     roles: ["ADMIN", "OPERATOR", "PETUGAS"],
-//   },
-//   {
-//     href: "/laporan-catat-meter",
-//     label: "Laporan Catat Meter",
-//     icon: FileText,
-//     roles: ["ADMIN", "PETUGAS"],
-//   },
-//   {
-//     href: "catat-meter-blok",
-//     label: "Catat Meter Blok",
-//     icon: Grid3X3,
-//     roles: ["ADMIN", "OPERATOR"],
-//   },
-//   // {
-//   //   href: "/pelunasan",
-//   //   label: "Pelunasan",
-//   //   icon: CreditCard,
-//   //   roles: ["ADMIN", "OPERATOR", "WARGA"],
-//   // },
-//   {
-//     href: "/tagihan-pembayaran",
-//     label: "Tagihan & Pembayaran",
-//     icon: FileText,
-//     roles: ["ADMIN", "OPERATOR", "WARGA"],
-//   },
-//   {
-//     href: "/warga-profil",
-//     label: "Profil Warga",
-//     icon: Users,
-//     roles: ["WARGA"],
-//   },
-//   {
-//     href: "/petugas/riwayat",
-//     label: "Riwayat Petugas",
-//     icon: HistoryIcon,
-//     roles: ["PETUGAS"],
-//   },
-//   {
-//     href: "/petugas/profil",
-//     label: "Profil Petugas",
-//     icon: IdCard,
-//     roles: ["PETUGAS"],
-//   },
-//   {
-//     href: "/reset-meteran",
-//     label: "Reset Meteran",
-//     icon: RotateCcw,
-//     roles: ["ADMIN", "OPERATOR"],
-//   },
-//   {
-//     href: "/biaya",
-//     label: "Biaya",
-//     icon: FolderOpen,
-//     roles: ["ADMIN", "OPERATOR"],
-//   },
-//   {
-//     href: "/inventaris",
-//     label: "Inventaris",
-//     icon: LibraryIcon,
-//     roles: ["ADMIN", "OPERATOR", "PETUGAS"],
-//   },
-//   {
-//     href: "/pengeluaran",
-//     label: "Pengeluaran",
-//     icon: CreditCard,
-//     roles: ["ADMIN", "OPERATOR"],
-//   },
-//   {
-//     href: "/hutang",
-//     label: "Hutang",
-//     icon: CreditCard,
-//     roles: ["ADMIN", "OPERATOR"],
-//   },
-//   {
-//     href: "/laporan-summary",
-//     label: "Laporan Summary",
-//     icon: BarChart3,
-//     roles: ["ADMIN", "OPERATOR"],
-//   },
-//   {
-//     href: "/laporan/konsumsi-zona",
-//     label: "Laporan Konsumsi Zona",
-//     icon: Droplet,
-//     roles: ["ADMIN", "OPERATOR"],
-//   },
-//   {
-//     href: "/tools/import-export",
-//     label: "Import/Export",
-//     icon: FileSpreadsheet,
-//     roles: ["ADMIN", "OPERATOR"],
-//   },
-//   {
-//     href: "/laporan-status-pembayaran",
-//     label: "Laporan Status Pembayaran",
-//     icon: FileText,
-//     roles: ["ADMIN"],
-//   },
-//   {
-//     href: "/laporan/laba-rugi",
-//     label: "Laporan Laba & Rugi",
-//     icon: TrendingUp,
-//     roles: ["ADMIN"],
-//   },
-//   {
-//     href: "/laporan/hutang",
-//     label: "Laporan Hutang",
-//     icon: FileBarChart,
-//     roles: ["ADMIN"],
-//   },
-//   {
-//     href: "/laporan/keuangan",
-//     label: "Laporan Keuangan",
-//     icon: DollarSign,
-//     roles: ["ADMIN"],
-//   },
-//   {
-//     href: "/pengaturan",
-//     label: "Pengaturan",
-//     icon: Settings,
-//     roles: ["ADMIN"],
-//   },
-//   {
-//     href: "/whatsapp-setting",
-//     label: "WhatsApp Setting",
-//     icon: Phone,
-//     roles: ["ADMIN"],
-//   },
-// ];
-
-// // untuk breadcrumb
-// const PATH_LABELS: Record<string, string> = {
-//   "/dashboard": "Dashboard",
-//   "/pelanggan": "Pelanggan",
-//   "/zona": "Zona",
-//   "/catat-meter": "Catat Meter",
-//   "/catat-meter-blok": "Catat Meter Blok",
-//   "/jadwal-pencatatan": "Jadwal Pencatatan",
-//   // "/pelunasan": "Pelunasan",
-//   "/tagihan-pembayaran": "Tagihan & Pembayaran",
-//   "/profil-warga": "Profil Warga",
-//   "/petugas/riwayat": "Riwayat Petugas",
-//   "/petugas/profil": "Profil Petugas",
-//   "/reset-meteran": "Reset Meteran",
-//   "/biaya": "Biaya",
-//   "/pengeluaran": "Pengeluaran",
-//   "/hutang": "Hutang",
-//   "/laporan-summary": "Laporan Summary",
-//   "/laporan/konsumsi-zona": "Laporan Konsumsi Zona",
-//   "/laporan-status-pembayaran": "Laporan Status Pembayaran",
-//   "/laporan/laba-rugi": "Laporan Laba & Rugi",
-//   "/laporan/hutang": "Laporan Hutang",
-//   "/laporan/keuangan": "Laporan Keuangan",
-//   "/pengaturan": "Pengaturan",
-//   "/tools/import-export": "Import/Export",
-//   "/login": "Login",
-// };
-
-// interface AppHeaderProps {
-//   title: string;
-//   showBackButton?: boolean;
-//   showBreadcrumb?: boolean;
-// }
-
-// export function AppHeader({
-//   title,
-//   showBackButton = true,
-//   showBreadcrumb = true,
-// }: AppHeaderProps) {
-//   const router = useRouter();
-//   const pathname = usePathname();
-//   const { toast } = useToast();
-
-//   const [user, setUser] = useState<LiteUser | null>(null);
-
-//   // ambil user dari localStorage (hasil login form kamu)
-//   useEffect(() => {
-//     try {
-//       const raw = localStorage.getItem("tb_user");
-//       if (raw) setUser(JSON.parse(raw));
-//     } catch {}
-//   }, []);
-
-//   const role: Role | undefined = user?.role;
-
-//   const visibleMenu = useMemo(() => {
-//     return MENU_ITEMS.filter((m) => {
-//       if (!m.roles || m.roles.length === 0) return true;
-//       if (!role) return false;
-//       return m.roles.includes(role);
-//     });
-//   }, [role]);
-
-//   const handleBack = () => {
-//     if (pathname === "/dashboard") {
-//       router.push("/");
-//     } else {
-//       router.back();
-//     }
-//   };
-
-//   const handleLogout = async () => {
-//     try {
-//       await fetch("/api/auth/logout", { method: "POST" });
-//       toast({
-//         title: "Logout berhasil",
-//         description: "Anda telah keluar dari sistem.",
-//       });
-//     } catch {
-//       toast({
-//         title: "Logout gagal",
-//         description: "Terjadi error, coba lagi.",
-//         variant: "destructive",
-//       });
-//     } finally {
-//       localStorage.removeItem("tb_user");
-//       router.push("/login");
-//     }
-//   };
-
-//   const getBreadcrumbItems = () => {
-//     const items = [{ href: "/dashboard", label: "Dashboard" }];
-//     if (pathname !== "/dashboard") {
-//       const currentLabel = PATH_LABELS[pathname] || title;
-//       items.push({ href: pathname, label: currentLabel });
-//     }
-//     return items;
-//   };
-
-//   return (
-//     <GlassCard className="mb-6 p-4">
-//       <div className="flex items-center justify-between">
-//         <div className="flex items-center gap-4">
-//           {showBackButton && (
-//             <Button
-//               variant="ghost"
-//               size="icon"
-//               onClick={handleBack}
-//               className="shrink-0 hover:bg-white/20"
-//             >
-//               <ArrowLeft className="h-5 w-5" />
-//             </Button>
-//           )}
-
-//           <div className="flex-1">
-//             <h1 className="text-2xl font-bold text-foreground">{title}</h1>
-//             {showBreadcrumb && pathname !== "/dashboard" && (
-//               <Breadcrumb className="mt-1">
-//                 <BreadcrumbList>
-//                   {getBreadcrumbItems().map((item, index, arr) => (
-//                     <div key={item.href} className="flex items-center">
-//                       {index > 0 && <BreadcrumbSeparator />}
-//                       <BreadcrumbItem>
-//                         {index === arr.length - 1 ? (
-//                           <BreadcrumbPage className="text-sm">
-//                             {item.label}
-//                           </BreadcrumbPage>
-//                         ) : (
-//                           <BreadcrumbLink asChild>
-//                             <Link
-//                               href={item.href}
-//                               className="text-sm hover:text-primary"
-//                             >
-//                               {item.label}
-//                             </Link>
-//                           </BreadcrumbLink>
-//                         )}
-//                       </BreadcrumbItem>
-//                     </div>
-//                   ))}
-//                 </BreadcrumbList>
-//               </Breadcrumb>
-//             )}
-//           </div>
-//         </div>
-
-//         {/* Menu Dropdown */}
-//         <DropdownMenu>
-//           <DropdownMenuTrigger asChild>
-//             <Button variant="ghost" size="icon" className="hover:bg-white/20">
-//               <Menu className="h-5 w-5" />
-//             </Button>
-//           </DropdownMenuTrigger>
-//           <DropdownMenuContent
-//             align="end"
-//             className="w-60 bg-white/95 backdrop-blur-md border-white/20"
-//           >
-//             {/* header mini user */}
-//             <div className="px-3 py-2 text-xs text-muted-foreground">
-//               {user ? (
-//                 <>
-//                   Masuk sebagai <b className="text-foreground">{user.name}</b> (
-//                   {user.role})
-//                 </>
-//               ) : (
-//                 "Belum login"
-//               )}
-//             </div>
-
-//             {visibleMenu.map((item) => {
-//               const Icon = item.icon;
-//               return (
-//                 <DropdownMenuItem key={item.href} asChild>
-//                   <Link
-//                     href={item.href}
-//                     className="flex items-center gap-2 cursor-pointer"
-//                   >
-//                     <Icon className="h-4 w-4" />
-//                     <span>{item.label}</span>
-//                   </Link>
-//                 </DropdownMenuItem>
-//               );
-//             })}
-//             <DropdownMenuSeparator />
-//             <DropdownMenuItem
-//               onClick={handleLogout}
-//               className="flex items-center gap-2 cursor-pointer text-red-600"
-//             >
-//               <LogOut className="h-4 w-4" />
-//               <span>Logout</span>
-//             </DropdownMenuItem>
-//           </DropdownMenuContent>
-//         </DropdownMenu>
-//       </div>
-//     </GlassCard>
-//   );
-// }
-
-// "use client";
-
-// import React, { useEffect, useMemo, useState } from "react";
-// import {
-//   ArrowLeft,
-//   Menu,
-//   Home,
-//   Users,
-//   ClipboardList,
-//   CreditCard,
-//   Settings,
-//   LogOut,
-//   MapPin,
-//   FileSpreadsheet,
-//   FileText,
-//   CalendarDays,
-//   RotateCcw,
-//   FolderOpen,
-//   BarChart3,
-//   DollarSign,
-//   IdCard,
-//   HistoryIcon,
-//   Phone,
-//   LibraryIcon,
-//   Droplet,
-//   TrendingUp,
-//   FileBarChart,
-//   ChevronRight,
-//   Droplets,
-//   HandCoins,
-//   Network,
-// } from "lucide-react";
-// import { Button } from "@/components/ui/button";
-// import { useRouter, usePathname } from "next/navigation";
-// import Link from "next/link";
-// import {
-//   DropdownMenu,
-//   DropdownMenuContent,
-//   DropdownMenuItem,
-//   DropdownMenuTrigger,
-// } from "@/components/ui/dropdown-menu";
-// import {
-//   Breadcrumb,
-//   BreadcrumbItem,
-//   BreadcrumbLink,
-//   BreadcrumbList,
-//   BreadcrumbPage,
-//   BreadcrumbSeparator,
-// } from "@/components/ui/breadcrumb";
-// import { GlassCard } from "./glass-card";
-// import { useToast } from "@/hooks/use-toast";
-
-// /* ============== Types ============== */
-// type Role = "ADMIN" | "OPERATOR" | "PETUGAS" | "WARGA";
-// type LiteUser = { id: string; name: string; role: Role };
-
-// type MenuItem = {
-//   href: string;
-//   label: string;
-//   icon: React.ComponentType<any>;
-//   roles?: Role[];
-//   group: "Admin" | "Petugas" | "Warga";
-//   section?: string; // kosong = standalone (contoh: Dashboard)
-// };
-
-// /* ============== Master Menu ============== */
-// const MENU_ITEMS: MenuItem[] = [
-//   {
-//     href: "/dashboard",
-//     label: "Dashboard",
-//     icon: Home,
-//     roles: ["ADMIN", "OPERATOR"],
-//     group: "Admin",
-//   },
-
-//   // Admin > Master
-//   {
-//     href: "/pelanggan",
-//     label: "Pelanggan",
-//     icon: Users,
-//     roles: ["ADMIN", "OPERATOR"],
-//     group: "Admin",
-//     section: "Master",
-//   },
-//   {
-//     href: "/tandon",
-//     label: "Tandon",
-//     icon: Droplet,
-//     roles: ["ADMIN", "OPERATOR"],
-//     group: "Admin",
-//     section: "Master",
-//   },
-//   {
-//     href: "/zona",
-//     label: "Blok",
-//     icon: MapPin,
-//     roles: ["ADMIN", "OPERATOR"],
-//     group: "Admin",
-//     section: "Master",
-//   },
-//   {
-//     href: "/inventaris",
-//     label: "Inventaris",
-//     icon: LibraryIcon,
-//     roles: ["ADMIN", "OPERATOR", "PETUGAS"],
-//     group: "Admin",
-//     section: "Master",
-//   },
-
-//   // Admin > Operasional
-//   {
-//     href: "/jadwal-pencatatan",
-//     label: "Jadwal Pencatatan",
-//     icon: CalendarDays,
-//     roles: ["ADMIN", "PETUGAS"],
-//     group: "Admin",
-//     section: "Operasional",
-//   },
-//   {
-//     href: "/catat-meter",
-//     label: "Catat Meter",
-//     icon: ClipboardList,
-//     roles: ["ADMIN", "OPERATOR", "PETUGAS"],
-//     group: "Admin",
-//     section: "Operasional",
-//   },
-//   {
-//     href: "/catat-tandon",
-//     label: "Catat Meter Tandon",
-//     icon: ClipboardList,
-//     roles: ["ADMIN", "OPERATOR", "PETUGAS"],
-//     group: "Admin",
-//     section: "Meteran",
-//   },
-//   {
-//     href: "/catat-blok",
-//     label: "Catat Meter Blok",
-//     icon: ClipboardList,
-//     roles: ["ADMIN", "OPERATOR", "PETUGAS"],
-//     group: "Admin",
-//     section: "Meteran",
-//   },
-//   {
-//     href: "/reset-meteran",
-//     label: "Reset Meteran",
-//     icon: RotateCcw,
-//     roles: ["ADMIN", "OPERATOR"],
-//     group: "Admin",
-//     section: "Operasional",
-//   },
-
-//   // Admin > Keuangan
-//   {
-//     href: "/tagihan-pembayaran",
-//     label: "Tagihan & Pembayaran",
-//     icon: FileText,
-//     roles: ["ADMIN", "OPERATOR", "WARGA"],
-//     group: "Admin",
-//     section: "Keuangan",
-//   },
-//   {
-//     href: "/biaya",
-//     label: "Biaya",
-//     icon: FolderOpen,
-//     roles: ["ADMIN", "OPERATOR"],
-//     group: "Admin",
-//     section: "Keuangan",
-//   },
-//   {
-//     href: "/pengeluaran",
-//     label: "Pengeluaran",
-//     icon: CreditCard,
-//     roles: ["ADMIN", "OPERATOR"],
-//     group: "Admin",
-//     section: "Keuangan",
-//   },
-//   {
-//     href: "/hutang",
-//     label: "Hutang",
-//     icon: CreditCard,
-//     roles: ["ADMIN", "OPERATOR"],
-//     group: "Admin",
-//     section: "Keuangan",
-//   },
-//   {
-//     href: "/hutang-pembayaran",
-//     label: "Pembayaran Hutang",
-//     icon: HandCoins,
-//     roles: ["ADMIN", "OPERATOR"],
-//     group: "Admin",
-//     section: "Keuangan",
-//   },
-
-//   // Admin > Laporan
-//   {
-//     href: "/laporan-catat-meter",
-//     label: "Laporan Catat Meter",
-//     icon: FileText,
-//     roles: ["ADMIN", "PETUGAS"],
-//     group: "Admin",
-//     section: "Laporan",
-//   },
-//   {
-//     href: "/laporan-summary",
-//     label: "Laporan Summary",
-//     icon: BarChart3,
-//     roles: ["ADMIN", "OPERATOR"],
-//     group: "Admin",
-//     section: "Laporan",
-//   },
-//   {
-//     href: "/laporan/konsumsi-zona",
-//     label: "Laporan Konsumsi Blok",
-//     icon: Droplet,
-//     roles: ["ADMIN", "OPERATOR"],
-//     group: "Admin",
-//     section: "Laporan",
-//   },
-//   {
-//     href: "/laporan-status-pembayaran",
-//     label: "Laporan Status Pembayaran",
-//     icon: FileText,
-//     roles: ["ADMIN"],
-//     group: "Admin",
-//     section: "Laporan",
-//   },
-//   {
-//     href: "/laporan/laba-rugi",
-//     label: "Laporan Laba & Rugi",
-//     icon: TrendingUp,
-//     roles: ["ADMIN"],
-//     group: "Admin",
-//     section: "Laporan",
-//   },
-//   {
-//     href: "/laporan/hutang",
-//     label: "Laporan Hutang",
-//     icon: FileBarChart,
-//     roles: ["ADMIN"],
-//     group: "Admin",
-//     section: "Laporan",
-//   },
-//   {
-//     href: "/laporan/keuangan",
-//     label: "Laporan Keuangan",
-//     icon: DollarSign,
-//     roles: ["ADMIN"],
-//     group: "Admin",
-//     section: "Laporan",
-//   },
-//   {
-//     href: "/laporan/piutang",
-//     label: "Laporan Piutang",
-//     icon: FileText,
-//     roles: ["ADMIN", "OPERATOR"],
-//     group: "Admin",
-//     section: "Laporan",
-//   },
-
-//   // Admin > Distribusi
-//   {
-//     href: "/distribusi/hirarki",
-//     label: "Hirarki",
-//     icon: Network,
-//     roles: ["ADMIN"],
-//     group: "Admin",
-//     section: "Distribusi",
-//   },
-//   {
-//     href: "/distribusi/rekonsiliasi",
-//     label: "Rekonsiliasi",
-//     icon: BarChart3,
-//     roles: ["ADMIN"],
-//     group: "Admin",
-//     section: "Distribusi",
-//   },
-//   {
-//     href: "/distribusi/peta",
-//     label: "Peta Pemakaian Air",
-//     icon: Droplets,
-//     roles: ["ADMIN"],
-//     group: "Admin",
-//     section: "Distribusi",
-//   },
-
-//   // Admin > Pengaturan
-//   {
-//     href: "/pengaturan",
-//     label: "Pengaturan",
-//     icon: Settings,
-//     roles: ["ADMIN"],
-//     group: "Admin",
-//     section: "Pengaturan",
-//   },
-//   {
-//     href: "/whatsapp-setting",
-//     label: "WhatsApp Setting",
-//     icon: Phone,
-//     roles: ["ADMIN"],
-//     group: "Admin",
-//     section: "Pengaturan",
-//   },
-//   // {
-//   //   href: "/tools/import-export",
-//   //   label: "Import/Export",
-//   //   icon: FileSpreadsheet,
-//   //   roles: ["ADMIN", "OPERATOR"],
-//   //   group: "Admin",
-//   //   section: "Pengaturan",
-//   // },
-
-//   // Petugas
-//   {
-//     href: "/petugas/riwayat",
-//     label: "Riwayat Petugas",
-//     icon: HistoryIcon,
-//     roles: ["PETUGAS"],
-//     group: "Petugas",
-//     section: "Operasional",
-//   },
-//   {
-//     href: "/petugas/profil",
-//     label: "Profil Petugas",
-//     icon: IdCard,
-//     roles: ["PETUGAS"],
-//     group: "Petugas",
-//     section: "Akun",
-//   },
-
-//   // Warga
-//   {
-//     href: "/warga-dashboard",
-//     label: "Dashboard Warga",
-//     icon: Home,
-//     roles: ["WARGA"],
-//     group: "Warga",
-//     section: "Beranda",
-//   },
-//   {
-//     href: "/warga-profil",
-//     label: "Profil Warga",
-//     icon: Users,
-//     roles: ["WARGA"],
-//     group: "Warga",
-//     section: "Akun",
-//   },
-// ];
-
-// /* ====== Urutan section & sub menu ====== */
-// const SECTION_ORDER = [
-//   "Master",
-//   "Operasional",
-//   "Meteran",
-//   "Keuangan",
-//   "Laporan",
-//   "Distribusi",
-//   "Pengaturan",
-//   "Petugas",
-// ];
-// const getSectionOrder = (s: string) => {
-//   const i = SECTION_ORDER.indexOf(s);
-//   return i === -1 ? 1000 : i;
-// };
-
-// const SECTION_ITEM_ORDER: Record<string, string[]> = {
-//   Operasional: ["/jadwal-pencatatan", "/catat-meter", "/reset-meteran"],
-//   Master: ["/pelanggan", "/zona", "/inventaris"],
-//   Meteran: ["/catat-tandon", "/catat-blok", "/catat-meter-blok"],
-//   Keuangan: ["/tagihan-pembayaran", "/biaya", "/pengeluaran", "/hutang"],
-//   Laporan: [
-//     "/laporan-catat-meter",
-//     "/laporan-summary",
-//     "/laporan/konsumsi-zona",
-//     "/laporan-status-pembayaran",
-//     "/laporan/laba-rugi",
-//     "/laporan/hutang",
-//     "/laporan/keuangan",
-//     "/laporan/piutang",
-//   ],
-//   distribusi: [
-//     "/distribusi/hirarki",
-//     "/distribusi/rekonsiliasi",
-//     "/distribusi/peta",
-//   ],
-//   Pengaturan: ["/pengaturan", "/whatsapp-setting", "/tools/import-export"],
-// };
-// const getItemOrder = (section: string, href: string) => {
-//   const arr = SECTION_ITEM_ORDER[section];
-//   if (!arr) return 1000;
-//   const idx = arr.indexOf(href);
-//   return idx === -1 ? 900 : idx;
-// };
-
-// /* ============== Breadcrumb Labels ============== */
-// const PATH_LABELS: Record<string, string> = {
-//   "/dashboard": "Dashboard",
-//   "/pelanggan": "Pelanggan",
-//   "/zona": "Blok",
-//   "/jadwal-pencatatan": "Jadwal Pencatatan",
-//   "/catat-meter": "Catat Meter",
-//   "/catat-meter-blok": "Catat Meter Blok",
-//   "/tagihan-pembayaran": "Tagihan & Pembayaran",
-//   "/warga-profil": "Profil Warga",
-//   "/petugas/riwayat": "Riwayat Petugas",
-//   "/petugas/profil": "Profil Petugas",
-//   "/reset-meteran": "Reset Meteran",
-//   "/biaya": "Biaya",
-//   "/pengeluaran": "Pengeluaran",
-//   "/hutang": "Hutang",
-//   "/laporan-summary": "Laporan Summary",
-//   "/laporan/konsumsi-zona": "Laporan Konsumsi Blok",
-//   "/laporan-status-pembayaran": "Laporan Status Pembayaran",
-//   "/laporan/laba-rugi": "Laporan Laba & Rugi",
-//   "/laporan/hutang": "Laporan Hutang",
-//   "/laporan/keuangan": "Laporan Keuangan",
-//   "/laporan-catat-meter": "Laporan Catat Meter",
-//   "/laporan/piutang": "Laporan Piutang",
-//   "/distribusi/hirarki": "Hirarki",
-//   "/distribusi/rekonsiliasi": "Rekonsiliasi",
-//   "/distribusi/peta": "Peta Pemakaian Air",
-//   "/pengaturan": "Pengaturan",
-//   "/tools/import-export": "Import/Export",
-//   "/warga-dashboard": "Dashboard Warga",
-//   "/login": "Login",
-// };
-
-// interface AppHeaderProps {
-//   title: string;
-//   showBackButton?: boolean;
-//   showBreadcrumb?: boolean;
-// }
-
-// export function AppHeader({
-//   title,
-//   showBackButton = true,
-//   showBreadcrumb = true,
-// }: AppHeaderProps) {
-//   const router = useRouter();
-//   const pathname = usePathname();
-//   const { toast } = useToast();
-//   const [user, setUser] = useState<LiteUser | null>(null);
-
-//   useEffect(() => {
-//     try {
-//       const raw = localStorage.getItem("tb_user");
-//       if (raw) setUser(JSON.parse(raw));
-//     } catch {}
-//   }, []);
-
-//   const role: Role | undefined = user?.role;
-
-//   const visibleMenu = useMemo(() => {
-//     return MENU_ITEMS.filter((m) => {
-//       if (!m.roles || m.roles.length === 0) return true;
-//       if (!role) return false;
-//       return m.roles.includes(role);
-//     });
-//   }, [role]);
-
-//   const standaloneAdmin = useMemo(
-//     () =>
-//       visibleMenu
-//         .filter((m) => m.group === "Admin" && !m.section)
-//         .sort((a, b) => a.label.localeCompare(b.label)),
-//     [visibleMenu]
-//   );
-
-//   const adminSections = useMemo(() => {
-//     const map = new Map<string, MenuItem[]>();
-//     for (const item of visibleMenu) {
-//       if (item.group !== "Admin" || !item.section) continue;
-//       if (!map.has(item.section)) map.set(item.section, []);
-//       map.get(item.section)!.push(item);
-//     }
-
-//     return Array.from(map.entries())
-//       .map(([section, items]) => ({
-//         section,
-//         items: items.sort((a, b) => {
-//           const oa = getItemOrder(section, a.href);
-//           const ob = getItemOrder(section, b.href);
-//           if (oa !== ob) return oa - ob;
-//           return a.label.localeCompare(b.label);
-//         }),
-//       }))
-//       .sort((a, b) => {
-//         const oa = getSectionOrder(a.section);
-//         const ob = getSectionOrder(b.section);
-//         if (oa !== ob) return oa - ob;
-//         return a.section.localeCompare(b.section);
-//       });
-//   }, [visibleMenu]);
-
-//   const petugasItems = useMemo(
-//     () =>
-//       visibleMenu
-//         .filter((m) => m.group === "Petugas")
-//         .sort((a, b) => a.label.localeCompare(b.label)),
-//     [visibleMenu]
-//   );
-//   const wargaItems = useMemo(
-//     () =>
-//       visibleMenu
-//         .filter((m) => m.group === "Warga")
-//         .sort((a, b) => a.label.localeCompare(b.label)),
-//     [visibleMenu]
-//   );
-
-//   const [openSections, setOpenSections] = useState<Set<string>>(new Set());
-//   const toggleSection = (sec: string) => {
-//     setOpenSections((prev) => {
-//       const next = new Set(prev);
-//       next.has(sec) ? next.delete(sec) : next.add(sec);
-//       return next;
-//     });
-//   };
-
-//   const handleBack = () => {
-//     if (pathname === "/dashboard") router.push("/");
-//     else router.back();
-//   };
-
-//   const handleLogout = async () => {
-//     try {
-//       await fetch("/api/auth/logout", { method: "POST" });
-//       toast({
-//         title: "Logout berhasil",
-//         description: "Anda telah keluar dari sistem.",
-//       });
-//     } catch {
-//       toast({
-//         title: "Logout gagal",
-//         description: "Terjadi error, coba lagi.",
-//         variant: "destructive",
-//       });
-//     } finally {
-//       localStorage.removeItem("tb_user");
-//       router.push("/login");
-//     }
-//   };
-
-//   const getBreadcrumbItems = () => {
-//     const items = [{ href: "/dashboard", label: "Dashboard" }];
-//     if (pathname !== "/dashboard") {
-//       const currentLabel = PATH_LABELS[pathname] || title;
-//       items.push({ href: pathname, label: currentLabel });
-//     }
-//     return items;
-//   };
-
-//   return (
-//     <GlassCard className="mb-6 p-4">
-//       <div className="flex items-center justify-between">
-//         <div className="flex items-center gap-4">
-//           {showBackButton && (
-//             <Button
-//               variant="ghost"
-//               size="icon"
-//               onClick={handleBack}
-//               className="shrink-0 hover:bg-white/20"
-//             >
-//               <ArrowLeft className="h-5 w-5" />
-//             </Button>
-//           )}
-
-//           <div className="flex-1">
-//             <h1 className="text-2xl font-bold text-foreground">{title}</h1>
-//             {showBreadcrumb && pathname !== "/dashboard" && (
-//               <Breadcrumb className="mt-1">
-//                 <BreadcrumbList>
-//                   {getBreadcrumbItems().map((item, index, arr) => (
-//                     <div key={item.href} className="flex items-center">
-//                       {index > 0 && <BreadcrumbSeparator />}
-//                       <BreadcrumbItem>
-//                         {index === arr.length - 1 ? (
-//                           <BreadcrumbPage className="text-sm">
-//                             {item.label}
-//                           </BreadcrumbPage>
-//                         ) : (
-//                           <BreadcrumbLink asChild>
-//                             <Link
-//                               href={item.href}
-//                               className="text-sm hover:text-primary"
-//                             >
-//                               {item.label}
-//                             </Link>
-//                           </BreadcrumbLink>
-//                         )}
-//                       </BreadcrumbItem>
-//                     </div>
-//                   ))}
-//                 </BreadcrumbList>
-//               </Breadcrumb>
-//             )}
-//           </div>
-//         </div>
-
-//         {/* Dropdown */}
-//         <DropdownMenu>
-//           <DropdownMenuTrigger asChild>
-//             <Button variant="ghost" size="icon" className="hover:bg-white/20">
-//               <Menu className="h-5 w-5" />
-//             </Button>
-//           </DropdownMenuTrigger>
-
-//           {/* HILANGKAN GARIS: border-0 & tanpa Separator */}
-//           <DropdownMenuContent
-//             align="end"
-//             className="w-72 bg-white/95 backdrop-blur-md border-0 shadow-lg rounded-lg p-1"
-//           >
-//             {/* user header */}
-//             <div className="px-3 py-2 text-xs text-muted-foreground">
-//               {user ? (
-//                 <>
-//                   Masuk sebagai <b className="text-foreground">{user.name}</b> (
-//                   {user.role})
-//                 </>
-//               ) : (
-//                 "Belum login"
-//               )}
-//             </div>
-
-//             {/* ADMIN/OPERATOR */}
-//             {(role === "ADMIN" || role === "OPERATOR") && (
-//               <>
-//                 {standaloneAdmin.map((item) => {
-//                   const Icon = item.icon;
-//                   return (
-//                     <DropdownMenuItem
-//                       key={item.href}
-//                       asChild
-//                       className="cursor-pointer rounded-md"
-//                     >
-//                       <Link
-//                         href={item.href}
-//                         className="flex items-center gap-2"
-//                       >
-//                         <Icon className="h-4 w-4" />
-//                         <span>{item.label}</span>
-//                       </Link>
-//                     </DropdownMenuItem>
-//                   );
-//                 })}
-
-//                 {standaloneAdmin.length > 0 && adminSections.length > 0 && (
-//                   <div className="h-1" />
-//                 )}
-
-//                 {adminSections.map(({ section, items }, idx) => (
-//                   <div key={section}>
-//                     <DropdownMenuItem
-//                       className="justify-between font-medium rounded-md"
-//                       onSelect={(e) => e.preventDefault()}
-//                       onClick={() => toggleSection(section)}
-//                     >
-//                       <span>{section}</span>
-//                       <ChevronRight
-//                         className={`h-4 w-4 transition-transform ${
-//                           openSections.has(section) ? "rotate-90" : ""
-//                         }`}
-//                       />
-//                     </DropdownMenuItem>
-
-//                     {openSections.has(section) && (
-//                       <div className="py-1">
-//                         {items.map((item) => {
-//                           const Icon = item.icon;
-//                           return (
-//                             <DropdownMenuItem
-//                               key={item.href}
-//                               asChild
-//                               className="pl-6 pr-2 py-2 rounded-md"
-//                             >
-//                               <Link
-//                                 href={item.href}
-//                                 className="flex items-center gap-2 cursor-pointer"
-//                               >
-//                                 <Icon className="h-4 w-4" />
-//                                 <span>{item.label}</span>
-//                               </Link>
-//                             </DropdownMenuItem>
-//                           );
-//                         })}
-//                       </div>
-//                     )}
-
-//                     {idx < adminSections.length - 1 && <div className="h-1" />}
-//                   </div>
-//                 ))}
-//               </>
-//             )}
-
-//             {/* PETUGAS */}
-//             {role === "PETUGAS" &&
-//               petugasItems.map((item) => {
-//                 const Icon = item.icon;
-//                 return (
-//                   <DropdownMenuItem
-//                     key={item.href}
-//                     asChild
-//                     className="cursor-pointer rounded-md"
-//                   >
-//                     <Link href={item.href} className="flex items-center gap-2">
-//                       <Icon className="h-4 w-4" />
-//                       <span>{item.label}</span>
-//                     </Link>
-//                   </DropdownMenuItem>
-//                 );
-//               })}
-
-//             {/* WARGA */}
-//             {role === "WARGA" &&
-//               wargaItems.map((item) => {
-//                 const Icon = item.icon;
-//                 return (
-//                   <DropdownMenuItem
-//                     key={item.href}
-//                     asChild
-//                     className="cursor-pointer rounded-md"
-//                   >
-//                     <Link href={item.href} className="flex items-center gap-2">
-//                       <Icon className="h-4 w-4" />
-//                       <span>{item.label}</span>
-//                     </Link>
-//                   </DropdownMenuItem>
-//                 );
-//               })}
-
-//             <div className="h-1" />
-
-//             <DropdownMenuItem
-//               onClick={handleLogout}
-//               className="flex items-center gap-2 cursor-pointer text-red-600 rounded-md"
-//             >
-//               <LogOut className="h-4 w-4" />
-//               <span>Logout</span>
-//             </DropdownMenuItem>
-//           </DropdownMenuContent>
-//         </DropdownMenu>
-//       </div>
-//     </GlassCard>
-//   );
-// }
-
-// components/app-header.tsx
-// "use client";
-
 // import React, { useEffect, useMemo, useState } from "react";
 // import {
 //     ArrowLeft,
@@ -1219,7 +53,7 @@
 // const PRODUCT_CODE =
 //     process.env.NEXT_PUBLIC_PRODUCT_CODE ||
 //     process.env.PRODUCT_CODE ||
-//     "TIRTABENING";
+//     "NATABANYU";
 
 // // offering/paket aktif: prioritas cookie (server), fallback localStorage (client), default "basic"
 // function getOfferingClient(): string {
@@ -1270,7 +104,6 @@
 //         roles: ["ADMIN", "OPERATOR"],
 //         group: "Admin",
 //     },
-
 //     // Admin > Master
 //     {
 //         href: "/pelanggan",
@@ -1555,7 +388,7 @@
 // const SECTION_ITEM_ORDER: Record<string, string[]> = {
 //     Operasional: ["/jadwal-pencatatan", "/catat-meter", "/reset-meteran"],
 //     Master: ["/pelanggan", "/zona", "/inventaris"],
-//     Meteran: ["/catat-tandon", "/catat-blok"], // fix: sebelumnya /catat-meter-blok
+//     Meteran: ["/catat-tandon", "/catat-blok"],
 //     Keuangan: ["/tagihan-pembayaran", "/biaya", "/pengeluaran", "/hutang"],
 //     Laporan: [
 //         "/laporan-catat-meter",
@@ -1568,7 +401,6 @@
 //         "/laporan/piutang",
 //     ],
 //     Distribusi: [
-//         // fix: key kapital agar match section
 //         "/distribusi/hirarki",
 //         "/distribusi/rekonsiliasi",
 //         "/distribusi/peta",
@@ -1619,6 +451,8 @@
 //     title: string;
 //     showBackButton?: boolean;
 //     showBreadcrumb?: boolean;
+//     /** ⬅️ Tambahan: bisa sisipkan komponen kecil (mis. tooltip icon) di sebelah judul */
+//     titleExtra?: React.ReactNode;
 // }
 
 // /* ===================== Component ===================== */
@@ -1626,6 +460,7 @@
 //     title,
 //     showBackButton = true,
 //     showBreadcrumb = true,
+//     titleExtra, // ⬅️ new
 // }: AppHeaderProps) {
 //     const router = useRouter();
 //     const pathname = usePathname();
@@ -1641,7 +476,7 @@
 //     }, []);
 //     const role: Role | undefined = user?.role;
 
-//     // Offering state (supaya bisa refetch ketika berubah)
+//     // Offering state
 //     const [offering, setOffering] = useState<string>("basic");
 //     useEffect(() => {
 //         setOffering(getOfferingClient());
@@ -1673,7 +508,6 @@
 //                 const json = await res.json().catch(() => ({}));
 
 //                 if (!res.ok || json?.ok === false) {
-//                     // FAIL-OPEN (biarkan semua menu tampil bila upstream error)
 //                     if (!cancelled) {
 //                         setAllowedPaths(null);
 //                         setMatrixLoaded(true);
@@ -1700,7 +534,7 @@
 //                 }
 //             } catch {
 //                 if (!cancelled) {
-//                     setAllowedPaths(null); // FAIL-OPEN; untuk fail-closed → set to new Set()
+//                     setAllowedPaths(null); // FAIL-OPEN
 //                     setMatrixLoaded(true);
 //                 }
 //             }
@@ -1708,21 +542,17 @@
 //         return () => {
 //             cancelled = true;
 //         };
-//     }, [offering]); // << refetch ketika offering berubah
+//     }, [offering]);
 
 //     // Filter by role + matrix
 //     const visibleMenu = useMemo(() => {
-//         // filter role
 //         let base = MENU_ITEMS.filter((m) => {
 //             if (!m.roles || m.roles.length === 0) return true;
 //             if (!role) return false;
 //             return m.roles.includes(role);
 //         });
 
-//         // matrix belum siap → jangan hide dulu biar tidak flicker
 //         if (!matrixLoaded) return base;
-
-//         // kalau allowedPaths === null → anggap gagal fetch, biarkan semua tampil
 //         if (allowedPaths === null) return base;
 
 //         const isAllowed = (href: string) => {
@@ -1814,27 +644,8 @@
 //                 variant: "destructive",
 //             });
 //         } finally {
-//             localStorage.removeItem("tb_user"); // opsional
-//             router.push("/login"); // company masih tersimpan (remember device)
-//         }
-//     };
-
-//     const handleLogoutCompany = async () => {
-//         try {
-//             await fetch("/api/auth/logout-company", { method: "DELETE" });
-//             toast({
-//                 title: "Keluar dari Company",
-//                 description: "Anda dapat memilih company lain.",
-//             });
-//         } catch {
-//             toast({
-//                 title: "Gagal keluar company",
-//                 description: "Terjadi error, coba lagi.",
-//                 variant: "destructive",
-//             });
-//         } finally {
-//             localStorage.removeItem("tb_user"); // opsional
-//             router.push("/company-login"); // tenant context direset
+//             localStorage.removeItem("tb_user");
+//             router.push("/login");
 //         }
 //     };
 
@@ -1863,9 +674,17 @@
 //                     )}
 
 //                     <div className="flex-1">
-//                         <h1 className="text-2xl font-bold text-foreground">
-//                             {title}
-//                         </h1>
+//                         {/* Judul + extra (tooltip/icon kecil) */}
+//                         <div className="flex items-center gap-2">
+//                             <h1 className="text-2xl font-bold text-foreground">
+//                                 {title}
+//                             </h1>
+//                             {/* ⬇️ Title extra disisipkan di sini, misalnya tombol Info/Tooltip */}
+//                             {titleExtra ? (
+//                                 <div className="shrink-0">{titleExtra}</div>
+//                             ) : null}
+//                         </div>
+
 //                         {showBreadcrumb && pathname !== "/dashboard" && (
 //                             <Breadcrumb className="mt-1">
 //                                 <BreadcrumbList>
@@ -1934,6 +753,9 @@
 //                             )}
 //                         </div>
 
+//                         {/* …(konten dropdown tetap sama persis)… */}
+//                         {/* Untuk singkatnya, isi menu admin/petugas/warga & logout dibiarkan sama */}
+//                         {/* Standalone Admin */}
 //                         {(role === "ADMIN" || role === "OPERATOR") && (
 //                             <>
 //                                 {standaloneAdmin.map((item) => {
@@ -2023,55 +845,53 @@
 //                         )}
 
 //                         {role === "PETUGAS" &&
-//                             petugasItems.map((item) => {
-//                                 const Icon = item.icon;
-//                                 return (
-//                                     <DropdownMenuItem
-//                                         key={item.href}
-//                                         asChild
-//                                         className="cursor-pointer rounded-md"
-//                                     >
-//                                         <Link
-//                                             href={item.href}
-//                                             className="flex items-center gap-2"
+//                             visibleMenu
+//                                 .filter((m) => m.group === "Petugas")
+//                                 .sort((a, b) => a.label.localeCompare(b.label))
+//                                 .map((item) => {
+//                                     const Icon = item.icon;
+//                                     return (
+//                                         <DropdownMenuItem
+//                                             key={item.href}
+//                                             asChild
+//                                             className="cursor-pointer rounded-md"
 //                                         >
-//                                             <Icon className="h-4 w-4" />
-//                                             <span>{item.label}</span>
-//                                         </Link>
-//                                     </DropdownMenuItem>
-//                                 );
-//                             })}
+//                                             <Link
+//                                                 href={item.href}
+//                                                 className="flex items-center gap-2"
+//                                             >
+//                                                 <Icon className="h-4 w-4" />
+//                                                 <span>{item.label}</span>
+//                                             </Link>
+//                                         </DropdownMenuItem>
+//                                     );
+//                                 })}
 
 //                         {role === "WARGA" &&
-//                             wargaItems.map((item) => {
-//                                 const Icon = item.icon;
-//                                 return (
-//                                     <DropdownMenuItem
-//                                         key={item.href}
-//                                         asChild
-//                                         className="cursor-pointer rounded-md"
-//                                     >
-//                                         <Link
-//                                             href={item.href}
-//                                             className="flex items-center gap-2"
+//                             visibleMenu
+//                                 .filter((m) => m.group === "Warga")
+//                                 .sort((a, b) => a.label.localeCompare(b.label))
+//                                 .map((item) => {
+//                                     const Icon = item.icon;
+//                                     return (
+//                                         <DropdownMenuItem
+//                                             key={item.href}
+//                                             asChild
+//                                             className="cursor-pointer rounded-md"
 //                                         >
-//                                             <Icon className="h-4 w-4" />
-//                                             <span>{item.label}</span>
-//                                         </Link>
-//                                     </DropdownMenuItem>
-//                                 );
-//                             })}
+//                                             <Link
+//                                                 href={item.href}
+//                                                 className="flex items-center gap-2"
+//                                             >
+//                                                 <Icon className="h-4 w-4" />
+//                                                 <span>{item.label}</span>
+//                                             </Link>
+//                                         </DropdownMenuItem>
+//                                     );
+//                                 })}
 
 //                         <div className="h-1" />
 
-//                         {/* <DropdownMenuItem
-//               onClick={handleLogout}
-//               className="flex items-center gap-2 cursor-pointer text-red-600 rounded-md"
-//             >
-//               <LogOut className="h-4 w-4" />
-//               <span>Logout</span>
-//             </DropdownMenuItem> */}
-//                         {/* Logout user saja */}
 //                         <DropdownMenuItem
 //                             onClick={handleLogoutUser}
 //                             className="flex items-center gap-2 cursor-pointer text-red-600 rounded-md"
@@ -2079,15 +899,6 @@
 //                             <LogOut className="h-4 w-4" />
 //                             <span>Logout</span>
 //                         </DropdownMenuItem>
-
-//                         {/* Switch company / Logout company */}
-//                         {/* <DropdownMenuItem
-//                             onClick={handleLogoutCompany}
-//                             className="flex items-center gap-2 cursor-pointer rounded-md"
-//                         >
-//                             <LogOut className="h-4 w-4 rotate-180" />
-//                             <span>Keluar Company / Ganti Company</span>
-//                         </DropdownMenuItem> */}
 //                     </DropdownMenuContent>
 //                 </DropdownMenu>
 //             </div>
@@ -2148,12 +959,27 @@ import { GlassCard } from "./glass-card";
 import { useToast } from "@/hooks/use-toast";
 
 /* ============== ENV & helpers ============== */
-const PRODUCT_CODE =
-    process.env.NEXT_PUBLIC_PRODUCT_CODE ||
-    process.env.PRODUCT_CODE ||
-    "NATABANYU";
 
-// offering/paket aktif: prioritas cookie (server), fallback localStorage (client), default "basic"
+/** DEFAULT OFFERING */
+const DEFAULT_OFFERING =
+    (typeof process !== "undefined" &&
+        (process.env.NEXT_PUBLIC_DEFAULT_OFFERING ??
+            process.env.DEFAULT_OFFERING)) ||
+    "basic";
+
+const PRODUCT_CODE =
+    typeof process !== "undefined"
+        ? process.env.NEXT_PUBLIC_PRODUCT_CODE ||
+          process.env.PRODUCT_CODE ||
+          "NATABANYU"
+        : "NATABANYU";
+
+/** Strict mode (default: true) */
+const MATRIX_STRICT =
+    typeof process !== "undefined" &&
+    (process.env.NEXT_PUBLIC_MATRIX_STRICT ?? "true").toLowerCase() !== "false";
+
+/** Offering getter (client) */
 function getOfferingClient(): string {
     try {
         const cookieMatch = document.cookie
@@ -2168,32 +994,55 @@ function getOfferingClient(): string {
         const v = localStorage.getItem("tb_offering");
         if (v) return v;
     } catch {}
-    return "basic";
+    return DEFAULT_OFFERING || "basic";
 }
 
-// alias path lokal → route_path upstream (kalau tidak 1:1)
+/** Aliases: local -> upstream matrix route */
 const ROUTE_ALIASES: Record<string, string> = {
     "/warga-dashboard": "/warga",
     "/hutang-pembayaran": "/keuangan/pembayaran-hutang",
+    // Tambahkan mapping lain bila backend berbeda nama:
+    // "/catat-blok": "/catat-meter-blok",
+    // "/petugas/profil": "/profil-petugas",
+    // "/petugas/riwayat": "/riwayat-petugas",
 };
 
-// beberapa route yang selalu tampil walau tidak ada di matrix
-const ALWAYS_SHOW = new Set<string>(["/dashboard"]);
+/** Normalisasi path: leading '/', tanpa trailing '/', apply alias */
+function normalizePath(p: string): string {
+    if (!p) return "/";
+    let s = p.trim();
+    if (!s.startsWith("/")) s = "/" + s;
+    if (s.length > 1 && s.endsWith("/")) s = s.slice(0, -1);
+    if (ROUTE_ALIASES[s]) return normalizePath(ROUTE_ALIASES[s]);
+    return s;
+}
+
+/** Selalu tampil */
+const ALWAYS_SHOW = new Set<string>(["/dashboard"].map(normalizePath));
+
+/** Fallback aman untuk PETUGAS (boleh dihapus setelah semua rute tercakup matrix) */
+const PETUGAS_SAFE_ROUTES = new Set(
+    ["/catat-tandon", "/catat-blok", "/petugas/riwayat", "/petugas/profil"].map(
+        normalizePath
+    )
+);
 
 /* ============== Types ============== */
 type Role = "ADMIN" | "OPERATOR" | "PETUGAS" | "WARGA";
 type LiteUser = { id: string; name: string; role: Role };
+
+type GroupName = "Admin" | "Petugas" | "Warga";
 
 type MenuItem = {
     href: string;
     label: string;
     icon: React.ComponentType<any>;
     roles?: Role[];
-    group: "Admin" | "Petugas" | "Warga";
+    group?: GroupName | GroupName[];
     section?: string;
 };
 
-/* ============== Master Menu (produk) ============== */
+/* ============== Menu (data) ============== */
 const MENU_ITEMS: MenuItem[] = [
     {
         href: "/dashboard",
@@ -2202,7 +1051,8 @@ const MENU_ITEMS: MenuItem[] = [
         roles: ["ADMIN", "OPERATOR"],
         group: "Admin",
     },
-    // Admin > Master
+
+    // Master
     {
         href: "/pelanggan",
         label: "Pelanggan",
@@ -2231,18 +1081,18 @@ const MENU_ITEMS: MenuItem[] = [
         href: "/inventaris",
         label: "Inventaris",
         icon: LibraryIcon,
-        roles: ["ADMIN", "OPERATOR", "PETUGAS"],
+        roles: ["ADMIN", "OPERATOR"],
         group: "Admin",
         section: "Master",
     },
 
-    // Admin > Operasional
+    // Operasional
     {
         href: "/jadwal-pencatatan",
         label: "Jadwal Pencatatan",
         icon: CalendarDays,
         roles: ["ADMIN", "PETUGAS"],
-        group: "Admin",
+        group: ["Admin", "Petugas"],
         section: "Operasional",
     },
     {
@@ -2250,15 +1100,17 @@ const MENU_ITEMS: MenuItem[] = [
         label: "Catat Meter",
         icon: ClipboardList,
         roles: ["ADMIN", "OPERATOR", "PETUGAS"],
-        group: "Admin",
+        group: ["Admin", "Petugas"],
         section: "Operasional",
     },
+
+    // Meteran
     {
         href: "/catat-tandon",
         label: "Catat Meter Tandon",
         icon: ClipboardList,
         roles: ["ADMIN", "OPERATOR", "PETUGAS"],
-        group: "Admin",
+        group: ["Admin", "Petugas"],
         section: "Meteran",
     },
     {
@@ -2266,9 +1118,10 @@ const MENU_ITEMS: MenuItem[] = [
         label: "Catat Meter Blok",
         icon: ClipboardList,
         roles: ["ADMIN", "OPERATOR", "PETUGAS"],
-        group: "Admin",
+        group: ["Admin", "Petugas"],
         section: "Meteran",
     },
+
     {
         href: "/reset-meteran",
         label: "Reset Meteran",
@@ -2278,13 +1131,13 @@ const MENU_ITEMS: MenuItem[] = [
         section: "Operasional",
     },
 
-    // Admin > Keuangan
+    // Keuangan
     {
         href: "/tagihan-pembayaran",
         label: "Tagihan & Pembayaran",
         icon: FileText,
         roles: ["ADMIN", "OPERATOR", "WARGA"],
-        group: "Admin",
+        group: ["Admin", "Warga"],
         section: "Keuangan",
     },
     {
@@ -2320,7 +1173,7 @@ const MENU_ITEMS: MenuItem[] = [
         section: "Keuangan",
     },
 
-    // Admin > Laporan
+    // Laporan
     {
         href: "/laporan-catat-meter",
         label: "Laporan Catat Meter",
@@ -2386,7 +1239,7 @@ const MENU_ITEMS: MenuItem[] = [
         section: "Laporan",
     },
 
-    // Admin > Distribusi
+    // Distribusi
     {
         href: "/distribusi/hirarki",
         label: "Hirarki",
@@ -2412,7 +1265,7 @@ const MENU_ITEMS: MenuItem[] = [
         section: "Distribusi",
     },
 
-    // Admin > Pengaturan
+    // Pengaturan
     {
         href: "/pengaturan",
         label: "Pengaturan",
@@ -2477,6 +1330,8 @@ const SECTION_ORDER = [
     "Distribusi",
     "Pengaturan",
     "Petugas",
+    "Warga",
+    "Akun",
 ];
 const getSectionOrder = (s: string) => {
     const i = SECTION_ORDER.indexOf(s);
@@ -2484,7 +1339,12 @@ const getSectionOrder = (s: string) => {
 };
 
 const SECTION_ITEM_ORDER: Record<string, string[]> = {
-    Operasional: ["/jadwal-pencatatan", "/catat-meter", "/reset-meteran"],
+    Operasional: [
+        "/jadwal-pencatatan",
+        "/catat-meter",
+        "/reset-meteran",
+        "/petugas/riwayat",
+    ],
     Master: ["/pelanggan", "/zona", "/inventaris"],
     Meteran: ["/catat-tandon", "/catat-blok"],
     Keuangan: ["/tagihan-pembayaran", "/biaya", "/pengeluaran", "/hutang"],
@@ -2520,6 +1380,8 @@ const PATH_LABELS: Record<string, string> = {
     "/jadwal-pencatatan": "Jadwal Pencatatan",
     "/catat-meter": "Catat Meter",
     "/catat-meter-blok": "Catat Meter Blok",
+    "/catat-tandon": "Catat Meter Tandon",
+    "/catat-blok": "Catat Meter Blok",
     "/tagihan-pembayaran": "Tagihan & Pembayaran",
     "/warga-profil": "Profil Warga",
     "/petugas/riwayat": "Riwayat Petugas",
@@ -2549,23 +1411,27 @@ interface AppHeaderProps {
     title: string;
     showBackButton?: boolean;
     showBreadcrumb?: boolean;
-    /** ⬅️ Tambahan: bisa sisipkan komponen kecil (mis. tooltip icon) di sebelah judul */
     titleExtra?: React.ReactNode;
 }
+
+/* ===================== Helpers for groups ===================== */
+const normalizeGroups = (item: MenuItem): GroupName[] => {
+    const g = item.group ?? "Admin";
+    return Array.isArray(g) ? g : [g];
+};
 
 /* ===================== Component ===================== */
 export function AppHeader({
     title,
     showBackButton = true,
     showBreadcrumb = true,
-    titleExtra, // ⬅️ new
+    titleExtra,
 }: AppHeaderProps) {
     const router = useRouter();
     const pathname = usePathname();
     const { toast } = useToast();
     const [user, setUser] = useState<LiteUser | null>(null);
 
-    // user dari localStorage
     useEffect(() => {
         try {
             const raw = localStorage.getItem("tb_user");
@@ -2574,8 +1440,7 @@ export function AppHeader({
     }, []);
     const role: Role | undefined = user?.role;
 
-    // Offering state
-    const [offering, setOffering] = useState<string>("basic");
+    const [offering, setOffering] = useState<string>(getOfferingClient());
     useEffect(() => {
         setOffering(getOfferingClient());
         const onStorage = (e: StorageEvent) => {
@@ -2590,7 +1455,7 @@ export function AppHeader({
         };
     }, []);
 
-    // Matrix: allowed route_path
+    // allowedPaths: null => non-strict fallback; Set => strict mode aktif
     const [allowedPaths, setAllowedPaths] = useState<Set<string> | null>(null);
     const [matrixLoaded, setMatrixLoaded] = useState(false);
 
@@ -2607,32 +1472,42 @@ export function AppHeader({
 
                 if (!res.ok || json?.ok === false) {
                     if (!cancelled) {
-                        setAllowedPaths(null);
+                        setAllowedPaths(
+                            MATRIX_STRICT ? new Set<string>() : null
+                        );
                         setMatrixLoaded(true);
                     }
                     return;
                 }
 
-                const menus: Array<{
-                    route_path?: string;
-                    is_active?: boolean;
-                }> = json?.data?.menus || json?.menus || [];
+                const menus: Array<{ route_path?: string; is_active?: any }> =
+                    json?.data?.menus || json?.menus || [];
 
                 const s = new Set<string>();
                 for (const m of menus) {
-                    const p = (m?.route_path || "").trim();
-                    if (!p) continue;
-                    if (m.is_active === false) continue;
+                    const p = normalizePath((m?.route_path ?? "").toString());
+                    if (!p || p === "/") continue;
+
+                    // Aktif by default, non-aktif hanya jika eksplisit
+                    const inactive =
+                        m?.is_active === false ||
+                        m?.is_active === 0 ||
+                        m?.is_active === "0" ||
+                        (typeof m?.is_active === "string" &&
+                            m?.is_active.toLowerCase() === "false");
+                    if (inactive) continue;
+
                     s.add(p);
                 }
 
                 if (!cancelled) {
                     setAllowedPaths(s);
                     setMatrixLoaded(true);
+                    // console.debug("[MATRIX] allowedPaths:", Array.from(s));
                 }
-            } catch {
+            } catch (err) {
                 if (!cancelled) {
-                    setAllowedPaths(null); // FAIL-OPEN
+                    setAllowedPaths(MATRIX_STRICT ? new Set<string>() : null);
                     setMatrixLoaded(true);
                 }
             }
@@ -2642,21 +1517,41 @@ export function AppHeader({
         };
     }, [offering]);
 
-    // Filter by role + matrix
+    /* visibleMenu:
+     * 1) filter by role
+     * 2) strict: allow jika exact match atau parent-prefix match
+     */
     const visibleMenu = useMemo(() => {
         let base = MENU_ITEMS.filter((m) => {
-            if (!m.roles || m.roles.length === 0) return true;
+            if (!m.roles || m.roles.length === 0) return false;
             if (!role) return false;
             return m.roles.includes(role);
         });
 
         if (!matrixLoaded) return base;
+
+        // non-strict -> role-based saja
         if (allowedPaths === null) return base;
 
         const isAllowed = (href: string) => {
-            if (ALWAYS_SHOW.has(href)) return true;
-            const upstreamPath = ROUTE_ALIASES[href] || href;
-            return allowedPaths.has(upstreamPath);
+            const local = normalizePath(href);
+            if (ALWAYS_SHOW.has(local)) return true;
+
+            // 1) exact match
+            if (allowedPaths.has(local)) return true;
+
+            // 2) parent-prefix match (contoh: '/petugas/riwayat' lolos kalau '/petugas' ada)
+            const segs = local.split("/").filter(Boolean);
+            for (let i = 1; i < segs.length; i++) {
+                const parent = "/" + segs.slice(0, i).join("/");
+                if (allowedPaths.has(parent)) return true;
+            }
+
+            // 3) fallback aman untuk rute-rute petugas
+            if (role === "PETUGAS" && PETUGAS_SAFE_ROUTES.has(local))
+                return true;
+
+            return false;
         };
 
         base = base.filter((m) => isAllowed(m.href));
@@ -2667,7 +1562,9 @@ export function AppHeader({
     const standaloneAdmin = useMemo(
         () =>
             visibleMenu
-                .filter((m) => m.group === "Admin" && !m.section)
+                .filter(
+                    (m) => normalizeGroups(m).includes("Admin") && !m.section
+                )
                 .sort((a, b) => a.label.localeCompare(b.label)),
         [visibleMenu]
     );
@@ -2675,7 +1572,8 @@ export function AppHeader({
     const adminSections = useMemo(() => {
         const map = new Map<string, MenuItem[]>();
         for (const item of visibleMenu) {
-            if (item.group !== "Admin" || !item.section) continue;
+            if (!normalizeGroups(item).includes("Admin") || !item.section)
+                continue;
             if (!map.has(item.section)) map.set(item.section, []);
             map.get(item.section)!.push(item);
         }
@@ -2698,17 +1596,27 @@ export function AppHeader({
             });
     }, [visibleMenu]);
 
+    // PETUGAS & WARGA
     const petugasItems = useMemo(
         () =>
             visibleMenu
-                .filter((m) => m.group === "Petugas")
+                .filter(
+                    (m) =>
+                        normalizeGroups(m).includes("Petugas") ||
+                        (Array.isArray(m.roles) && m.roles.includes("PETUGAS"))
+                )
                 .sort((a, b) => a.label.localeCompare(b.label)),
         [visibleMenu]
     );
+
     const wargaItems = useMemo(
         () =>
             visibleMenu
-                .filter((m) => m.group === "Warga")
+                .filter(
+                    (m) =>
+                        normalizeGroups(m).includes("Warga") ||
+                        (Array.isArray(m.roles) && m.roles.includes("WARGA"))
+                )
                 .sort((a, b) => a.label.localeCompare(b.label)),
         [visibleMenu]
     );
@@ -2772,12 +1680,10 @@ export function AppHeader({
                     )}
 
                     <div className="flex-1">
-                        {/* Judul + extra (tooltip/icon kecil) */}
                         <div className="flex items-center gap-2">
                             <h1 className="text-2xl font-bold text-foreground">
                                 {title}
                             </h1>
-                            {/* ⬇️ Title extra disisipkan di sini, misalnya tombol Info/Tooltip */}
                             {titleExtra ? (
                                 <div className="shrink-0">{titleExtra}</div>
                             ) : null}
@@ -2836,7 +1742,6 @@ export function AppHeader({
                         align="end"
                         className="w-72 bg-white/95 backdrop-blur-md border-0 shadow-lg rounded-lg p-1"
                     >
-                        {/* user header */}
                         <div className="px-3 py-2 text-xs text-muted-foreground">
                             {user ? (
                                 <>
@@ -2851,8 +1756,6 @@ export function AppHeader({
                             )}
                         </div>
 
-                        {/* …(konten dropdown tetap sama persis)… */}
-                        {/* Untuk singkatnya, isi menu admin/petugas/warga & logout dibiarkan sama */}
                         {/* Standalone Admin */}
                         {(role === "ADMIN" || role === "OPERATOR") && (
                             <>
@@ -2942,51 +1845,47 @@ export function AppHeader({
                             </>
                         )}
 
+                        {/* PETUGAS */}
                         {role === "PETUGAS" &&
-                            visibleMenu
-                                .filter((m) => m.group === "Petugas")
-                                .sort((a, b) => a.label.localeCompare(b.label))
-                                .map((item) => {
-                                    const Icon = item.icon;
-                                    return (
-                                        <DropdownMenuItem
-                                            key={item.href}
-                                            asChild
-                                            className="cursor-pointer rounded-md"
+                            petugasItems.map((item) => {
+                                const Icon = item.icon;
+                                return (
+                                    <DropdownMenuItem
+                                        key={item.href}
+                                        asChild
+                                        className="cursor-pointer rounded-md"
+                                    >
+                                        <Link
+                                            href={item.href}
+                                            className="flex items-center gap-2"
                                         >
-                                            <Link
-                                                href={item.href}
-                                                className="flex items-center gap-2"
-                                            >
-                                                <Icon className="h-4 w-4" />
-                                                <span>{item.label}</span>
-                                            </Link>
-                                        </DropdownMenuItem>
-                                    );
-                                })}
+                                            <Icon className="h-4 w-4" />
+                                            <span>{item.label}</span>
+                                        </Link>
+                                    </DropdownMenuItem>
+                                );
+                            })}
 
+                        {/* WARGA */}
                         {role === "WARGA" &&
-                            visibleMenu
-                                .filter((m) => m.group === "Warga")
-                                .sort((a, b) => a.label.localeCompare(b.label))
-                                .map((item) => {
-                                    const Icon = item.icon;
-                                    return (
-                                        <DropdownMenuItem
-                                            key={item.href}
-                                            asChild
-                                            className="cursor-pointer rounded-md"
+                            wargaItems.map((item) => {
+                                const Icon = item.icon;
+                                return (
+                                    <DropdownMenuItem
+                                        key={item.href}
+                                        asChild
+                                        className="cursor-pointer rounded-md"
+                                    >
+                                        <Link
+                                            href={item.href}
+                                            className="flex items-center gap-2"
                                         >
-                                            <Link
-                                                href={item.href}
-                                                className="flex items-center gap-2"
-                                            >
-                                                <Icon className="h-4 w-4" />
-                                                <span>{item.label}</span>
-                                            </Link>
-                                        </DropdownMenuItem>
-                                    );
-                                })}
+                                            <Icon className="h-4 w-4" />
+                                            <span>{item.label}</span>
+                                        </Link>
+                                    </DropdownMenuItem>
+                                );
+                            })}
 
                         <div className="h-1" />
 

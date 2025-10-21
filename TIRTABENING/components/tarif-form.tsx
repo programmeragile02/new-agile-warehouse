@@ -78,7 +78,9 @@ export function TarifForm() {
                 biayaAdmin: toNumOrNull(form.biayaAdmin),
                 tglJatuhTempo: toNumOrNull(form.tglJatuhTempo),
                 dendaTelatBulanSama: toNumOrNull(form.dendaTelatBulanSama),
-                dendaTelatBulanBerbeda: toNumOrNull(form.dendaTelatBulanBerbeda),
+                dendaTelatBulanBerbeda: toNumOrNull(
+                    form.dendaTelatBulanBerbeda
+                ),
             };
 
             const res = await fetch("/api/setting", {
@@ -132,7 +134,7 @@ export function TarifForm() {
                     inputMode="numeric"
                     value={form.tarifPerM3}
                     onChange={onChange("tarifPerM3")}
-                    placeholder="3000"
+                    // placeholder="3000"
                 />
             </div>
 
@@ -144,7 +146,7 @@ export function TarifForm() {
                     inputMode="numeric"
                     value={form.abonemen}
                     onChange={onChange("abonemen")}
-                    placeholder="10000"
+                    // placeholder="10000"
                 />
             </div>
 
@@ -156,7 +158,7 @@ export function TarifForm() {
                     inputMode="numeric"
                     value={form.biayaAdmin}
                     onChange={onChange("biayaAdmin")}
-                    placeholder="2500"
+                    // placeholder="2500"
                 />
             </div>
 
@@ -168,7 +170,7 @@ export function TarifForm() {
                     inputMode="numeric"
                     value={form.tglJatuhTempo}
                     onChange={onChange("tglJatuhTempo")}
-                    placeholder="15"
+                    // placeholder="15"
                 />
             </div>
 
@@ -180,7 +182,7 @@ export function TarifForm() {
                     inputMode="numeric"
                     value={form.dendaTelatBulanSama}
                     onChange={onChange("dendaTelatBulanSama")}
-                    placeholder="5000"
+                    // placeholder="5000"
                 />
             </div>
 
@@ -192,7 +194,7 @@ export function TarifForm() {
                     inputMode="numeric"
                     value={form.dendaTelatBulanBerbeda}
                     onChange={onChange("dendaTelatBulanBerbeda")}
-                    placeholder="10000"
+                    // placeholder="10000"
                 />
             </div>
 
