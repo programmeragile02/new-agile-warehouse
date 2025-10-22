@@ -420,7 +420,7 @@
 //   }
 // }
 
-// file: app/api/wa/send-tagihan/route.ts  (atau file yang sama seperti yang Anda kirim)
+// app/api/wa/send-tagihan/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import puppeteer from "puppeteer";
 import { randomToken } from "@/lib/auth-utils";
@@ -429,13 +429,13 @@ import { db } from "@/lib/db";
 
 /* ============ Helpers ============ */
 function getAppOrigin(req: NextRequest) {
-    const h = req.headers;
+    const h = (req as any).headers;
     return (
         process.env.APP_ORIGIN ||
         process.env.NEXT_PUBLIC_APP_URL ||
-        h.get("origin") ||
-        `${h.get("x-forwarded-proto") || "http"}://${
-            h.get("x-forwarded-host") || h.get("host") || ""
+        (h && h.get("origin")) ||
+        `${h && (h.get("x-forwarded-proto") || "http")}://${
+            (h && (h.get("x-forwarded-host") || h.get("host"))) || ""
         }`
     )?.replace(/\/$/, "");
 }
@@ -611,10 +611,10 @@ async function sendWaAndLog(tujuanRaw: string, text: string) {
         .finally(() => clearTimeout(t));
 }
 
-/* ==================== sendWaImageAndLog (DIPERBAIKI) ==================== */
+/* ==================== sendWaImageAndLog (robust, no-typing) ==================== */
 /**
- * sekarang menerima forwardHeaders agar kita bisa meneruskan cookie (tb_company, tb_token, dll)
- * forwardHeaders contoh: { cookie: 'tb_company=..; tb_token=..', 'x-company-id': '...', authorization: 'Bearer ...' }
+ * forwardHeaders: optional headers (cookie, x-company-id, authorization) so the
+ * /print page can detect company/session when rendered by Puppeteer.
  */
 async function sendWaImageAndLog(
     tujuanRaw: string,
@@ -642,22 +642,67 @@ async function sendWaImageAndLog(
         });
         return;
     }
-    try {
-        const browser = await puppeteer.launch({ headless: "new" });
-        const page = await browser.newPage();
 
-        // Forward headers (if ada)
+    let browser: any = null;
+    try {
+        // Common helpful flags for VPS / containers
+        const commonArgs = [
+            "--disable-dev-shm-usage",
+            "--disable-accelerated-2d-canvas",
+            "--disable-gpu",
+            "--no-first-run",
+            "--no-zygote",
+            "--single-process",
+        ];
+
+        const baseLaunch: any = {
+            headless: true,
+            args: [...commonArgs],
+            executablePath: process.env.CHROME_PATH || undefined,
+            timeout: 60_000,
+        };
+
+        // If user set FORCE_PUPPETEER_NO_SANDBOX=1, skip normal attempt and use no-sandbox
+        const forceNoSandbox = !!process.env.FORCE_PUPPETEER_NO_SANDBOX;
+
+        if (!forceNoSandbox) {
+            try {
+                browser = await puppeteer.launch(baseLaunch);
+            } catch (errFirst) {
+                console.error("Puppeteer launch failed (first attempt)", {
+                    err: String((errFirst as any)?.message || errFirst),
+                });
+            }
+        }
+
+        if (!browser) {
+            // fallback with no-sandbox
+            try {
+                browser = await puppeteer.launch({
+                    ...baseLaunch,
+                    args: [
+                        ...baseLaunch.args,
+                        "--no-sandbox",
+                        "--disable-setuid-sandbox",
+                    ],
+                });
+            } catch (errSecond) {
+                console.error("Puppeteer launch failed (no-sandbox fallback)", {
+                    err: String((errSecond as any)?.message || errSecond),
+                });
+                throw errSecond;
+            }
+        }
+
+        const page: any = await browser.newPage();
+
+        // forward headers (best-effort)
         if (forwardHeaders && Object.keys(forwardHeaders).length > 0) {
             try {
-                // set extra http headers
                 await page.setExtraHTTPHeaders(
                     forwardHeaders as Record<string, string>
                 );
-            } catch (e) {
-                // ignore
-            }
-
-            // If cookie header present, set cookies individually (helps SSR read req.cookies)
+            } catch {}
             const cookieHeader =
                 forwardHeaders["cookie"] || forwardHeaders["Cookie"];
             if (cookieHeader) {
@@ -694,25 +739,26 @@ async function sendWaImageAndLog(
             process.env.NEXT_PUBLIC_APP_URL ||
             "http://localhost:3000";
 
-        // navigate to compact print page (the page will read cookies/headers to find company/session)
-        await page.goto(`${origin}/print/tagihan/${tagihanId}?compact=1`, {
-            waitUntil: "networkidle0",
-            timeout: 60_000,
-        });
-
-        // set viewport and white background
+        // viewport scaled for WA image
         await page.setViewport({
             width: 380,
             height: 800,
             deviceScaleFactor: 2,
         });
+
+        // goto print page
+        await page.goto(`${origin}/print/tagihan/${tagihanId}?compact=1`, {
+            waitUntil: "networkidle0",
+            timeout: 60_000,
+        });
+
+        // make background white and clear perf marks
         await page
             .evaluate(() => {
                 try {
                     (document.body as any).style.background = "#ffffff";
                 } catch {}
                 try {
-                    // clear performance marks/measures to avoid negative timestamp issues
                     // @ts-ignore
                     performance.clearMarks?.();
                     // @ts-ignore
@@ -721,24 +767,35 @@ async function sendWaImageAndLog(
             })
             .catch(() => {});
 
-        // wait for element (.paper) best-effort
+        // wait for selectable element if exists (best-effort)
         await page
-            .waitForSelector(".paper", { visible: true, timeout: 20000 })
+            .waitForSelector(".paper", { visible: true, timeout: 20_000 })
             .catch(() => {});
 
         // screenshot
-        const buffer = await page.screenshot({
+        const buffer: Buffer = await page.screenshot({
             type: "jpeg",
             quality: 85,
             fullPage: true,
         });
 
+        // close page + browser
         try {
             await page.close();
         } catch {}
-        await browser.close();
+        try {
+            await browser.close();
+        } catch {}
+        browser = null;
 
-        // send to external WA sender
+        // send base64 to WA sender
+        const base64 = buffer.toString("base64");
+        if (Buffer.byteLength(base64, "base64") > 4_000_000) {
+            console.warn(
+                "Screenshot base64 size is large (>4MB). Consider reducing quality/viewport."
+            );
+        }
+
         const r = await fetch(`${base}/send-image`, {
             method: "POST",
             headers: {
@@ -747,7 +804,7 @@ async function sendWaImageAndLog(
             },
             body: JSON.stringify({
                 to,
-                base64: buffer.toString("base64"),
+                base64,
                 filename: `tagihan-${tagihanId}.jpg`,
                 caption,
                 mimeType: "image/jpeg",
@@ -767,19 +824,27 @@ async function sendWaImageAndLog(
             },
         });
     } catch (e: any) {
+        const errPayload = {
+            to,
+            tagihanId,
+            caption,
+            err: String(e?.stack || e?.message || e),
+        };
+        console.error("sendWaImageAndLog error:", errPayload);
         await prisma.waLog.create({
             data: {
                 tujuan: to,
                 tipe: "TAGIHAN_IMG",
-                payload: JSON.stringify({
-                    to,
-                    tagihanId,
-                    caption,
-                    err: String(e?.message || e),
-                }),
+                payload: JSON.stringify(errPayload),
                 status: "FAILED",
             },
         });
+        // ensure browser closed
+        if (browser) {
+            try {
+                await browser.close();
+            } catch {}
+        }
     }
 }
 
@@ -841,7 +906,7 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // Pastikan ada user WARGA
+        // ensure user WARGA exists
         let userId = t.pelanggan.userId as string | undefined;
         if (!userId) {
             const username =
@@ -865,7 +930,7 @@ export async function POST(req: NextRequest) {
             });
         }
 
-        // Magic link
+        // create magic link
         const token = randomToken(32);
         const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
         await prisma.magicLinkToken.create({
@@ -911,12 +976,9 @@ export async function POST(req: NextRequest) {
                 total: t.totalTagihan,
                 due,
                 tglCatat: t.catatMeter?.updatedAt ?? now,
-            }) +
-            (magicUrl
-                ? `\n\nUnggah bukti pembayaran dengan aman via tautan berikut:\n${magicUrl}`
-                : "");
+            }) + (magicUrl ? `\n\nUnggah bukti pembayaran:\n${magicUrl}` : "");
 
-        // BUILD forwardHeaders from incoming request so the server-side print page can read company/session
+        // forwardHeaders for Puppeteer (so print page can read company/session)
         const forwardHeaders: Record<string, string> = {};
         const cookie = req.headers.get("cookie");
         if (cookie) forwardHeaders["cookie"] = cookie;
@@ -926,7 +988,7 @@ export async function POST(req: NextRequest) {
         const auth = req.headers.get("authorization");
         if (auth) forwardHeaders["authorization"] = auth;
 
-        // Kirim WA teks + gambar ke semua target (lakukan dalam background)
+        // Send text + image (run background)
         (async () => {
             await Promise.allSettled(
                 targets.map((to) => sendWaAndLog(to, text))
@@ -937,7 +999,6 @@ export async function POST(req: NextRequest) {
                 month: "long",
                 year: "numeric",
             })} - ${t.pelanggan?.nama}`;
-            // forwardHeaders diteruskan ke sendWaImageAndLog agar Puppeteer memiliki cookie/context
             await Promise.allSettled(
                 targets.map((to) =>
                     sendWaImageAndLog(to, t.id, caption, forwardHeaders)

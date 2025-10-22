@@ -33,7 +33,7 @@ function getAppOrigin(req: NextRequest | undefined) {
         process.env.APP_ORIGIN ||
         process.env.NEXT_PUBLIC_APP_URL ||
         (h && h.get("origin")) ||
-        `${(h && h.get("x-forwarded-proto")) || "http"}://${
+        `${h && (h.get("x-forwarded-proto") || "http")}://${
             (h && (h.get("x-forwarded-host") || h.get("host"))) || ""
         }`
     )?.replace(/\/$/, "");
@@ -242,8 +242,58 @@ async function sendWaImageAndLog(
         return;
     }
 
+    let browser: puppeteer.Browser | null = null;
     try {
-        const browser = await puppeteer.launch({ headless: "new" });
+        // Prepare launch options (try safe defaults, fallback to no-sandbox if necessary)
+        const commonArgs = [
+            "--disable-dev-shm-usage",
+            "--disable-accelerated-2d-canvas",
+            "--disable-gpu",
+            "--no-first-run",
+            "--no-zygote",
+            "--single-process",
+        ];
+
+        const baseLaunch: any = {
+            headless: true,
+            args: [...commonArgs],
+            executablePath: process.env.CHROME_PATH || undefined,
+            timeout: 60_000,
+        };
+
+        // If environment forces no-sandbox (e.g., for quick workaround), allow it via env var
+        const forceNoSandbox = !!process.env.FORCE_PUPPETEER_NO_SANDBOX;
+
+        // Try normal launch first (unless forced no-sandbox)
+        if (!forceNoSandbox) {
+            try {
+                browser = await puppeteer.launch(baseLaunch);
+            } catch (errFirst) {
+                console.error("Puppeteer launch failed (first attempt)", {
+                    err: String((errFirst as any)?.message || errFirst),
+                });
+            }
+        }
+
+        // If browser still null, retry with no-sandbox fallback
+        if (!browser) {
+            try {
+                browser = await puppeteer.launch({
+                    ...baseLaunch,
+                    args: [
+                        ...baseLaunch.args,
+                        "--no-sandbox",
+                        "--disable-setuid-sandbox",
+                    ],
+                });
+            } catch (errSecond) {
+                console.error("Puppeteer launch failed (no-sandbox fallback)", {
+                    err: String((errSecond as any)?.message || errSecond),
+                });
+                throw errSecond;
+            }
+        }
+
         const page = await browser.newPage();
 
         // Forward headers if available (helps server render know company/session)
@@ -253,10 +303,9 @@ async function sendWaImageAndLog(
                     forwardHeaders as Record<string, string>
                 );
             } catch (e) {
-                // ignore if header set fails
+                // ignore header set fails
             }
 
-            // parse cookie header into page.setCookie entries
             const cookieHeader =
                 forwardHeaders["cookie"] || forwardHeaders["Cookie"];
             if (cookieHeader) {
@@ -293,23 +342,25 @@ async function sendWaImageAndLog(
             process.env.NEXT_PUBLIC_APP_URL ||
             "http://localhost:3000";
 
-        // navigate and render compact print page
+        // viewport scaled for better screenshot on small width (WA image)
         await page.setViewport({
             width: 380,
             height: 800,
             deviceScaleFactor: 2,
         });
 
+        // navigate, with longer timeout
         await page.goto(`${origin}/print/tagihan/${tagihanId}?compact=1`, {
             waitUntil: "networkidle0",
             timeout: 60_000,
         });
 
-        // Best-effort: wait for .paper, clear perf measures, ensure white background
+        // wait for expected element if present (best-effort)
         await page
-            .waitForSelector(".paper", { visible: true, timeout: 20000 })
-            .catch(() => {});
+            .waitForSelector(".paper", { visible: true, timeout: 20_000 })
+            .catch(() => {}); // don't fail if not found
 
+        // Force white background + clear performance marks (best-effort)
         await page
             .evaluate(() => {
                 try {
@@ -324,6 +375,7 @@ async function sendWaImageAndLog(
             })
             .catch(() => {});
 
+        // Try screenshot; if fullPage is too big for memory, you can switch to clip later
         const buffer = await page.screenshot({
             type: "jpeg",
             quality: 85,
@@ -333,9 +385,23 @@ async function sendWaImageAndLog(
         try {
             await page.close();
         } catch {}
-        await browser.close();
 
-        // send to WA sender
+        try {
+            await browser.close();
+        } catch {}
+
+        browser = null;
+
+        // send to WA sender (base64)
+        const base64 = buffer.toString("base64");
+
+        // Optional: log big size
+        if (Buffer.byteLength(base64, "base64") > 4_000_000) {
+            console.warn(
+                "Screenshot base64 size is large (>4MB). Consider reducing quality or viewport."
+            );
+        }
+
         const r = await fetch(`${base}/send-image`, {
             method: "POST",
             headers: {
@@ -344,7 +410,7 @@ async function sendWaImageAndLog(
             },
             body: JSON.stringify({
                 to,
-                base64: buffer.toString("base64"),
+                base64,
                 filename: `tagihan-${tagihanId}.jpg`,
                 caption,
                 mimeType: "image/jpeg",
@@ -364,19 +430,28 @@ async function sendWaImageAndLog(
             },
         });
     } catch (e: any) {
+        // store full error stack/message to DB for debugging
+        const errPayload = {
+            to,
+            tagihanId,
+            caption,
+            err: String(e?.stack || e?.message || e),
+        };
+        console.error("sendWaImageAndLog error:", errPayload);
         await prisma.waLog.create({
             data: {
                 tujuan: to,
                 tipe: "TAGIHAN_IMG",
-                payload: JSON.stringify({
-                    to,
-                    tagihanId,
-                    caption,
-                    err: String(e?.message || e),
-                }),
+                payload: JSON.stringify(errPayload),
                 status: "FAILED",
             },
         });
+        // ensure browser closed on error
+        if (browser) {
+            try {
+                await browser.close();
+            } catch {}
+        }
     }
 }
 
@@ -739,12 +814,19 @@ export async function POST(req: NextRequest) {
                 const auth = req.headers.get("authorization");
                 if (auth) forwardHeaders["authorization"] = auth;
 
+                // send text messages (best-effort, non-blocking)
                 (async () => {
                     await Promise.allSettled(
                         targets.map(async (to) => {
                             try {
                                 await sendWaAndLog(to, text);
-                            } catch {}
+                            } catch (err) {
+                                console.error(
+                                    "sendWaAndLog failed for",
+                                    to,
+                                    String(err)
+                                );
+                            }
                         })
                     );
                     const caption = `Tagihan Air Periode ${new Date(
@@ -764,7 +846,13 @@ export async function POST(req: NextRequest) {
                                     caption,
                                     forwardHeaders
                                 );
-                            } catch {}
+                            } catch (err) {
+                                console.error(
+                                    "sendWaImageAndLog failed for",
+                                    to,
+                                    String(err)
+                                );
+                            }
                         })
                     );
                 })();
