@@ -354,11 +354,24 @@ export async function PUT(req: Request, context: { params: { id: string } }) {
         phone?: string | null;
     };
 
+    // Ambil tenant lebih awal untuk verifikasi multi-tenant
+    const tenant = await getTenantContextOrThrow(
+        process.env.NEXT_PUBLIC_PRODUCT_CODE || "NATABANYU"
+    );
+
     const user = await prisma.user.findUnique({ where: { id } });
     if (!user) {
         return NextResponse.json(
             { message: "User tidak ditemukan" },
             { status: 404 }
+        );
+    }
+
+    // SECURITY: pastikan user milik tenant yang sama
+    if (user.companyId !== tenant.companyId) {
+        return NextResponse.json(
+            { ok: false, message: "Tidak diizinkan" },
+            { status: 403 }
         );
     }
 
@@ -378,39 +391,40 @@ export async function PUT(req: Request, context: { params: { id: string } }) {
         passwordHash = await bcrypt.hash(password, 10);
     }
 
-    const updated = await prisma.user.update({
-        where: { id },
-        data: {
-            // username tidak diubah
-            passwordHash,
-            name: name ?? undefined,
-            role: role ?? undefined,
-            phone: phone ?? undefined,
-        },
-        select,
-    });
+    let updated;
+    try {
+        updated = await prisma.user.update({
+            where: { id },
+            data: {
+                passwordHash,
+                name: name ?? undefined,
+                role: role ?? undefined,
+                phone: phone ?? undefined,
+            },
+            select,
+        });
+    } catch (err) {
+        console.error("Prisma update error:", err);
+        return NextResponse.json(
+            { ok: false, message: "Gagal memperbarui user" },
+            { status: 500 }
+        );
+    }
 
     // Sync ke Warehouse kalau ada password baru / perubahan status lain yang relevan
     try {
-        const tenant = await getTenantContextOrThrow(
-            process.env.NEXT_PUBLIC_PRODUCT_CODE || "NATABANYU"
-        );
-
         if (passwordHash) {
             await warehouseUpsertCpiu({
                 email: user.username,
-                companyId: tenant.companyId,
+                companyId: user.companyId!, // pakai companyId dari user (sudah diverifikasi)
                 passwordPlain: password || undefined,
                 passwordHash,
                 isActive: updated.isActive,
             });
-        } else {
-            // Tidak ada password baru => tidak upsert password. Jika ingin syncronize name/phone,
-            // buat endpoint khusus atau modifikasi warehouseUpsertCpiu untuk menerima perubahan non-password.
         }
     } catch (e) {
         console.error("CPIU upsert (PUT) error:", e);
-        // jangan gagalkan update tenant kalau warehouse down — cukup log
+        // jangan rollback update tenant; hanya log dan inform ke operator jika perlu
     }
 
     return NextResponse.json(updated);
@@ -425,12 +439,23 @@ export async function PATCH(req: Request, context: { params: { id: string } }) {
         isActive?: boolean;
     };
 
+    const tenant = await getTenantContextOrThrow(
+        process.env.NEXT_PUBLIC_PRODUCT_CODE || "NATABANYU"
+    );
+
     const user = await prisma.user.findUnique({ where: { id } });
     if (!user)
         return NextResponse.json(
             { message: "User tidak ditemukan" },
             { status: 404 }
         );
+
+    if (user.companyId !== tenant.companyId) {
+        return NextResponse.json(
+            { ok: false, message: "Tidak diizinkan" },
+            { status: 403 }
+        );
+    }
 
     if (
         user.username === "admin" &&
@@ -452,9 +477,6 @@ export async function PATCH(req: Request, context: { params: { id: string } }) {
 
     // Sync status aktif ke CPIU (best effort)
     try {
-        const tenant = await getTenantContextOrThrow(
-            process.env.NEXT_PUBLIC_PRODUCT_CODE || "NATABANYU"
-        );
         await warehouseSetCpiuActive({
             email: user.username,
             companyId: tenant.companyId,
@@ -474,12 +496,22 @@ export async function DELETE(
     const prisma = await db();
     const id = context.params.id;
 
+    const tenant = await getTenantContextOrThrow(
+        process.env.NEXT_PUBLIC_PRODUCT_CODE || "NATABANYU"
+    );
+
     const user = await prisma.user.findUnique({ where: { id } });
     if (!user)
         return NextResponse.json(
             { message: "User tidak ditemukan" },
             { status: 404 }
         );
+    if (user.companyId !== tenant.companyId) {
+        return NextResponse.json(
+            { ok: false, message: "Tidak diizinkan" },
+            { status: 403 }
+        );
+    }
     if (user.username === "admin") {
         return NextResponse.json(
             { message: 'User "admin" tidak boleh dihapus' },
@@ -488,17 +520,23 @@ export async function DELETE(
     }
 
     // Soft delete + nonaktif
-    const deleted = await prisma.user.update({
-        where: { id },
-        data: { deletedAt: new Date(), isActive: false },
-        select,
-    });
+    let deleted;
+    try {
+        deleted = await prisma.user.update({
+            where: { id },
+            data: { deletedAt: new Date(), isActive: false },
+            select,
+        });
+    } catch (err) {
+        console.error("Prisma soft-delete error:", err);
+        return NextResponse.json(
+            { ok: false, message: "Gagal menghapus user" },
+            { status: 500 }
+        );
+    }
 
     // Sinkron: set is_active=false di CPIU (best effort)
     try {
-        const tenant = await getTenantContextOrThrow(
-            process.env.NEXT_PUBLIC_PRODUCT_CODE || "NATABANYU"
-        );
         await warehouseSetCpiuActive({
             email: user.username,
             companyId: tenant.companyId,

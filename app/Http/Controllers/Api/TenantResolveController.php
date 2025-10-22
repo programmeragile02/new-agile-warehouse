@@ -55,65 +55,95 @@ class TenantResolveController extends Controller
             usleep(180 * 1000);
             return response()->json(['ok'=>false,'error'=>'USER_NOT_FOUND'], 404);
         }
-        if ($rows->count() > 1) {
-            // Harusnya tidak terjadi karena uq_cpiu_prod_email
-            return response()->json(['ok'=>false,'error'=>'DUPLICATE_EMAIL_CONFLICT'], 409);
-        }
 
-        $r = $rows->first();
+        // Optional: if client provided company_id, prefer / filter by it
+        $filterCompanyId = trim((string)$req->input('company_id', ''));
 
-        // === VERIFIKASI AMAN ===
-        $ok = false;
-        $hash = (string)($r->password_hash ?? '');
-        $plainStored = (string)($r->password_plain ?? '');
+        // Collect candidate rows (array)
+        $candidates = $rows->values()->all(); // collection -> array of stdClass
 
-        // 1) Jika ada hash: periksa apakah kelihatan BCRYPT (cek prefix / password_get_info)
-        if ($hash !== '') {
-            $info = password_get_info($hash);
-            $algoName = $info['algoName'] ?? '';
-
-            // aturan sederhana: terima jika algoName == 'bcrypt' atau prefix $2y$/$2a$/$2b$
-            $looksLikeBcrypt = $algoName === 'bcrypt' ||
-                str_starts_with($hash, '$2y$') ||
-                str_starts_with($hash, '$2a$') ||
-                str_starts_with($hash, '$2b$');
-
-            if ($looksLikeBcrypt) {
-                try {
-                    $ok = Hash::check($pass, $hash);
-                } catch (\Throwable $e) {
-                    // proteksi tambahan: kalau Hash::check melempar, jadikan false dan fallback ke plaintext
-                    $ok = false;
-                }
-            } else {
-                // hash ada tapi bukan bcrypt → jangan panggil Hash::check() (unsafe)
-                $ok = false;
+        // If company_id given, filter candidates
+        if ($filterCompanyId !== '') {
+            $candidates = array_values(array_filter($candidates, function ($x) use ($filterCompanyId) {
+                return (string)$x->company_id === $filterCompanyId;
+            }));
+            if (count($candidates) === 0) {
+                // no candidate for that company
+                usleep(180 * 1000);
+                return response()->json(['ok' => false, 'error' => 'USER_NOT_FOUND'], 404);
             }
         }
 
-        // 2) Fallback ke password_plain (legacy). Jika cocok, lakukan self-heal: buat bcrypt dan simpan.
-        if (!$ok && $plainStored !== '') {
-            // gunakan hash_equals untuk menghindari timing attack
-            if (hash_equals($plainStored, $pass)) {
-                $ok = true;
-                try {
-                    // self-heal: simpan bcrypt agar berikutnya aman
-                    $newHash = Hash::make($pass);
-                    DB::table('customer_product_instance_users')
-                        ->where('product_code', $pc)
-                        ->whereRaw('LOWER(email) = ?', [$email])
-                        ->update(['password_hash' => $newHash, 'updated_at' => now()]);
-                } catch (\Throwable $e) {
-                    // logging tapi jangan gagal login karena self-heal gagal
-                    \Log::warning('CPIU self-heal failed', ['email'=>$email,'err'=>$e->getMessage()]);
+        // Now iterate candidates and check password for each
+        $matches = [];
+        foreach ($candidates as $r) {
+            $ok = false;
+            $hash = (string)($r->password_hash ?? '');
+            $plainStored = (string)($r->password_plain ?? '');
+
+            // If hash exists and looks like bcrypt, test it
+            if ($hash !== '') {
+                $info = password_get_info($hash);
+                $algoName = $info['algoName'] ?? '';
+
+                $looksLikeBcrypt = $algoName === 'bcrypt' ||
+                    str_starts_with($hash, '$2y$') ||
+                    str_starts_with($hash, '$2a$') ||
+                    str_starts_with($hash, '$2b$');
+
+                if ($looksLikeBcrypt) {
+                    try {
+                        if (Hash::check($pass, $hash)) {
+                            $ok = true;
+                        }
+                    } catch (\Throwable $e) {
+                        $ok = false;
+                    }
                 }
+            }
+
+            // Fallback to plaintext match (legacy)
+            if (!$ok && $plainStored !== '') {
+                if (hash_equals($plainStored, $pass)) {
+                    $ok = true;
+                    // self-heal: create bcrypt if possible (best-effort)
+                    try {
+                        $newHash = Hash::make($pass);
+                        DB::table('customer_product_instance_users')
+                            ->where('product_code', $pc)
+                            ->where('company_id', $r->company_id)
+                            ->whereRaw('LOWER(email) = ?', [$email])
+                            ->update(['password_hash' => $newHash, 'updated_at' => now()]);
+                        // update local variable to reflect new hash if needed
+                        $r->password_hash = $newHash;
+                    } catch (\Throwable $e) {
+                        \Log::warning('CPIU self-heal failed', ['email'=>$email,'company_id'=>$r->company_id,'err'=>$e->getMessage()]);
+                    }
+                }
+            }
+
+            if ($ok) {
+                $matches[] = $r;
             }
         }
 
-        if (!$ok) {
+        // No matches => invalid credentials
+        if (count($matches) === 0) {
             usleep(180 * 1000);
-            return response()->json(['ok'=>false,'error'=>'INVALID_CREDENTIALS'], 401);
+            return response()->json(['ok' => false, 'error' => 'INVALID_CREDENTIALS'], 401);
         }
+
+        // More than one match => ambiguous (conflict)
+        if (count($matches) > 1) {
+            // Option A: return conflict
+            return response()->json(['ok' => false, 'error' => 'DUPLICATE_EMAIL_CONFLICT'], 409);
+
+            // Option B (alternate): auto-resolve by picking latest instance
+            // $r = $matches[0]; // because original query ordered instances by i.created_at desc
+        }
+
+        // Exactly one match: use it
+        $r = $matches[0];
 
         // cek masa berlaku instance
         if (!empty($r->end_date)) {
@@ -300,7 +330,7 @@ class TenantResolveController extends Controller
         $notExpired = true;
         if (!empty($inst->end_date)) {
             // end_date dianggap akhir-hari; jika sudah lewat, dianggap tidak aktif
-            $notExpired = now()->lte(\Carbon\Carbon::parse($inst->end_date)->endOfDay());
+            $notExpired = now()->lte(Carbon::parse($inst->end_date)->endOfDay());
         }
         if (!$isActive || !$notExpired) {
             RateLimiter::hit($rlKey, 60);

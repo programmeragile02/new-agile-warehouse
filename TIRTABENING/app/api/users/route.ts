@@ -217,7 +217,14 @@ export async function POST(req: Request) {
         process.env.NEXT_PUBLIC_PRODUCT_CODE || "TIRTABENING"
     );
 
-    const exists = await prisma.user.findUnique({ where: { username } });
+    const exists = await prisma.user.findFirst({
+        where: {
+            username,
+            companyId: tenant.companyId,
+            deletedAt: null,
+        },
+    });
+
     if (exists) {
         return NextResponse.json(
             { ok: false, message: "Username sudah dipakai" },
@@ -227,18 +234,33 @@ export async function POST(req: Request) {
 
     const passwordHash = await bcrypt.hash(password, 10);
 
-    const created = await prisma.user.create({
-        data: {
-            username,
-            passwordHash,
-            name,
-            role: role ?? "WARGA",
-            phone: phone ?? null,
-            isActive: true,
-            companyId: tenant.companyId, // kaitkan ke tenant
-        },
-        select: userSelect,
-    });
+    let created;
+    try {
+        created = await prisma.user.create({
+            data: {
+                username,
+                passwordHash,
+                name,
+                role: role ?? "WARGA",
+                phone: phone ?? null,
+                isActive: true,
+                companyId: tenant.companyId,
+            },
+            select: userSelect,
+        });
+    } catch (err: any) {
+        // Handle Prisma unique constraint (race condition)
+        if (
+            err instanceof Prisma.PrismaClientKnownRequestError &&
+            err.code === "P2002"
+        ) {
+            return NextResponse.json(
+                { ok: false, message: "Username sudah dipakai" },
+                { status: 409 }
+            );
+        }
+        throw err;
+    }
 
     // Sinkron CPIU (rollback bila gagal)
     try {

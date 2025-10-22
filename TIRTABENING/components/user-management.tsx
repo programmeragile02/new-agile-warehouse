@@ -97,49 +97,63 @@ export function UserManagement() {
       phone: "",
     });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
-    try {
-      if (editingUser) {
-        const res = await fetch(`/api/users/${editingUser.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            username: formData.username,
-            password: formData.password, // boleh kosong -> tidak update
-            name: formData.name,
-            role: formData.role,
-            phone: formData.phone || null,
-          }),
-        });
-        if (!res.ok) throw new Error();
-        toast({ title: "User diperbarui" });
-        setEditingUser(null);
-      } else {
-        const res = await fetch("/api/users", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            username: formData.username,
-            password: formData.password,
-            name: formData.name,
-            role: formData.role,
-            phone: formData.phone || null,
-          }),
-        });
-        if (!res.ok) throw new Error();
-        toast({ title: "User ditambahkan" });
-        setIsAddDialogOpen(false);
-      }
-      resetForm();
-      await fetchUsers();
-    } catch {
-      toast({ title: "Operasi gagal", variant: "destructive" });
-    } finally {
-      setSubmitting(false);
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setSubmitting(true);
+
+  try {
+    const payload = {
+      username: formData.username,
+      // password boleh kosong (backend akan skip update jika kosong)
+      password: formData.password,
+      name: formData.name,
+      role: formData.role,
+      phone: formData.phone || null,
+    };
+
+    const url = editingUser ? `/api/users/${editingUser.id}` : "/api/users";
+    const method = editingUser ? "PUT" : "POST";
+
+    const res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    // Parsing body (safe even jika response kosong, gunakan fallback)
+    const data = await res.json().catch(() => ({} as any));
+
+    if (!res.ok) {
+      // Jika backend kirim message, tampilkan; kalau tidak, tampilkan generic
+      const message =
+        data?.message ||
+        data?.error ||
+        `Coba lagi.`;
+      toast({ title: "Operasi gagal", description: message, variant: "destructive" });
+      return;
     }
-  };
+
+    // sukses
+    toast({ title: data?.message ?? (editingUser ? "User diperbarui" : "User ditambahkan") });
+    if (editingUser) {
+      setEditingUser(null);
+    } else {
+      setIsAddDialogOpen(false);
+    }
+    resetForm();
+    await fetchUsers();
+  } catch (err: any) {
+    // network / unexpected error
+    console.error("handleSubmit error", err);
+    toast({
+      title: "Operasi gagal",
+      description: err?.message ?? "Terjadi kesalahan jaringan atau server.",
+      variant: "destructive",
+    });
+  } finally {
+    setSubmitting(false);
+  }
+};
 
   const handleEdit = (u: UserRow) => {
     setEditingUser(u);

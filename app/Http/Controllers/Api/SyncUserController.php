@@ -62,32 +62,58 @@ class SyncUserController extends Controller
             $hash = Hash::make($plain);
         }
 
-        // Cegah overwrite password jika tidak ada input password
-        $existing = CustomerProductInstanceUser::where('product_code',$product)
-            ->where('email',$email)
-            ->first();
+        // Upsert keyed by product_code + company_id + email
+        $attributes = [
+            'product_code' => $product,
+            'company_id'   => $companyId,
+            'email'        => $email,
+        ];
 
-        if ($existing) {
-            $updates = [
-                'company_id' => $companyId,
-                'is_active'  => $isActive,
-            ];
-            if ($plain !== null) $updates['password_plain'] = $plain;
-            if ($hash  !== null) $updates['password_hash']  = $hash;
+        $values = [
+            'is_active'      => $isActive,
+            // only set password fields if provided to avoid overwriting with null
+        ];
 
-            $existing->fill($updates)->save();
-            $cpiu = $existing;
-        } else {
-            $cpiu = CustomerProductInstanceUser::create([
-                'id'             => (string) Str::uuid(), // amankan jika kolom id tidak auto
-                'product_code'   => $product,
-                'email'          => $email,
-                'company_id'     => $companyId,
-                'password_plain' => $plain,
-                'password_hash'  => $hash,
-                'is_active'      => $isActive,
-            ]);
+        if ($plain !== null) $values['password_plain'] = $plain;
+        if ($hash !== null)  $values['password_hash']  = $hash;
+
+        try {
+            $cpiu = CustomerProductInstanceUser::updateOrCreate($attributes, $values);
+        } catch (\Exception $ex) {
+            // in case unique constraint race or DB error
+            return response()->json([
+                'ok' => false,
+                'message' => 'Failed to upsert user',
+                'error' => $ex->getMessage(),
+            ], 500);
         }
+
+        // // Cegah overwrite password jika tidak ada input password
+        // $existing = CustomerProductInstanceUser::where('product_code',$product)
+        //     ->where('email',$email)
+        //     ->first();
+
+        // if ($existing) {
+        //     $updates = [
+        //         'company_id' => $companyId,
+        //         'is_active'  => $isActive,
+        //     ];
+        //     if ($plain !== null) $updates['password_plain'] = $plain;
+        //     if ($hash  !== null) $updates['password_hash']  = $hash;
+
+        //     $existing->fill($updates)->save();
+        //     $cpiu = $existing;
+        // } else {
+        //     $cpiu = CustomerProductInstanceUser::create([
+        //         'id'             => (string) Str::uuid(), // amankan jika kolom id tidak auto
+        //         'product_code'   => $product,
+        //         'email'          => $email,
+        //         'company_id'     => $companyId,
+        //         'password_plain' => $plain,
+        //         'password_hash'  => $hash,
+        //         'is_active'      => $isActive,
+        //     ]);
+        // }
 
         return response()->json([
             'ok'   => true,
