@@ -494,6 +494,8 @@ function parseClosedBy(info?: string | null): string | null {
 
 // ===== NEW: sum saldo per periode (piutang & kredit terpisah) — hormati CLOSED_BY =====
 async function sumSaldoByPeriode(periode: string) {
+  const prisma = await db();
+
   const rows = await prisma.tagihan.findMany({
     where: { deletedAt: null, periode },
     select: {
