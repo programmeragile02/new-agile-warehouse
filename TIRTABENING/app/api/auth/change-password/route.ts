@@ -94,7 +94,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { verifyPasswordAny, hashPassword } from "@/lib/auth-utils";
 import { decodeCookie } from "@/lib/auth-session";
-import { getTenantContext } from "@/lib/tenant-context"; // ← ambil companyId/productCode dari cookie tb_tenant
+import { getTenantContext } from "@/lib/tenant-context";
 import { syncUserPasswordToWarehouse } from "@/lib/tenant-registry";
 
 export async function POST(req: Request) {

@@ -1,8 +1,9 @@
-// lib/wa-send.ts
-import { prisma } from "@/lib/prisma";
+import { db } from "./db";
 
 /** Kirim WA TEKS + catat log detail respon */
 export async function sendWaAndLog(tujuanRaw: string, text: string) {
+  const prisma = await db();
+
   const to = tujuanRaw.replace(/\D/g, "").replace(/^0/, "62");
   const base = (process.env.WA_SENDER_URL || "").replace(/\/$/, "");
   const apiKey = process.env.WA_SENDER_API_KEY || "";
@@ -61,6 +62,8 @@ export async function sendWaImageAndLog(
   tujuanRaw: string,
   payload: { base64: string; filename: string; caption?: string }
 ) {
+  const prisma = await db();
+
   const to = tujuanRaw.replace(/\D/g, "").replace(/^0/, "62");
   const base = (process.env.WA_SENDER_URL || "").replace(/\/$/, "");
   const apiKey = process.env.WA_SENDER_API_KEY || "";

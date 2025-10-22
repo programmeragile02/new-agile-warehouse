@@ -176,15 +176,8 @@ export default async function KwitansiPage({
     };
 
     return (
-        <html lang="id">
-            <head>
-                <meta charSet="utf-8" />
-                <meta
-                    name="viewport"
-                    content="width=device-width,initial-scale=1"
-                />
-                <title>Kwitansi Pembayaran</title>
-                <style>{`
+        <>
+            <style>{`
 html, body { margin:0; padding:0; height:100%; font-family:"Segoe UI", Roboto, Arial, sans-serif; background:#f5f6f8; color:#0f172a; -webkit-print-color-adjust:exact; }
 #__next > *:not(#kwitansi-root) { display:none !important; }
 #kwitansi-root { width:100%; display:flex; justify-content:center; padding:8px; background:transparent; }
@@ -205,149 +198,134 @@ html, body { margin:0; padding:0; height:100%; font-family:"Segoe UI", Roboto, A
 .muted{ color:#6b7280; font-size:12px; }
 .foot{ text-align:center; color:#6b7280; font-size:12px; padding:14px; border-top:1px solid #e5e7eb; margin-top:auto; }
         `}</style>
-            </head>
-            <body>
-                <div id="kwitansi-root">
-                    <div className="paper">
-                        {/* HEADER */}
-                        <div className="header">
-                            <div className="logo">
-                                <img
-                                    src={data.logoUrl || "/logo.png"}
-                                    alt={`${data.perusahaan} logo`}
-                                    style={{
-                                        width: "100%",
-                                        height: "100%",
-                                        objectFit: "cover",
-                                        display: "block",
-                                    }}
-                                />
-                            </div>
-                            <div className="brand">
-                                <div className="company">{data.perusahaan}</div>
-                                <div className="subtitle">
-                                    {data.alamatPerusahaan}
-                                </div>
-                                <div className="subtitle">
-                                    No. {data.nomorKwitansi}
-                                </div>
-                            </div>
+            <div id="kwitansi-root">
+                <div className="paper">
+                    {/* HEADER */}
+                    <div className="header">
+                        <div className="logo">
+                            <img
+                                src={data.logoUrl || "/logo.png"}
+                                alt={`${data.perusahaan} logo`}
+                                style={{
+                                    width: "100%",
+                                    height: "100%",
+                                    objectFit: "cover",
+                                    display: "block",
+                                }}
+                            />
                         </div>
-
-                        {/* TITLE */}
-                        <h1 className="text-center mt-2 font-semibold text-xl">
-                            Kwitansi Pembayaran
-                        </h1>
-
-                        {/* CUSTOMER */}
-                        <div className="section">
-                            <div className="card">
-                                <div className="row">
-                                    <div className="key">Nama Pelanggan</div>
-                                    <div className="val">
-                                        {data.pelangganNama}
-                                    </div>
-                                </div>
-                                <div className="row">
-                                    <div className="key">Kode Pelanggan</div>
-                                    <div className="val">
-                                        {data.pelangganKode}
-                                    </div>
-                                </div>
-                                <div className="row">
-                                    <div className="key">Alamat</div>
-                                    <div
-                                        className="val"
-                                        style={{
-                                            maxWidth: "56%",
-                                            whiteSpace: "pre-wrap",
-                                        }}
-                                    >
-                                        {data.alamat || "-"}
-                                    </div>
-                                </div>
+                        <div className="brand">
+                            <div className="company">{data.perusahaan}</div>
+                            <div className="subtitle">
+                                {data.alamatPerusahaan}
                             </div>
-
-                            {/* BILLING INFO */}
-                            <div className="card">
-                                <div className="row">
-                                    <div className="key">Periode Tagihan</div>
-                                    <div className="val">{data.periode}</div>
-                                </div>
-                                <div className="row">
-                                    <div className="key">
-                                        Tanggal Pembayaran
-                                    </div>
-                                    <div className="val">
-                                        {data.tanggalBayar}
-                                    </div>
-                                </div>
-                                <div className="row">
-                                    <div className="key">Metode</div>
-                                    <div className="val">{data.metode}</div>
-                                </div>
+                            <div className="subtitle">
+                                No. {data.nomorKwitansi}
                             </div>
-
-                            {/* AMOUNTS */}
-                            <div className="card">
-                                <div className="row">
-                                    <div className="key">Total Tagihan</div>
-                                    <div className="val">
-                                        {data.totalTagihan}
-                                    </div>
-                                </div>
-                                <div className="row">
-                                    <div className="key">Jumlah Dibayar</div>
-                                    <div className="val">
-                                        {data.jumlahBayar}
-                                    </div>
-                                </div>
-                                <div className="row">
-                                    <div className="key">Status</div>
-                                    <div className="val">
-                                        <span className="badge">
-                                            {data.statusText ?? "LUNAS"}
-                                        </span>
-                                    </div>
-                                </div>
-                                {data.keterangan ? (
-                                    <>
-                                        <div className="divider" />
-                                        <div
-                                            className="row"
-                                            style={{ alignItems: "flex-start" }}
-                                        >
-                                            <div
-                                                className="key"
-                                                style={{ fontSize: "12px" }}
-                                            >
-                                                Keterangan
-                                            </div>
-                                            <div
-                                                className="val"
-                                                style={{
-                                                    fontWeight: 400,
-                                                    color: "#374151",
-                                                    maxWidth: "60%",
-                                                    textAlign: "right",
-                                                }}
-                                            >
-                                                {data.keterangan}
-                                            </div>
-                                        </div>
-                                    </>
-                                ) : null}
-                            </div>
-                        </div>
-
-                        {/* FOOTER */}
-                        <div className="foot">
-                            Bukti sah pembayaran untuk layanan air bersih.
-                            Simpan dokumen ini untuk arsip Anda.
                         </div>
                     </div>
+
+                    {/* TITLE */}
+                    <h1 className="text-center mt-2 font-semibold text-xl">
+                        Kwitansi Pembayaran
+                    </h1>
+
+                    {/* CUSTOMER */}
+                    <div className="section">
+                        <div className="card">
+                            <div className="row">
+                                <div className="key">Nama Pelanggan</div>
+                                <div className="val">{data.pelangganNama}</div>
+                            </div>
+                            <div className="row">
+                                <div className="key">Kode Pelanggan</div>
+                                <div className="val">{data.pelangganKode}</div>
+                            </div>
+                            <div className="row">
+                                <div className="key">Alamat</div>
+                                <div
+                                    className="val"
+                                    style={{
+                                        maxWidth: "56%",
+                                        whiteSpace: "pre-wrap",
+                                    }}
+                                >
+                                    {data.alamat || "-"}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* BILLING INFO */}
+                        <div className="card">
+                            <div className="row">
+                                <div className="key">Periode Tagihan</div>
+                                <div className="val">{data.periode}</div>
+                            </div>
+                            <div className="row">
+                                <div className="key">Tanggal Pembayaran</div>
+                                <div className="val">{data.tanggalBayar}</div>
+                            </div>
+                            <div className="row">
+                                <div className="key">Metode</div>
+                                <div className="val">{data.metode}</div>
+                            </div>
+                        </div>
+
+                        {/* AMOUNTS */}
+                        <div className="card">
+                            <div className="row">
+                                <div className="key">Total Tagihan</div>
+                                <div className="val">{data.totalTagihan}</div>
+                            </div>
+                            <div className="row">
+                                <div className="key">Jumlah Dibayar</div>
+                                <div className="val">{data.jumlahBayar}</div>
+                            </div>
+                            <div className="row">
+                                <div className="key">Status</div>
+                                <div className="val">
+                                    <span className="badge">
+                                        {data.statusText ?? "LUNAS"}
+                                    </span>
+                                </div>
+                            </div>
+                            {data.keterangan ? (
+                                <>
+                                    <div className="divider" />
+                                    <div
+                                        className="row"
+                                        style={{ alignItems: "flex-start" }}
+                                    >
+                                        <div
+                                            className="key"
+                                            style={{ fontSize: "12px" }}
+                                        >
+                                            Keterangan
+                                        </div>
+                                        <div
+                                            className="val"
+                                            style={{
+                                                fontWeight: 400,
+                                                color: "#374151",
+                                                maxWidth: "60%",
+                                                textAlign: "right",
+                                            }}
+                                        >
+                                            {data.keterangan}
+                                        </div>
+                                    </div>
+                                </>
+                            ) : null}
+                        </div>
+                    </div>
+
+                    {/* FOOTER */}
+                    <div className="foot">
+                        Bukti sah pembayaran untuk layanan air bersih. Simpan
+                        dokumen ini untuk arsip Anda.
+                    </div>
                 </div>
-            </body>
-        </html>
+            </div>
+        </>
     );
 }
