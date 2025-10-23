@@ -37,6 +37,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
 
 type WAStatus = {
     ok: boolean;
@@ -146,6 +147,9 @@ export default function WASettingPage() {
 
     // state tooltip (untuk Dialog di mobile)
     const [openTip, setOpenTip] = useState(false);
+
+    // toast
+    const { toast } = useToast();
 
     // ---- POLLING STATUS & QR ----
     useEffect(() => {
@@ -262,14 +266,27 @@ export default function WASettingPage() {
         try {
             setLoadingLogout(true);
             const r = await fetch("/api/wa/logout", { method: "POST" });
-            const j = await r.json();
+            const j = await r.json().catch(() => ({}));
             if (j?.ok) {
                 setForceRefreshTick((n) => n + 1);
+                toast({
+                    title: "Logout berhasil",
+                    description: "Sesi WhatsApp telah dihapus.",
+                });
             } else {
-                alert("Gagal logout.");
+                toast({
+                    title: "Gagal logout",
+                    description: j?.message || "Terjadi kesalahan saat logout.",
+                    variant: "destructive",
+                });
             }
-        } catch {
-            alert("Gagal logout (network).");
+        } catch (e) {
+            console.error("logout error", e);
+            toast({
+                title: "Network error",
+                description: "Gagal logout (network).",
+                variant: "destructive",
+            });
         } finally {
             setLoadingLogout(false);
         }
@@ -281,14 +298,25 @@ export default function WASettingPage() {
             const r = await fetch("/api/wa/onboard", { method: "POST" });
             const j = await r.json().catch(() => ({}));
             if (!j?.ok) {
-                alert("Gagal create client: " + (j?.message || "unknown"));
+                toast({
+                    title: "Gagal membuat client",
+                    description: j?.message || "unknown",
+                    variant: "destructive",
+                });
                 return;
             }
-            alert("Client dibuat. Silakan scan QR di panel ini jika muncul.");
+            toast({
+                title: "Client dibuat",
+                description: "Silakan scan QR di panel ini jika muncul.",
+            });
             setForceRefreshTick((n) => n + 1);
         } catch (e) {
             console.error("onboard error", e);
-            alert("Onboard gagal (network).");
+            toast({
+                title: "Onboard gagal",
+                description: "Onboard gagal (network).",
+                variant: "destructive",
+            });
         } finally {
             setLoadingOnboard(false);
         }
