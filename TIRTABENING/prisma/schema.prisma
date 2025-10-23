@@ -918,6 +918,11 @@ model MstCompany {
   updated_at     DateTime  @updatedAt
   deleted_at     DateTime?                          // softDeletes
 
+  // ----- WA integration fields (NEW) -----
+  wa_client_id   String?   @db.VarChar(191)
+  wa_server_url  String?   @db.VarChar(255)
+  wa_api_key     String?   @db.VarChar(191)
+
   users      User[]
 
   @@map("mst_company")                              // map ke nama tabel asli

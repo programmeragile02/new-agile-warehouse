@@ -156,25 +156,37 @@ function waText(p: {
     return sections.map((s) => s.replace(/[ \t]+$/g, "")).join("\n\n");
 }
 
-/* ==================== sendWaAndLog (tidak berubah) ==================== */
-async function sendWaAndLog(tujuanRaw: string, text: string) {
+/* ======= helper: resolve clientId ======= */
+async function resolveClientIdForCompany(
+    prismaInstance: any,
+    companyId?: string
+) {
+    if (!companyId) return null;
+    try {
+        const row = await prismaInstance.mstCompany.findUnique({
+            where: { company_id: companyId },
+            select: { wa_client_id: true },
+        });
+        if (row?.wa_client_id) return String(row.wa_client_id);
+    } catch (err) {
+        console.warn("resolveClientIdForCompany error:", String(err));
+    }
+    return `tenant_${companyId}`;
+}
+
+/* ======= sendWaAndLog (tenant-aware, verbose logging of WA-sender response) ======= */
+async function sendWaAndLog(
+    tujuanRaw: string,
+    text: string,
+    companyIdMaybe?: string
+) {
     const prisma = await db();
 
     const to = tujuanRaw.replace(/\D/g, "").replace(/^0/, "62");
     const base = (process.env.WA_SENDER_URL || "").replace(/\/$/, "");
     const apiKey = process.env.WA_SENDER_API_KEY || "";
-    if (!base) {
-        await prisma.waLog.create({
-            data: {
-                tujuan: to,
-                tipe: "TAGIHAN",
-                payload: JSON.stringify({ to, text }),
-                status: "FAILED",
-            },
-        });
-        return;
-    }
-    const url = `${base}/send`;
+
+    // prepare waLog entry first (PENDING)
     const log = await prisma.waLog.create({
         data: {
             tujuan: to,
@@ -183,68 +195,134 @@ async function sendWaAndLog(tujuanRaw: string, text: string) {
             status: "PENDING",
         },
     });
+
+    if (!base) {
+        await prisma.waLog.update({
+            where: { id: log.id },
+            data: {
+                status: "FAILED",
+                payload: JSON.stringify({
+                    to,
+                    text,
+                    err: "WA_SENDER_URL not set",
+                }),
+            },
+        });
+        return { ok: false, reason: "WA_SENDER_URL not set" };
+    }
+
+    // resolve clientId for header
+    let clientId: string | null = null;
+    if (companyIdMaybe) {
+        clientId = await resolveClientIdForCompany(prisma, companyIdMaybe);
+    }
+
+    const url = `${base}/send`;
+    const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        ...(apiKey ? { "x-api-key": apiKey } : {}),
+    };
+    if (clientId) headers["x-client-id"] = clientId;
+
     const ac = new AbortController();
-    const t = setTimeout(() => ac.abort(), 10000);
-    fetch(url, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            ...(apiKey ? { "x-api-key": apiKey } : {}),
-        },
-        body: JSON.stringify({ to, text }),
-        signal: ac.signal,
-    })
-        .then((r) =>
-            prisma.waLog.update({
-                where: { id: log.id },
-                data: { status: r.ok ? "SENT" : "FAILED" },
-            })
-        )
-        .catch(() =>
-            prisma.waLog.update({
-                where: { id: log.id },
-                data: { status: "FAILED" },
-            })
-        )
-        .finally(() => clearTimeout(t));
+    const t = setTimeout(() => ac.abort(), 15000); // 15s timeout for safety
+
+    try {
+        const r = await fetch(url, {
+            method: "POST",
+            headers,
+            body: JSON.stringify({ to, text }),
+            signal: ac.signal,
+        });
+        const bodyText = await r.text().catch(() => "");
+        // try parse json if possible
+        let bodyJson: any = null;
+        try {
+            bodyJson = JSON.parse(bodyText);
+        } catch {}
+
+        await prisma.waLog.update({
+            where: { id: log.id },
+            data: {
+                status: r.ok ? "SENT" : "FAILED",
+                payload: JSON.stringify({
+                    to,
+                    text,
+                    http: {
+                        ok: r.ok,
+                        status: r.status,
+                        bodyText: bodyText.slice(0, 20000),
+                    },
+                    clientId: clientId || null,
+                }),
+            },
+        });
+
+        clearTimeout(t);
+        return { ok: r.ok, status: r.status, body: bodyJson ?? bodyText };
+    } catch (err: any) {
+        clearTimeout(t);
+        const emsg = String(err?.message || err);
+        await prisma.waLog.update({
+            where: { id: log.id },
+            data: {
+                status: "FAILED",
+                payload: JSON.stringify({
+                    to,
+                    text,
+                    err: emsg,
+                    clientId: clientId || null,
+                }),
+            },
+        });
+        return { ok: false, reason: emsg };
+    }
 }
 
-/* ==================== sendWaImageAndLog (DIPERBAIKI) ==================== */
-/**
- * forwardHeaders: optional headers (e.g. cookie, x-company-id, authorization)
- * that allow /print page to detect company/session when rendered by Puppeteer.
- */
+/* ======= sendWaImageAndLog (tenant-aware, verbose logging) ======= */
 async function sendWaImageAndLog(
     tujuanRaw: string,
     tagihanId: string,
     caption?: string,
-    forwardHeaders?: Record<string, string> | undefined
+    forwardHeaders?: Record<string, string> | undefined,
+    companyIdMaybe?: string,
+    bufferMaybe?: Buffer | null // optional, kalau caller punya buffer, bisa pass
 ) {
     const prisma = await db();
 
     const to = tujuanRaw.replace(/\D/g, "").replace(/^0/, "62");
     const base = (process.env.WA_SENDER_URL || "").replace(/\/$/, "");
     const apiKey = process.env.WA_SENDER_API_KEY || "";
+
+    const initialPayload = { to, tagihanId, caption };
+    const log = await prisma.waLog.create({
+        data: {
+            tujuan: to,
+            tipe: "TAGIHAN_IMG",
+            payload: JSON.stringify(initialPayload),
+            status: "PENDING",
+        },
+    });
+
     if (!base) {
-        await prisma.waLog.create({
+        await prisma.waLog.update({
+            where: { id: log.id },
             data: {
-                tujuan: to,
-                tipe: "TAGIHAN_IMG",
-                payload: JSON.stringify({
-                    to,
-                    tagihanId,
-                    caption,
-                    err: "WA_SENDER_URL empty",
-                }),
                 status: "FAILED",
+                payload: JSON.stringify({
+                    ...initialPayload,
+                    err: "WA_SENDER_URL not set",
+                }),
             },
         });
-        return;
+        return { ok: false, reason: "WA_SENDER_URL not set" };
     }
 
+    // Puppeteer + screenshot logic (re-use your previous code)
     let browser: puppeteer.Browser | null = null;
+    let buffer: Buffer | null = null;
     try {
-        // Prepare launch options (try safe defaults, fallback to no-sandbox if necessary)
+        // --- Puppeteer launch (copy your existing safe launch logic) ---
         const commonArgs = [
             "--disable-dev-shm-usage",
             "--disable-accelerated-2d-canvas",
@@ -253,59 +331,37 @@ async function sendWaImageAndLog(
             "--no-zygote",
             "--single-process",
         ];
-
         const baseLaunch: any = {
             headless: true,
             args: [...commonArgs],
             executablePath: process.env.CHROME_PATH || undefined,
             timeout: 60_000,
         };
-
-        // If environment forces no-sandbox (e.g., for quick workaround), allow it via env var
         const forceNoSandbox = !!process.env.FORCE_PUPPETEER_NO_SANDBOX;
-
-        // Try normal launch first (unless forced no-sandbox)
         if (!forceNoSandbox) {
             try {
                 browser = await puppeteer.launch(baseLaunch);
-            } catch (errFirst) {
-                console.error("Puppeteer launch failed (first attempt)", {
-                    err: String((errFirst as any)?.message || errFirst),
-                });
-            }
+            } catch {}
         }
-
-        // If browser still null, retry with no-sandbox fallback
         if (!browser) {
-            try {
-                browser = await puppeteer.launch({
-                    ...baseLaunch,
-                    args: [
-                        ...baseLaunch.args,
-                        "--no-sandbox",
-                        "--disable-setuid-sandbox",
-                    ],
-                });
-            } catch (errSecond) {
-                console.error("Puppeteer launch failed (no-sandbox fallback)", {
-                    err: String((errSecond as any)?.message || errSecond),
-                });
-                throw errSecond;
-            }
+            browser = await puppeteer.launch({
+                ...baseLaunch,
+                args: [
+                    ...baseLaunch.args,
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox",
+                ],
+            });
         }
 
         const page = await browser.newPage();
-
-        // Forward headers if available (helps server render know company/session)
+        // forward headers / cookies (optional)
         if (forwardHeaders && Object.keys(forwardHeaders).length > 0) {
             try {
                 await page.setExtraHTTPHeaders(
                     forwardHeaders as Record<string, string>
                 );
-            } catch (e) {
-                // ignore header set fails
-            }
-
+            } catch {}
             const cookieHeader =
                 forwardHeaders["cookie"] || forwardHeaders["Cookie"];
             if (cookieHeader) {
@@ -337,77 +393,100 @@ async function sendWaImageAndLog(
             }
         }
 
-        const origin =
-            process.env.APP_ORIGIN ||
-            process.env.NEXT_PUBLIC_APP_URL ||
-            "http://localhost:3000";
-
-        // viewport scaled for better screenshot on small width (WA image)
         await page.setViewport({
             width: 380,
             height: 800,
             deviceScaleFactor: 2,
         });
-
-        // navigate, with longer timeout
+        const origin =
+            process.env.APP_ORIGIN ||
+            process.env.NEXT_PUBLIC_APP_URL ||
+            "http://localhost:3000";
         await page.goto(`${origin}/print/tagihan/${tagihanId}?compact=1`, {
             waitUntil: "networkidle0",
-            timeout: 60_000,
+            timeout: 60000,
+        });
+        await page
+            .waitForSelector(".paper", { visible: true, timeout: 20000 })
+            .catch(() => {});
+        await page.evaluate(() => {
+            try {
+                (document.body as any).style.background = "#ffffff";
+            } catch {}
         });
 
-        // wait for expected element if present (best-effort)
-        await page
-            .waitForSelector(".paper", { visible: true, timeout: 20_000 })
-            .catch(() => {}); // don't fail if not found
-
-        // Force white background + clear performance marks (best-effort)
-        await page
-            .evaluate(() => {
-                try {
-                    (document.body as any).style.background = "#ffffff";
-                } catch {}
-                try {
-                    // @ts-ignore
-                    performance.clearMarks?.();
-                    // @ts-ignore
-                    performance.clearMeasures?.();
-                } catch {}
-            })
-            .catch(() => {});
-
-        // Try screenshot; if fullPage is too big for memory, you can switch to clip later
-        const buffer = await page.screenshot({
+        buffer = await page.screenshot({
             type: "jpeg",
-            quality: 85,
+            quality: 75,
             fullPage: true,
         });
-
         try {
             await page.close();
         } catch {}
-
         try {
             await browser.close();
         } catch {}
-
         browser = null;
-
-        // send to WA sender (base64)
-        const base64 = buffer.toString("base64");
-
-        // Optional: log big size
-        if (Buffer.byteLength(base64, "base64") > 4_000_000) {
-            console.warn(
-                "Screenshot base64 size is large (>4MB). Consider reducing quality or viewport."
-            );
+    } catch (e: any) {
+        const emsg = String(e?.stack || e?.message || e);
+        console.error("screenshot error:", emsg);
+        if (browser) {
+            try {
+                await browser.close();
+            } catch {}
         }
+        await prisma.waLog.update({
+            where: { id: log.id },
+            data: {
+                status: "FAILED",
+                payload: JSON.stringify({ ...initialPayload, err: emsg }),
+            },
+        });
+        return { ok: false, reason: emsg };
+    }
 
+    // now we have buffer (or caller may pass bufferMaybe; prefer that)
+    if (!buffer && bufferMaybe) buffer = bufferMaybe;
+    if (!buffer) {
+        await prisma.waLog.update({
+            where: { id: log.id },
+            data: {
+                status: "FAILED",
+                payload: JSON.stringify({
+                    ...initialPayload,
+                    err: "No image buffer",
+                }),
+            },
+        });
+        return { ok: false, reason: "No image buffer" };
+    }
+
+    // Build body: prefer to send as base64 only if small enough; still record size
+    const base64 = buffer.toString("base64");
+    const sizeBytes = Buffer.byteLength(base64, "base64");
+    // If base64 size is too big for comfort, log and still try (but earlier you should increase express.json limit)
+    if (sizeBytes > 5_000_000) {
+        // ~5MB base64 threshold (approx)
+        console.warn("sendWaImageAndLog: large base64 size:", sizeBytes);
+    }
+
+    // Resolve clientId
+    let clientId: string | null = null;
+    if (companyIdMaybe)
+        clientId = await resolveClientIdForCompany(prisma, companyIdMaybe);
+
+    // prepare headers
+    const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        ...(apiKey ? { "x-api-key": apiKey } : {}),
+    };
+    if (clientId) headers["x-client-id"] = clientId;
+
+    // send to WA sender
+    try {
         const r = await fetch(`${base}/send-image`, {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                ...(apiKey ? { "x-api-key": apiKey } : {}),
-            },
+            headers,
             body: JSON.stringify({
                 to,
                 base64,
@@ -417,41 +496,40 @@ async function sendWaImageAndLog(
             }),
         });
 
-        await prisma.waLog.create({
+        const bodyText = await r.text().catch(() => "");
+        await prisma.waLog.update({
+            where: { id: log.id },
             data: {
-                tujuan: to,
-                tipe: "TAGIHAN_IMG",
+                status: r.ok ? "SENT" : "FAILED",
                 payload: JSON.stringify({
                     to,
                     tagihanId,
-                    http: { ok: r.ok, status: r.status },
+                    clientId: clientId || null,
+                    http: {
+                        ok: r.ok,
+                        status: r.status,
+                        bodyText: bodyText.slice(0, 20000),
+                    },
                 }),
-                status: r.ok ? "SENT" : "FAILED",
             },
         });
-    } catch (e: any) {
-        // store full error stack/message to DB for debugging
-        const errPayload = {
-            to,
-            tagihanId,
-            caption,
-            err: String(e?.stack || e?.message || e),
-        };
-        console.error("sendWaImageAndLog error:", errPayload);
-        await prisma.waLog.create({
+
+        return { ok: r.ok, status: r.status, body: bodyText };
+    } catch (err: any) {
+        const emsg = String(err?.message || err);
+        await prisma.waLog.update({
+            where: { id: log.id },
             data: {
-                tujuan: to,
-                tipe: "TAGIHAN_IMG",
-                payload: JSON.stringify(errPayload),
                 status: "FAILED",
+                payload: JSON.stringify({
+                    to,
+                    tagihanId,
+                    err: emsg,
+                    clientId: clientId || null,
+                }),
             },
         });
-        // ensure browser closed on error
-        if (browser) {
-            try {
-                await browser.close();
-            } catch {}
-        }
+        return { ok: false, reason: emsg };
     }
 }
 
@@ -819,7 +897,7 @@ export async function POST(req: NextRequest) {
                     await Promise.allSettled(
                         targets.map(async (to) => {
                             try {
-                                await sendWaAndLog(to, text);
+                                await sendWaAndLog(to, text, companyIdForMagic);
                             } catch (err) {
                                 console.error(
                                     "sendWaAndLog failed for",
@@ -844,7 +922,8 @@ export async function POST(req: NextRequest) {
                                     to,
                                     tagihan.id,
                                     caption,
-                                    forwardHeaders
+                                    forwardHeaders,
+                                    companyIdForMagic
                                 );
                             } catch (err) {
                                 console.error(

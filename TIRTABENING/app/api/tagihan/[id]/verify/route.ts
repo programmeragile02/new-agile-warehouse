@@ -2,6 +2,7 @@
 // import { getAuthUserId } from "@/lib/auth";
 // import { renderKwitansiToJPG } from "@/lib/render-kwitansi";
 // import { sendWaAndLog, sendWaImageAndLog } from "@/lib/wa-send";
+// import { getWaTargets } from "@/lib/wa-targets";
 // import { db } from "@/lib/db";
 
 // export const runtime = "nodejs";
@@ -143,10 +144,11 @@
 
 //         const totalDitagihkan = (t.totalTagihan ?? 0) + (t.tagihanLalu ?? 0);
 
+//         // ambil pelanggan termasuk wa2
 //         const [pelanggan, setting] = await Promise.all([
 //             prisma.pelanggan.findUnique({
 //                 where: { id: t.pelangganId },
-//                 select: { nama: true, kode: true, wa: true },
+//                 select: { nama: true, kode: true, wa: true, wa2: true }, // <-- tambahkan wa2
 //             }),
 //             prisma.setting.findUnique({ where: { id: 1 } }),
 //         ]);
@@ -157,18 +159,27 @@
 //             tagihan: { ...t, totalDitagihkan },
 //         });
 
+//         const cookieHeader = (req as any).headers?.get?.("cookie") || "";
+//         const xCompany = (req as any).headers?.get?.("x-company-id") || "";
+
 //         // background: render → base64 → kirim WA (jika diminta atau default on)
 //         setImmediate(async () => {
 //             try {
 //                 const rendered = await renderKwitansiToJPG({
 //                     tplUrl: `${origin}/print/kwitansi/${id}?payId=${pembayaran.id}`,
 //                     outName: `kwitansi-${id}-${pembayaran.id}.jpg`,
-//                     persist: false as any, // jika util lama: akan diabaikan & return string → masih aman
+//                     persist: false as any,
+//                     headers: {
+//                         ...(cookieHeader ? { cookie: cookieHeader } : {}),
+//                         ...(xCompany ? { "x-company-id": xCompany } : {}),
+//                     },
 //                 });
 
-//                 const shouldSendWa = body.sendWa ?? true; // <-- default true kalau mau otomatis
-//                 if (shouldSendWa && pelanggan?.wa) {
-//                     // TEXT
+//                 const shouldSendWa = body.sendWa ?? true; // default true
+//                 // build target list dari wa & wa2
+//                 const targets = getWaTargets([pelanggan?.wa, pelanggan?.wa2]);
+//                 if (shouldSendWa && targets.length > 0) {
+//                     // TEXT (siapkan text sekali, kirim ke semua target)
 //                     try {
 //                         const text = waTextPembayaranVerified({
 //                             setting: {
@@ -186,33 +197,58 @@
 //                             jumlahBayar: pembayaran.jumlahBayar,
 //                             totalTagihan: totalDitagihkan,
 //                         });
-//                         await sendWaAndLog(pelanggan.wa!, text);
+//                         await Promise.allSettled(
+//                             targets.map(async (to) => {
+//                                 try {
+//                                     await sendWaAndLog(to, text);
+//                                 } catch (e) {
+//                                     console.error("[verify:send text] failed", to, e);
+//                                 }
+//                             })
+//                         );
 //                     } catch (e) {
 //                         console.error("[verify:send text] ", e);
 //                     }
 
-//                     // IMAGE (normalize ke base64 kalau render mengembalikan string)
+//                     // IMAGE
 //                     try {
+//                         // normalisasi hasil `rendered` menjadi base64 & filename sekali
 //                         let base64: string, filename: string;
 //                         if (typeof rendered === "string") {
-//                             // fetch file/URL → buffer → base64
 //                             const r = await fetch(rendered);
 //                             const buf = Buffer.from(await r.arrayBuffer());
 //                             base64 = buf.toString("base64");
 //                             filename =
-//                                 rendered.split("/").pop() ||
-//                                 `kwitansi-${id}.jpg`;
+//                                 rendered.split("/").pop() || `kwitansi-${id}.jpg`;
 //                         } else {
 //                             base64 = rendered.base64;
 //                             filename = rendered.filename;
 //                         }
-//                         await sendWaImageAndLog(pelanggan.wa!, {
-//                             base64,
-//                             filename,
-//                             caption: `Kwitansi Pembayaran Periode ${periodLong(
-//                                 t.periode
-//                             )} - ${pelanggan?.nama || ""}`,
-//                         });
+
+//                         const caption = `Kwitansi Pembayaran Periode ${periodLong(
+//                             t.periode
+//                         )} - ${pelanggan?.nama || ""}`;
+
+//                         // kirim ke semua target (parallel, best-effort)
+//                         await Promise.allSettled(
+//                             targets.map(async (to) => {
+//                                 try {
+//                                     // signature sendWaImageAndLog di sini diasumsikan
+//                                     // menerima (to, { base64, filename, caption })
+//                                     await sendWaImageAndLog(to, {
+//                                         base64,
+//                                         filename,
+//                                         caption,
+//                                     } as any);
+//                                 } catch (e) {
+//                                     console.error(
+//                                         "[verify:send image] failed for",
+//                                         to,
+//                                         e
+//                                     );
+//                                 }
+//                             })
+//                         );
 //                     } catch (e) {
 //                         console.error("[verify:send image] ", e);
 //                     }
@@ -231,7 +267,6 @@
 //     }
 // }
 
-// file: app/api/tagihan/[id]/verify/route.ts (atau path yang sesuai)
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUserId } from "@/lib/auth";
 import { renderKwitansiToJPG } from "@/lib/render-kwitansi";
@@ -309,12 +344,36 @@ function waTextPembayaranVerified(p: {
     return lines.map((s) => s.replace(/[ \t]+$/g, "")).join("\n");
 }
 
+/** Ambil company id dari cookie/header (sama pattern yang dipakai di route lain) */
+function getCompanyFromRequest(req: Request | NextRequest) {
+    try {
+        // NextRequest has cookies helper on server handlers; support both shapes
+        const anyReq = req as any;
+        const ck = anyReq?.cookies?.get?.("tb_company")?.value;
+        if (ck) return ck;
+        const cookieHeader = anyReq?.headers?.get?.("cookie") || "";
+        const found = cookieHeader
+            .split(";")
+            .map((s: string) => s.trim())
+            .find((c: string) => c.startsWith("tb_company="));
+        if (found) return decodeURIComponent(found.split("=")[1] || "");
+        // fallback to explicit header if provided
+        const xcompany =
+            anyReq?.headers?.get?.("x-company-id") ||
+            anyReq?.headers?.get?.("x-companyid");
+        if (xcompany) return xcompany;
+        return null;
+    } catch {
+        return null;
+    }
+}
+
 /* ===== PATCH /api/tagihan/:id/verify ===== */
 export async function PATCH(
     req: Request,
     { params }: { params: { id: string } }
 ) {
-  const prisma = await db();
+    const prisma = await db();
     try {
         const id = params.id;
         const body = (await (req as any).json()) ?? {};
@@ -361,7 +420,7 @@ export async function PATCH(
         if (to !== "VERIFIED")
             return NextResponse.json({ ok: true, tagihan: t });
 
-        // pembayaran terbaru
+        // ambil pembayaran terbaru
         const pembayaran = await prisma.pembayaran.findFirst({
             where: { tagihanId: id, deletedAt: null },
             orderBy: { tanggalBayar: "desc" },
@@ -382,7 +441,7 @@ export async function PATCH(
         const [pelanggan, setting] = await Promise.all([
             prisma.pelanggan.findUnique({
                 where: { id: t.pelangganId },
-                select: { nama: true, kode: true, wa: true, wa2: true }, // <-- tambahkan wa2
+                select: { nama: true, kode: true, wa: true, wa2: true },
             }),
             prisma.setting.findUnique({ where: { id: 1 } }),
         ]);
@@ -393,6 +452,11 @@ export async function PATCH(
             tagihan: { ...t, totalDitagihkan },
         });
 
+        // ambil companyId dari cookie/header untuk diteruskan ke WA sender
+        const companyFromCookie =
+            getCompanyFromRequest(req as any) || undefined;
+
+        // ambil header cookie + x-company-id untuk render kwitansi (sudah dilakukan sebelumnya)
         const cookieHeader = (req as any).headers?.get?.("cookie") || "";
         const xCompany = (req as any).headers?.get?.("x-company-id") || "";
 
@@ -431,12 +495,22 @@ export async function PATCH(
                             jumlahBayar: pembayaran.jumlahBayar,
                             totalTagihan: totalDitagihkan,
                         });
+
                         await Promise.allSettled(
                             targets.map(async (to) => {
                                 try {
-                                    await sendWaAndLog(to, text);
+                                    // pass companyFromCookie agar WA-sender tahu tenant/clientId
+                                    await sendWaAndLog(
+                                        to,
+                                        text,
+                                        companyFromCookie
+                                    );
                                 } catch (e) {
-                                    console.error("[verify:send text] failed", to, e);
+                                    console.error(
+                                        "[verify:send text] failed",
+                                        to,
+                                        e
+                                    );
                                 }
                             })
                         );
@@ -453,7 +527,8 @@ export async function PATCH(
                             const buf = Buffer.from(await r.arrayBuffer());
                             base64 = buf.toString("base64");
                             filename =
-                                rendered.split("/").pop() || `kwitansi-${id}.jpg`;
+                                rendered.split("/").pop() ||
+                                `kwitansi-${id}.jpg`;
                         } else {
                             base64 = rendered.base64;
                             filename = rendered.filename;
@@ -467,13 +542,13 @@ export async function PATCH(
                         await Promise.allSettled(
                             targets.map(async (to) => {
                                 try {
-                                    // signature sendWaImageAndLog di sini diasumsikan
-                                    // menerima (to, { base64, filename, caption })
-                                    await sendWaImageAndLog(to, {
-                                        base64,
-                                        filename,
-                                        caption,
-                                    } as any);
+                                    // pass companyFromCookie agar WA-sender tahu tenant/clientId
+                                    // signature: sendWaImageAndLog(to, payloadObj, companyId?)
+                                    await sendWaImageAndLog(
+                                        to,
+                                        { base64, filename, caption } as any,
+                                        companyFromCookie
+                                    );
                                 } catch (e) {
                                     console.error(
                                         "[verify:send image] failed for",
