@@ -343,7 +343,7 @@ export async function GET(req: NextRequest) {
             const PKG_TO_OFFERING: Record<string, string> = {
                 BASIC: "basic",
                 PREMIUM: "premium",
-                ENTERPRISE: "enterprise",
+                PROFESSIONAL: "professional",
             };
             const offering =
                 PKG_TO_OFFERING[

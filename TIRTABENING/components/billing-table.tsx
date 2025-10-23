@@ -2893,8 +2893,9 @@ export function BillingTable() {
                                     // Dropdown hanya muncul kalau minimal salah satu fitur WA aktif
                                     <FeatureGate
                                         code={[
-                                            "kirim.notif.whatsapp.tagihan",
-                                            "kirim.notif.whatsapp.kwitansi",
+                                            "kirim.notif.whatsapp",
+                                            "wa.notif.tagihan",
+                                            "wa.notif.kwitansi",
                                         ]}
                                         mode="any"
                                         fallback={

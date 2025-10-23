@@ -15,7 +15,7 @@ const WAREHOUSE_KEY = process.env.WAREHOUSE_API_KEY || "dev-panel-key-abc";
 const PKG_TO_OFFERING: Record<string, string> = {
     BASIC: "basic",
     PREMIUM: "premium",
-    ENTERPRISE: "enterprise",
+    PROFESSIONAL: "professional",
 };
 
 function normalizeOffering(code?: string | null) {
