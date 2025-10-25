@@ -1,7 +1,5 @@
-// app/api/pengeluaran/[id]/route.ts
-
-import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { NextRequest, NextResponse } from "next/server";
 
 function toClientHeader(p: any) {
   return {
@@ -25,6 +23,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   const prisma = await db();
+
   const p = await prisma.pengeluaran.findUnique({
     where: { id: params.id },
     include: { details: true },
@@ -38,6 +37,7 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   const prisma = await db();
+
   const body = await req.json().catch(() => ({}));
   const data: any = {};
 
@@ -65,6 +65,7 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   const prisma = await db();
+
   // action: "post" => CLOSE
   const body = await req.json().catch(() => ({}));
   if (body?.action !== "post") {
@@ -92,6 +93,17 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   const prisma = await db();
+
+  const p = await prisma.pengeluaran.findUnique({ where: { id: params.id } });
+  if (!p) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  if (p.status === "CLOSE") {
+    return NextResponse.json(
+      { error: "Pengeluaran dalam status CLOSE tidak dapat dihapus" },
+      { status: 400 }
+    );
+  }
+
   await prisma.pengeluaran.delete({ where: { id: params.id } });
   return NextResponse.json({ ok: true });
 }
