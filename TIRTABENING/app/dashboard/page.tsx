@@ -620,17 +620,17 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { AppHeader } from "@/components/app-header";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  TooltipProvider,
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-  InfoDot,
+    TooltipProvider,
+    Tooltip,
+    TooltipTrigger,
+    TooltipContent,
+    InfoDot,
 } from "@/components/ui/radix-tooltip";
 import OnboardingGetStarted from "@/components/ui/OnboardingGetStarted";
 import { Input } from "@/components/ui/input";
@@ -638,13 +638,13 @@ import { Input } from "@/components/ui/input";
 type UsageItem = { month: string; usage: number };
 type BillingItem = { month: string; amount: number };
 type TableRow = {
-  id: string;
-  periode: string;
-  totalM3: number;
-  tagihan: number;
-  sudahBayar: number;
-  belumBayar: number;
-  status: "paid" | "partial" | "unpaid";
+    id: string;
+    periode: string;
+    totalM3: number;
+    tagihan: number;
+    sudahBayar: number;
+    belumBayar: number;
+    status: "paid" | "partial" | "unpaid";
 };
 type TopUser = { name: string; usage: number; address: string };
 type UnpaidRow = { name: string; amount: number; period: string };
@@ -713,6 +713,8 @@ export default function DashboardPage() {
     const [cards, setCards] = useState<{
         totalTagihanBulanIni: number;
         totalTagihanCount: number;
+        totalTagihanBulanLalu: number;
+        totalTagihanBulanLaluCount: number;
         totalBelumBayarAmount: number;
         totalBelumBayarCount: number;
         totalPelanggan: number;
@@ -943,150 +945,203 @@ export default function DashboardPage() {
         };
     }, [year, ymNow]);
 
+    /* ===== Filter & saldo berjalan ledger (modal) ===== */
+    const lrLedgerFiltered = useMemo(() => {
+        const q = lrSearch.trim().toLowerCase();
+        if (!q) return lrLedger;
+        return lrLedger.filter(
+            (r) =>
+                (r.keterangan || "").toLowerCase().includes(q) ||
+                new Date(r.tanggal as any)
+                    .toISOString()
+                    .slice(0, 10)
+                    .includes(q)
+        );
+    }, [lrLedger, lrSearch]);
 
+    const lrLedgerWithSaldo = useMemo(() => {
+        let saldo = 0;
+        return lrLedgerFiltered.map((r) => {
+            const debit = Number(r.debit || 0);
+            const kredit = Number(r.kredit || 0);
+            saldo += kredit - debit;
+            return { ...r, _saldo: saldo };
+        });
+    }, [lrLedgerFiltered]);
 
-  return (
-    <AuthGuard requiredRole={"ADMIN"}>
-      <AppShell>
-        <div className="max-w-7xl mx-auto space-y-6">
-          <AppHeader
-            title="Dashboard"
-            showBackButton={false}
-            showBreadcrumb={false}
-          />
-
-          {/* Statistics Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard
-              title="Total Tagihan Bulan Lalu"
-              value={
-                cards
-                  ? rupiah(cards.totalTagihanBulanLalu ?? 0)
-                  : loading
-                  ? "…"
-                  : "Rp 0"
-              }
-              subtitle={`${cards?.totalTagihanBulanLaluCount ?? 0} pelanggan`}
-              trend={
-                // bandingkan dengan trend.totalTagihan (kamu sudah punya trends.totalTagihan yang bandingkan sekarang vs lalu)
-                // namun di UI ini kita bisa menampilkan kebalikan: apakah sekarang naik dari lalu ?
-                cards?.trends?.totalTagihan ?? { value: 0, isPositive: true }
-              }
-              icon={
-                <svg
-                  className="w-6 h-6 text-primary"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 6h18M3 12h18M3 18h18"
-                  />
-                </svg>
-              }
-            />
-
-            <StatCard
-              title="Total Tagihan Bulan Ini"
-              value={
-                cards
-                  ? rupiah(cards.totalTagihanBulanIni)
-                  : loading
-                  ? "…"
-                  : "Rp 0"
-              }
-              subtitle={`${cards?.totalTagihanCount ?? 0} pelanggan`}
-              trend={
-                cards?.trends?.totalTagihan ?? { value: 0, isPositive: true }
-              }
-              icon={
-                <svg
-                  className="w-6 h-6 text-primary"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
-                  />
-                </svg>
-              }
-            />
-
-            {/* ==== Total Belum Bayar + tombol 'Selengkapnya' DI DALAM card ==== */}
-            <div className="relative">
-              <StatCard
-                title="Total Belum Terbayar Bulan Ini"
-                value={
-                  cards
-                    ? rupiah(cards.totalBelumBayarAmount)
-                    : loading
-                    ? "…"
-                    : "Rp 0"
-                }
-                subtitle={`${cards?.totalBelumBayarCount ?? 0} tagihan aktif`}
-                trend={
-                  cards?.trends?.totalBelumBayar ?? {
-                    value: 0,
-                    isPositive: false,
-                  }
-                }
-                icon={
-                  <svg
-                    className="w-6 h-6 text-primary"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 9v2m0 4h.01M5.062 19h13.876c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.33 16c-.77 1.333.192 3 1.732 3z"
+    return (
+        <AuthGuard requiredRole={"ADMIN"}>
+            <AppShell>
+                {onboardingLoading ? null : !allDone ? (
+                    <div className="-mt-2">
+                        <OnboardingGetStarted
+                            completedKeys={completedKeys}
+                            loading={onboardingLoading}
+                        />
+                    </div>
+                ) : null}
+                <div className="max-w-7xl mx-auto space-y-6">
+                    <AppHeader
+                        title="Dashboard"
+                        showBackButton={false}
+                        showBreadcrumb={false}
                     />
-                  </svg>
-                }
-              />
-              {/* tombol kecil ditempatkan di pojok kanan atas di DALAM kartu */}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="absolute top-2 right-2 h-7 px-2 text-xs"
-                onClick={() => setOpenUnpaidModal(true)}
-              >
-                Selengkapnya
-              </Button>
-            </div>
 
-            <StatCard
-              title="Jumlah Pengguna Aktif"
-              value={cards ? String(cards.totalPelanggan) : loading ? "…" : "0"}
-              subtitle="Total pelanggan"
-              trend={cards?.trends?.pelanggan ?? { value: 0, isPositive: true }}
-              icon={
-                <svg
-                  className="w-6 h-6 text-primary"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0zM7 10a2 2 0 11-4 0 2 2 0z"
-                  />
-                </svg>
-              }
-            />
+                    {/* Statistics Cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <StatCard
+                            title="Total Tagihan Bulan Lalu"
+                            value={
+                                cards
+                                    ? rupiah(cards.totalTagihanBulanLalu ?? 0)
+                                    : loading
+                                    ? "…"
+                                    : "Rp 0"
+                            }
+                            subtitle={`${
+                                cards?.totalTagihanBulanLaluCount ?? 0
+                            } pelanggan`}
+                            trend={
+                                // bandingkan dengan trend.totalTagihan (kamu sudah punya trends.totalTagihan yang bandingkan sekarang vs lalu)
+                                // namun di UI ini kita bisa menampilkan kebalikan: apakah sekarang naik dari lalu ?
+                                cards?.trends?.totalTagihan ?? {
+                                    value: 0,
+                                    isPositive: true,
+                                }
+                            }
+                            icon={
+                                <svg
+                                    className="w-6 h-6 text-primary"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M3 6h18M3 12h18M3 18h18"
+                                    />
+                                </svg>
+                            }
+                        />
 
-            {/* <StatCard
+                        <StatCard
+                            title="Total Tagihan Bulan Ini"
+                            value={
+                                cards
+                                    ? rupiah(cards.totalTagihanBulanIni)
+                                    : loading
+                                    ? "…"
+                                    : "Rp 0"
+                            }
+                            subtitle={`${
+                                cards?.totalTagihanCount ?? 0
+                            } pelanggan`}
+                            trend={
+                                cards?.trends?.totalTagihan ?? {
+                                    value: 0,
+                                    isPositive: true,
+                                }
+                            }
+                            icon={
+                                <svg
+                                    className="w-6 h-6 text-primary"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
+                                    />
+                                </svg>
+                            }
+                        />
+
+                        {/* ==== Total Belum Bayar + tombol 'Selengkapnya' DI DALAM card ==== */}
+                        <div className="relative">
+                            <StatCard
+                                title="Total Belum Terbayar Bulan Ini"
+                                value={
+                                    cards
+                                        ? rupiah(cards.totalBelumBayarAmount)
+                                        : loading
+                                        ? "…"
+                                        : "Rp 0"
+                                }
+                                subtitle={`${
+                                    cards?.totalBelumBayarCount ?? 0
+                                } tagihan aktif`}
+                                trend={
+                                    cards?.trends?.totalBelumBayar ?? {
+                                        value: 0,
+                                        isPositive: false,
+                                    }
+                                }
+                                icon={
+                                    <svg
+                                        className="w-6 h-6 text-primary"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M12 9v2m0 4h.01M5.062 19h13.876c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.33 16c-.77 1.333.192 3 1.732 3z"
+                                        />
+                                    </svg>
+                                }
+                            />
+                            {/* tombol kecil ditempatkan di pojok kanan atas di DALAM kartu */}
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="absolute top-2 right-2 h-7 px-2 text-xs"
+                                onClick={() => setOpenUnpaidModal(true)}
+                            >
+                                Selengkapnya
+                            </Button>
+                        </div>
+
+                        <StatCard
+                            title="Jumlah Pengguna Aktif"
+                            value={
+                                cards
+                                    ? String(cards.totalPelanggan)
+                                    : loading
+                                    ? "…"
+                                    : "0"
+                            }
+                            subtitle="Total pelanggan"
+                            trend={
+                                cards?.trends?.pelanggan ?? {
+                                    value: 0,
+                                    isPositive: true,
+                                }
+                            }
+                            icon={
+                                <svg
+                                    className="w-6 h-6 text-primary"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0zM7 10a2 2 0 11-4 0 2 2 0z"
+                                    />
+                                </svg>
+                            }
+                        />
+
+                        {/* <StatCard
               title="Tingkat Pembayaran"
               value={
                 cards
@@ -1115,7 +1170,7 @@ export default function DashboardPage() {
                 </svg>
               }
             /> */}
-          </div>
+                    </div>
 
                     {/* Data Table Tagihan */}
                     <DataTable
@@ -1205,89 +1260,95 @@ export default function DashboardPage() {
                     </GlassCard>
                     {/* ===== /Ringkasan ===== */}
 
-          {/* Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <GlassCard className="p-6">
-              <h3 className="text-lg font-semibold text-foreground mb-4">
-                Pemakaian Air (m³){" "}
-                <TooltipProvider delayDuration={150}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <InfoDot label="Info Ringkasan Periode" />
-                    </TooltipTrigger>
-                    <TooltipContent
-                      side="top"
-                      align="start"
-                      className="max-w-xs"
-                    >
-                      Data ini diambil dari <b>periode catat meter</b>.
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </h3>
-              <UsageLineChart data={usageData} />
-            </GlassCard>
+                    {/* Charts */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <GlassCard className="p-6">
+                            <h3 className="text-lg font-semibold text-foreground mb-4">
+                                Pemakaian Air (m³){" "}
+                                <TooltipProvider delayDuration={150}>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <InfoDot label="Info Ringkasan Periode" />
+                                        </TooltipTrigger>
+                                        <TooltipContent
+                                            side="top"
+                                            align="start"
+                                            className="max-w-xs"
+                                        >
+                                            Data ini diambil dari{" "}
+                                            <b>periode catat meter</b>.
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            </h3>
+                            <UsageLineChart data={usageData} />
+                        </GlassCard>
 
-            <GlassCard className="p-6">
-              <h3 className="text-lg font-semibold text-foreground mb-4">
-                Total Tagihan per Bulan{" "}
-                <TooltipProvider delayDuration={150}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <InfoDot label="Info Ringkasan Periode" />
-                    </TooltipTrigger>
-                    <TooltipContent
-                      side="top"
-                      align="start"
-                      className="max-w-xs"
-                    >
-                      Data ini diambil dari <b>periode tagihan</b>.
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </h3>
-              <BillingBarChart data={billingData} />
-            </GlassCard>
-          </div>
+                        <GlassCard className="p-6">
+                            <h3 className="text-lg font-semibold text-foreground mb-4">
+                                Total Tagihan per Bulan{" "}
+                                <TooltipProvider delayDuration={150}>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <InfoDot label="Info Ringkasan Periode" />
+                                        </TooltipTrigger>
+                                        <TooltipContent
+                                            side="top"
+                                            align="start"
+                                            className="max-w-xs"
+                                        >
+                                            Data ini diambil dari{" "}
+                                            <b>periode tagihan</b>.
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            </h3>
+                            <BillingBarChart data={billingData} />
+                        </GlassCard>
+                    </div>
 
-          {/* Lists */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Top Users */}
-            <GlassCard className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-foreground">
-                  5 Pemakai Terbanyak
-                </h3>
-                <Button variant="ghost" size="sm" asChild>
-                  <Link href="/laporan/pemakai-terbanyak">Selengkapnya</Link>
-                </Button>
-              </div>
-              <div className="space-y-3">
-                {topUsers.map((user, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between p-3 bg-muted/20 rounded-lg"
-                  >
-                    <div className="flex-1">
-                      <p className="font-medium text-foreground text-sm">
-                        {user.name}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {user.address}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-primary">{user.usage} m³</p>
-                    </div>
-                  </div>
-                ))}
-                {!loading && topUsers.length === 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    Tidak ada data.
-                  </p>
-                )}
-              </div>
-            </GlassCard>
+                    {/* Lists */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        {/* Top Users */}
+                        <GlassCard className="p-6">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-semibold text-foreground">
+                                    5 Pemakai Terbanyak
+                                </h3>
+                                <Button variant="ghost" size="sm" asChild>
+                                    <Link href="/laporan/pemakai-terbanyak">
+                                        Selengkapnya
+                                    </Link>
+                                </Button>
+                            </div>
+                            <div className="space-y-3">
+                                {topUsers.map((user, index) => (
+                                    <div
+                                        key={index}
+                                        className="flex items-center justify-between p-3 bg-muted/20 rounded-lg"
+                                    >
+                                        <div className="flex-1">
+                                            <p className="font-medium text-foreground text-sm">
+                                                {user.name}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {user.address}
+                                            </p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="font-bold text-primary">
+                                                {user.usage} m³
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+                                {!loading && topUsers.length === 0 && (
+                                    <p className="text-sm text-muted-foreground">
+                                        Tidak ada data.
+                                    </p>
+                                )}
+                            </div>
+                        </GlassCard>
 
                         {/* Unpaid List */}
                         <GlassCard className="p-6">
@@ -1348,44 +1409,44 @@ export default function DashboardPage() {
                             </div>
                         </GlassCard>
 
-            {/* Water Issues */}
-            <GlassCard className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-foreground">
-                  Kendala Air
-                </h3>
-                <Button variant="ghost" size="sm" asChild>
-                  <Link href="/kendala">Selengkapnya</Link>
-                </Button>
-              </div>
-              <div className="space-y-3">
-                {waterIssues.map((issue, index) => (
-                  <div
-                    key={index}
-                    className="p-3 bg-yellow-50/50 rounded-lg border border-yellow-100/50"
-                  >
-                    <p className="font-medium text-foreground text-sm mb-1">
-                      {issue.issue}
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs text-muted-foreground">
-                        {issue.date}
-                      </p>
-                      <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
-                        Belum Selesai
-                      </span>
+                        {/* Water Issues */}
+                        <GlassCard className="p-6">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-semibold text-foreground">
+                                    Kendala Air
+                                </h3>
+                                <Button variant="ghost" size="sm" asChild>
+                                    <Link href="/kendala">Selengkapnya</Link>
+                                </Button>
+                            </div>
+                            <div className="space-y-3">
+                                {waterIssues.map((issue, index) => (
+                                    <div
+                                        key={index}
+                                        className="p-3 bg-yellow-50/50 rounded-lg border border-yellow-100/50"
+                                    >
+                                        <p className="font-medium text-foreground text-sm mb-1">
+                                            {issue.issue}
+                                        </p>
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-xs text-muted-foreground">
+                                                {issue.date}
+                                            </p>
+                                            <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
+                                                Belum Selesai
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))}
+                                {!loading && waterIssues.length === 0 && (
+                                    <p className="text-sm text-muted-foreground">
+                                        Tidak ada kendala tercatat.
+                                    </p>
+                                )}
+                            </div>
+                        </GlassCard>
                     </div>
-                  </div>
-                ))}
-                {!loading && waterIssues.length === 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    Tidak ada kendala tercatat.
-                  </p>
-                )}
-              </div>
-            </GlassCard>
-          </div>
-        </div>
+                </div>
 
                 {/* ===== Modal Belum Bayar ===== */}
                 <Dialog
