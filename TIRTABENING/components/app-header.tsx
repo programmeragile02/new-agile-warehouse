@@ -937,6 +937,7 @@ import {
     Droplets,
     HandCoins,
     Network,
+    ReceiptText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter, usePathname } from "next/navigation";
@@ -1169,6 +1170,14 @@ const MENU_ITEMS: MenuItem[] = [
         label: "Pembayaran Hutang",
         icon: HandCoins,
         roles: ["ADMIN", "OPERATOR"],
+        group: "Admin",
+        section: "Keuangan",
+    },
+    {
+        href: "/pajak",
+        label: "Pengelolaan Pajak",
+        icon: ReceiptText,
+        roles: ["ADMIN"],
         group: "Admin",
         section: "Keuangan",
     },
