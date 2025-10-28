@@ -647,6 +647,7 @@ export function ZonaForm() {
                         id="nama"
                         value={formData.nama}
                         onChange={set("nama")}
+                        placeholder="Masukkan nama blok"
                         required
                     />
                 </div>
@@ -691,13 +692,13 @@ export function ZonaForm() {
                                 ),
                             }))
                         }
-                        placeholder="0"
+                        placeholder="Masukkan meter awal"
                     />
                 </div>
 
                 <div className="space-y-2">
                     <Label htmlFor="tandonId" className="text-base font-medium">
-                        Tandon (opsional)
+                        Tandon
                     </Label>
                     <Select
                         value={formData.tandonId || ""}
@@ -748,7 +749,7 @@ export function ZonaForm() {
                     id="deskripsi"
                     value={formData.deskripsi}
                     onChange={set("deskripsi")}
-                    placeholder="Keterangan tambahan"
+                    placeholder="Masukkan keterangan tambahan"
                 />
             </div>
 

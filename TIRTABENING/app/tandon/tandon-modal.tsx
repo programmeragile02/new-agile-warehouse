@@ -409,7 +409,7 @@ export function TandonModal({ open, onClose, onSaved, editItem }: Props) {
                         <Input
                             value={nama}
                             onChange={(e) => setNama(e.target.value)}
-                            placeholder="Tandon Utama"
+                            placeholder="Masukkan nama tandon"
                         />
                     </div>
 
@@ -418,7 +418,7 @@ export function TandonModal({ open, onClose, onSaved, editItem }: Props) {
                         <Textarea
                             value={deskripsi}
                             onChange={(e) => setDeskripsi(e.target.value)}
-                            placeholder="Opsional"
+                            placeholder="Masukkan Deskripsi"
                         />
                     </div>
 
@@ -431,7 +431,7 @@ export function TandonModal({ open, onClose, onSaved, editItem }: Props) {
                             min={0}
                             value={initialMeter}
                             onChange={(e) => setInitialMeter(e.target.value)}
-                            placeholder="0"
+                            placeholder="Masukkan meter awal"
                         />
                         <p className="text-xs text-muted-foreground">
                             Hanya dipakai pada periode pertama. Periode

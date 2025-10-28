@@ -313,6 +313,7 @@ export function CustomerForm() {
                             id="nama"
                             value={formData.nama}
                             onChange={set("nama")}
+                            placeholder="Masukkan nama pelanggan"
                             required
                             className="h-12 text-base"
                         />
@@ -320,12 +321,12 @@ export function CustomerForm() {
 
                     <div className="space-y-2">
                         <Label htmlFor="noWA" className="text-base font-medium">
-                            No. WhatsApp *
+                            No. WhatsApp 1*
                         </Label>
                         <Input
                             id="noWA"
                             type="tel"
-                            placeholder="08xxxxxxxxxx"
+                            placeholder="Masukkan nomer whatsapp 1 "
                             value={formData.noWA}
                             onChange={set("noWA")}
                             required
@@ -343,7 +344,7 @@ export function CustomerForm() {
                         <Input
                             id="noWA2"
                             type="tel"
-                            placeholder="08xxxxxxxxxx"
+                            placeholder="Masukkan nomer whatsapp 2 "
                             value={formData.noWA2}
                             onChange={set("noWA2")}
                             className="h-12 text-base"
@@ -391,7 +392,7 @@ export function CustomerForm() {
                             id="meterAwal"
                             type="number"
                             min={0}
-                            placeholder="0"
+                            placeholder="Masukkan meter awal"
                             value={formData.meterAwal}
                             onChange={set("meterAwal")}
                             required
@@ -413,7 +414,7 @@ export function CustomerForm() {
                             <option value="">
                                 {loadingZona
                                     ? "Memuat blok…"
-                                    : "— Pilih blok (opsional) —"}
+                                    : "— Pilih blok —"}
                             </option>
                             {zonaList.map((z) => (
                                 <option key={z.id} value={z.id}>
@@ -455,7 +456,7 @@ export function CustomerForm() {
                             step="0.000001"
                             min={-90}
                             max={90}
-                            placeholder="-7.549044"
+                            placeholder="Masukkan latitude"
                             value={formData.lat}
                             onChange={set("lat")}
                             className="h-12 text-base"
@@ -471,7 +472,7 @@ export function CustomerForm() {
                             step="0.000001"
                             min={-180}
                             max={180}
-                            placeholder="110.605273"
+                            placeholder="masukkan longitude"
                             value={formData.lng}
                             onChange={set("lng")}
                             className="h-12 text-base"

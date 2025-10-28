@@ -579,7 +579,7 @@ export default function MasterBiayaPage() {
                                             onChange={(e) =>
                                                 handleNamaChange(e.target.value)
                                             }
-                                            placeholder="Masukkan nama biaya"
+                                            placeholder="Masukkan kategori biaya"
                                             className={
                                                 formErrors.nama
                                                     ? "border-red-500"

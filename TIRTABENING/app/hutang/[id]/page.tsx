@@ -537,7 +537,7 @@ export default function HutangDetailPage() {
                     <Input
                       value={detailKet}
                       onChange={(e) => setDetailKet(e.target.value)}
-                      placeholder="Keterangan hutang"
+                      placeholder="Masukkan Keterangan hutang"
                       disabled={isClose}
                     />
                   </div>
@@ -547,7 +547,7 @@ export default function HutangDetailPage() {
                     <Input
                       type="text"
                       inputMode="numeric"
-                      placeholder="0"
+                      placeholder="Masukkan nominal hutang"
                       value={detailNomDisp}
                       onChange={(e) =>
                         setDetailNomDisp(fmtRupiahInline(e.target.value))

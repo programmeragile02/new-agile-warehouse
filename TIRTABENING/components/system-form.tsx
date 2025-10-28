@@ -219,7 +219,7 @@ export function SystemForm() {
                             namaPerusahaan: e.target.value,
                         }))
                     }
-                    // placeholder="Nata Banyu"
+                    placeholder="Masukkan nama perusahaan"
                 />
             </div>
 
@@ -231,7 +231,7 @@ export function SystemForm() {
                     onChange={(e) =>
                         setFormData((p) => ({ ...p, alamat: e.target.value }))
                     }
-                    // placeholder="Jl. Air Bersih No. 123"
+                    placeholder="Masukkan alamat perusahaan"
                 />
             </div>
 
@@ -243,7 +243,7 @@ export function SystemForm() {
                     onChange={(e) =>
                         setFormData((p) => ({ ...p, telepon: e.target.value }))
                     }
-                    // placeholder="(021) 123-4567"
+                    placeholder="Masukkan nomer telepon"
                 />
             </div>
 
@@ -256,7 +256,7 @@ export function SystemForm() {
                     onChange={(e) =>
                         setFormData((p) => ({ ...p, email: e.target.value }))
                     }
-                    // placeholder="info@natabanyu.com"
+                    placeholder="Masukkan email"
                 />
             </div>
 
@@ -283,7 +283,7 @@ export function SystemForm() {
                                     namaBankPembayaran: e.target.value,
                                 }))
                             }
-                            // placeholder="BCA / BRI / Mandiri / dsb."
+                            placeholder="Masukkan nama bank"
                         />
                     </div>
 
@@ -300,7 +300,7 @@ export function SystemForm() {
                                     norekPembayaran: e.target.value,
                                 }))
                             }
-                            // placeholder="1234567890"
+                            placeholder="Masukkan nomer rekening"
                         />
                     </div>
 
@@ -317,7 +317,7 @@ export function SystemForm() {
                                     anNorekPembayaran: e.target.value,
                                 }))
                             }
-                            // placeholder="Nama Pemilik Rekening"
+                            placeholder="Masukkan nama pemilik rekening"
                         />
                     </div>
 
@@ -332,7 +332,7 @@ export function SystemForm() {
                                     namaBendahara: e.target.value,
                                 }))
                             }
-                            // placeholder="Nama Bendahara"
+                            placeholder="MAsukkan nama bendahara"
                         />
                     </div>
 
@@ -347,7 +347,7 @@ export function SystemForm() {
                                     whatsappCs: e.target.value,
                                 }))
                             }
-                            // placeholder="08xxxxxxxxxx"
+                            placeholder="Masukkan nomer whatsapp cs"
                         />
                     </div>
                 </div>

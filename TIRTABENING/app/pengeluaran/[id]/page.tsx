@@ -751,7 +751,7 @@ export default function DetailPengeluaranPage() {
                                                                 e.target.value,
                                                         }))
                                                     }
-                                                    placeholder="0"
+                                                    placeholder="masukkan nominal pengeluaran"
                                                     disabled={
                                                         expense.status ===
                                                         "Close"

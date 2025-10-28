@@ -134,7 +134,7 @@ export function TarifForm() {
                     inputMode="numeric"
                     value={form.tarifPerM3}
                     onChange={onChange("tarifPerM3")}
-                    // placeholder="3000"
+                    placeholder="Masukkan tarif air"
                 />
             </div>
 
@@ -146,7 +146,7 @@ export function TarifForm() {
                     inputMode="numeric"
                     value={form.abonemen}
                     onChange={onChange("abonemen")}
-                    // placeholder="10000"
+                    placeholder="Masukkan abonemen"
                 />
             </div>
 
@@ -158,7 +158,7 @@ export function TarifForm() {
                     inputMode="numeric"
                     value={form.biayaAdmin}
                     onChange={onChange("biayaAdmin")}
-                    // placeholder="2500"
+                    placeholder="Masukkan Biaya Admin"
                 />
             </div>
 
@@ -170,7 +170,7 @@ export function TarifForm() {
                     inputMode="numeric"
                     value={form.tglJatuhTempo}
                     onChange={onChange("tglJatuhTempo")}
-                    // placeholder="15"
+                    placeholder="Masukkan tanggal jatuh tempo"
                 />
             </div>
 
@@ -182,7 +182,7 @@ export function TarifForm() {
                     inputMode="numeric"
                     value={form.dendaTelatBulanSama}
                     onChange={onChange("dendaTelatBulanSama")}
-                    // placeholder="5000"
+                    placeholder="Masukkan denda (bulan sama)"
                 />
             </div>
 
@@ -194,7 +194,7 @@ export function TarifForm() {
                     inputMode="numeric"
                     value={form.dendaTelatBulanBerbeda}
                     onChange={onChange("dendaTelatBulanBerbeda")}
-                    // placeholder="10000"
+                    placeholder="Masukkan denda bulan berbeda"
                 />
             </div>
 

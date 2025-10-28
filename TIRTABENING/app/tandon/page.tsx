@@ -1096,7 +1096,7 @@ export default function MasterTandonPage() {
                                 <Input
                                     value={nama}
                                     onChange={(e) => setNama(e.target.value)}
-                                    placeholder="Tandon Utama"
+                                    placeholder="Masukkan nama tandon"
                                 />
                             </div>
 
@@ -1109,7 +1109,7 @@ export default function MasterTandonPage() {
                                     onChange={(e) =>
                                         setDeskripsi(e.target.value)
                                     }
-                                    placeholder="Opsional"
+                                    placeholder="Masukkan deskripsi"
                                 />
                             </div>
 
@@ -1124,7 +1124,7 @@ export default function MasterTandonPage() {
                                     onChange={(e) =>
                                         setInitialMeter(e.target.value)
                                     }
-                                    placeholder="0"
+                                    placeholder="Masukkan meter awal"
                                 />
                                 <p className="text-xs text-muted-foreground">
                                     Hanya dipakai pada periode pertama. Periode
