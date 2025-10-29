@@ -232,14 +232,16 @@ const handleSubmit = async (e: React.FormEvent) => {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <Label htmlFor="username">Email / Username</Label>
+                <Label htmlFor="username">Email</Label>
                 <Input
                   id="username"
+                  type="email"
                   value={formData.username}
                   onChange={(e) =>
                     setFormData((p) => ({ ...p, username: e.target.value }))
                   }
                   required
+                  placeholder="Masukkan Email"
                 />
               </div>
               <div>
@@ -251,6 +253,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                     setFormData((p) => ({ ...p, name: e.target.value }))
                   }
                   required
+                  placeholder="Masukkan Nama Lengkap"
                 />
               </div>
               <div>
@@ -261,6 +264,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                   onChange={(e) =>
                     setFormData((p) => ({ ...p, phone: e.target.value }))
                   }
+                  placeholder="Masukkan Nomor Telepon"
                 />
               </div>
               <div>
@@ -273,6 +277,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                     setFormData((p) => ({ ...p, password: e.target.value }))
                   }
                   required
+                  placeholder=""
                 />
               </div>
               <div>

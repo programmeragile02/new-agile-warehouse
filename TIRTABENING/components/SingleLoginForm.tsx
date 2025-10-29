@@ -206,17 +206,18 @@ export default function SingleLoginForm() {
         <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-2">
                 <Label htmlFor="email" className="text-base font-medium">
-                    Email / Username
+                    Email
                 </Label>
                 <Input
                     id="email"
-                    type="text"
+                    type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     autoComplete="username"
                     // inputMode="email"
                     className="h-12 text-base"
                     required
+                    placeholder="Masukkan Email Anda"
                 />
             </div>
 
@@ -232,6 +233,7 @@ export default function SingleLoginForm() {
                     autoComplete="current-password"
                     className="h-12 text-base"
                     required
+                    placeholder="Masukkan Password Anda"
                 />
             </div>
 

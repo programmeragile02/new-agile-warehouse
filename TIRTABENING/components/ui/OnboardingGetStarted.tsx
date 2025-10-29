@@ -114,7 +114,7 @@ export default function OnboardingGetStarted(props: {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h2 className="text-base font-semibold text-foreground">
-                        Mulai Pakai Aplikasi
+                        Mulai Pakai Nata Banyu
                     </h2>
                     <p className="mt-1 text-sm text-muted-foreground">
                         Lengkapi beberapa langkah singkat supaya Nata Banyu

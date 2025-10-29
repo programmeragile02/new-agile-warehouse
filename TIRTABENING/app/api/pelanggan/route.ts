@@ -1020,6 +1020,10 @@ const WAREHOUSE_API_KEY = process.env.WAREHOUSE_API_KEY || "";
 const PRODUCT_CODE = process.env.PRODUCT_CODE || "NATABANYU";
 const DEFAULT_MAX_CUSTOMERS = Number(process.env.DEFAULT_MAX_CUSTOMERS ?? 30);
 
+// akhiran username jika custom
+const DEFAULT_USERNAME_DOMAIN =
+  process.env.DEFAULT_USERNAME_DOMAIN?.trim() || "email.com";
+
 /* ===================== Company & Plan helpers ===================== */
 function getCompanyIdFromReq(req: NextRequest): string | null {
     for (const key of ["tb_company", "company_id", "companyId"]) {
@@ -1056,9 +1060,9 @@ function genCustomerCode(name: string) {
     return `TB${base.slice(0, 2)}${four}`;
 }
 function genUsername(name: string) {
-    const slug = (name || "warga").toLowerCase().replace(/[^a-z0-9]/g, "");
-    const n = Math.random().toString(36).slice(2, 5);
-    return `${slug}${n}`;
+  const slug = (name || "warga").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const n = Math.random().toString(36).slice(2, 5);
+  return `${slug}${n}@${DEFAULT_USERNAME_DOMAIN}`;
 }
 const normalizeWA = (v?: string) => {
     if (!v) return undefined;
@@ -1095,7 +1099,7 @@ const bodySchema = z.object({
         .string()
         .min(3)
         .max(30)
-        .regex(/^[a-z0-9_]+$/i)
+        .regex(/^[a-z0-9._%+\-@]+$/i)
         .optional(),
     password: z.string().min(6).max(100).optional(),
     lat: latSchema.optional(),

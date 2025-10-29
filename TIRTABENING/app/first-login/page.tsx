@@ -57,9 +57,9 @@ export default function FirstLoginPage() {
             toast({
                 title: "Password berhasil diubah",
                 description:
-                    "Aman! Kamu akan diarahkan ke Dashboard sebentar lagi.",
+                    "Aman! Kamu akan diarahkan ke Onboarding sebentar lagi.",
             });
-            setTimeout(() => router.replace("/dashboard"), 800);
+            setTimeout(() => router.replace("/onboarding"), 800);
         } catch {
             toast({
                 variant: "destructive",
