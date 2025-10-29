@@ -8,8 +8,9 @@ import { GlassCard } from "@/components/glass-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { toast } from "sonner";
-import { Save, Shield, UserCog } from "lucide-react";
+import { Save, Shield, UserCog, Eye, EyeOff } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+
 type ZonaLite = { id: string; kode: string; nama: string };
 type Profil = {
     id: string;
@@ -22,6 +23,8 @@ type Profil = {
 };
 
 export default function ProfilPetugasPage() {
+    const { toast } = useToast();
+
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [savingPass, setSavingPass] = useState(false);
@@ -34,32 +37,43 @@ export default function ProfilPetugasPage() {
         confirm: "",
     });
 
-    // load profil
+    const [show, setShow] = useState({ old: false, nw: false, conf: false });
+
     useEffect(() => {
         (async () => {
             try {
                 const r = await fetch("/api/petugas/profil", {
                     cache: "no-store",
                 });
-                const j = await r.json();
-                if (j?.ok) {
+                const j = await r.json().catch(() => null);
+                if (r.ok && j?.ok) {
                     setData(j.data);
                     setForm({
                         name: j.data.name ?? "",
                         phone: j.data.phone ?? "",
                     });
                 } else {
-                    toast.error(j?.message || "Gagal memuat profil");
+                    toast({
+                        variant: "destructive",
+                        description: j?.message || "Gagal memuat profil",
+                    });
                 }
             } catch {
-                toast.error("Gagal memuat profil");
+                toast({
+                    variant: "destructive",
+                    description: "Gagal memuat profil",
+                });
             } finally {
                 setLoading(false);
             }
         })();
-    }, []);
+    }, [toast]);
 
     async function onSave() {
+        if (!form.name.trim()) {
+            toast({ description: "Nama wajib diisi" });
+            return;
+        }
         setSaving(true);
         try {
             const r = await fetch("/api/petugas/profil", {
@@ -70,50 +84,108 @@ export default function ProfilPetugasPage() {
                     phone: form.phone.trim() || null,
                 }),
             });
-            const j = await r.json();
-            if (j?.ok) {
-                toast.success("Profil diperbarui");
+            const j = await r.json().catch(() => null);
+            if (r.status === 200 && j?.ok) {
+                toast({ description: "Data berhasil disimpan" });
                 setData((d) =>
-                    d ? { ...d, name: form.name, phone: form.phone || null } : d
+                    d
+                        ? {
+                              ...d,
+                              name: form.name.trim(),
+                              phone: form.phone.trim() || null,
+                          }
+                        : d
                 );
-            } else toast.error(j?.message || "Gagal menyimpan");
+            } else if (r.status === 401) {
+                toast({
+                    variant: "destructive",
+                    description: j?.message || "Sesi berakhir, login ulang",
+                });
+            } else {
+                toast({
+                    variant: "destructive",
+                    description: j?.message || "Gagal menyimpan",
+                });
+            }
         } catch {
-            toast.error("Gagal menyimpan");
+            toast({ variant: "destructive", description: "Gagal menyimpan" });
         } finally {
             setSaving(false);
         }
     }
 
     async function onChangePassword() {
-        if (!pwd.oldPassword || !pwd.newPassword) {
-            toast.info("Isi sandi lama & baru");
+        const oldPassword = pwd.oldPassword.trim();
+        const newPassword = pwd.newPassword.trim();
+        const confirm = pwd.confirm.trim();
+
+        if (!oldPassword || !newPassword) {
+            toast({ description: "Isi sandi lama & baru" });
             return;
         }
-        if (pwd.newPassword.length < 6) {
-            toast.info("Sandi baru minimal 6 karakter");
+        if (newPassword.length < 6) {
+            toast({ description: "Sandi baru minimal 6 karakter" });
             return;
         }
-        if (pwd.newPassword !== pwd.confirm) {
-            toast.info("Konfirmasi sandi tidak sama");
+        if (newPassword !== confirm) {
+            toast({ description: "Konfirmasi sandi tidak sama" });
             return;
         }
+
         setSavingPass(true);
         try {
             const r = await fetch("/api/petugas/profil", {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    oldPassword: pwd.oldPassword,
-                    newPassword: pwd.newPassword,
-                }),
+                body: JSON.stringify({ oldPassword, newPassword }),
             });
-            const j = await r.json();
-            if (j?.ok) {
-                toast.success("Sandi berhasil diubah");
+            const j = await r.json().catch(() => null);
+
+            if (process.env.NODE_ENV !== "production") {
+                // bantu debugging cepat: lihat reason & prefix hash di console
+                // (akan muncul kalau server mengirimkannya)
+                // eslint-disable-next-line no-console
+                console.log("Change password resp:", j);
+            }
+
+            if (r.status === 200 && j?.ok) {
+                toast({ description: "Sandi berhasil diubah" });
                 setPwd({ oldPassword: "", newPassword: "", confirm: "" });
-            } else toast.error(j?.message || "Gagal mengubah sandi");
+            } else if (r.status === 409) {
+                toast({
+                    variant: "destructive",
+                    description:
+                        j?.message ||
+                        "Akun masih memakai format sandi lama (scrypt). Minta admin migrasi via panel admin.",
+                });
+            } else if (r.status === 401) {
+                toast({
+                    variant: "destructive",
+                    description: j?.message || "Sesi berakhir, login ulang",
+                });
+            } else if (r.status === 502) {
+                toast({
+                    variant: "destructive",
+                    description:
+                        j?.message ||
+                        "Sandi tidak tersinkron ke server pusat. Coba ulangi.",
+                });
+            } else if (r.status === 400) {
+                toast({
+                    variant: "destructive",
+                    description: j?.message || "Sandi lama salah",
+                });
+            } else {
+                toast({
+                    variant: "destructive",
+                    description: j?.message || "Gagal mengubah sandi",
+                });
+            }
         } catch {
-            toast.error("Gagal mengubah sandi");
+            toast({
+                variant: "destructive",
+                description: "Terjadi kesalahan jaringan",
+            });
         } finally {
             setSavingPass(false);
         }
@@ -125,7 +197,6 @@ export default function ProfilPetugasPage() {
                 <div className="max-w-6xl mx-auto space-y-6">
                     <AppHeader title="Profil Petugas" />
 
-                    {/* Deskripsi singkat */}
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                         <p className="text-muted-foreground">
                             Kelola informasi akun petugas catat meter.
@@ -225,7 +296,7 @@ export default function ProfilPetugasPage() {
                                 {/* Zona yang dipegang */}
                                 <div className="space-y-2">
                                     <div className="font-medium">
-                                        Zona yang Dipegang
+                                        Blok yang Dipegang
                                     </div>
                                     {data.zonas?.length ? (
                                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
@@ -245,7 +316,7 @@ export default function ProfilPetugasPage() {
                                         </div>
                                     ) : (
                                         <div className="text-sm text-muted-foreground">
-                                            Belum ada zona yang ditugaskan.
+                                            Belum ada blok yang ditugaskan.
                                         </div>
                                     )}
                                 </div>
@@ -263,12 +334,12 @@ export default function ProfilPetugasPage() {
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <div>
+                            <div className="relative">
                                 <label className="text-xs font-medium text-muted-foreground">
                                     Sandi Lama
                                 </label>
                                 <Input
-                                    type="password"
+                                    type={show.old ? "text" : "password"}
                                     value={pwd.oldPassword}
                                     onChange={(e) =>
                                         setPwd((p) => ({
@@ -278,13 +349,32 @@ export default function ProfilPetugasPage() {
                                     }
                                     placeholder="Masukkan sandi lama"
                                 />
+                                <button
+                                    type="button"
+                                    className="absolute right-2 top-7 p-1 rounded hover:bg-muted"
+                                    onClick={() =>
+                                        setShow((s) => ({ ...s, old: !s.old }))
+                                    }
+                                    aria-label={
+                                        show.old
+                                            ? "Sembunyikan sandi lama"
+                                            : "Tampilkan sandi lama"
+                                    }
+                                >
+                                    {show.old ? (
+                                        <EyeOff className="h-4 w-4" />
+                                    ) : (
+                                        <Eye className="h-4 w-4" />
+                                    )}
+                                </button>
                             </div>
-                            <div>
+
+                            <div className="relative">
                                 <label className="text-xs font-medium text-muted-foreground">
                                     Sandi Baru
                                 </label>
                                 <Input
-                                    type="password"
+                                    type={show.nw ? "text" : "password"}
                                     value={pwd.newPassword}
                                     onChange={(e) =>
                                         setPwd((p) => ({
@@ -294,13 +384,32 @@ export default function ProfilPetugasPage() {
                                     }
                                     placeholder="Minimal 6 karakter"
                                 />
+                                <button
+                                    type="button"
+                                    className="absolute right-2 top-7 p-1 rounded hover:bg-muted"
+                                    onClick={() =>
+                                        setShow((s) => ({ ...s, nw: !s.nw }))
+                                    }
+                                    aria-label={
+                                        show.nw
+                                            ? "Sembunyikan sandi baru"
+                                            : "Tampilkan sandi baru"
+                                    }
+                                >
+                                    {show.nw ? (
+                                        <EyeOff className="h-4 w-4" />
+                                    ) : (
+                                        <Eye className="h-4 w-4" />
+                                    )}
+                                </button>
                             </div>
-                            <div>
+
+                            <div className="relative">
                                 <label className="text-xs font-medium text-muted-foreground">
                                     Konfirmasi Sandi Baru
                                 </label>
                                 <Input
-                                    type="password"
+                                    type={show.conf ? "text" : "password"}
                                     value={pwd.confirm}
                                     onChange={(e) =>
                                         setPwd((p) => ({
@@ -310,6 +419,27 @@ export default function ProfilPetugasPage() {
                                     }
                                     placeholder="Ulangi sandi baru"
                                 />
+                                <button
+                                    type="button"
+                                    className="absolute right-2 top-7 p-1 rounded hover:bg-muted"
+                                    onClick={() =>
+                                        setShow((s) => ({
+                                            ...s,
+                                            conf: !s.conf,
+                                        }))
+                                    }
+                                    aria-label={
+                                        show.conf
+                                            ? "Sembunyikan konfirmasi sandi"
+                                            : "Tampilkan konfirmasi sandi"
+                                    }
+                                >
+                                    {show.conf ? (
+                                        <EyeOff className="h-4 w-4" />
+                                    ) : (
+                                        <Eye className="h-4 w-4" />
+                                    )}
+                                </button>
                             </div>
                         </div>
 
