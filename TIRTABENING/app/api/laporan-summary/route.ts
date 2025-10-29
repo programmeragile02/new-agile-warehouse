@@ -310,6 +310,7 @@
 // app/api/laporan-summary/route.ts
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+
 // ── Helpers
 const MONTHS = [
     "Jan",
@@ -351,16 +352,14 @@ const emptyRevenue = () => MONTHS.map((m) => ({ month: m, amount: 0 }));
 const emptyExpenses = () =>
     MONTHS.map((m) => ({ month: m, operasional: 0, lainnya: 0 }));
 
-function toMonthIdx(d: Date) {
-    return new Date(d).getMonth();
-} // 0..11
+// pakai UTC supaya konsisten dgn boundary query UTC
+const toMonthIdxUTC = (d: Date) => new Date(d).getUTCMonth(); // 0..11
 function monthIdxFromPeriode(periode?: string | null) {
     if (!periode) return null;
     const m = /^(\d{4})-(\d{2})$/.exec(periode);
     if (!m) return null;
     const mm = Number(m[2]);
-    if (mm < 1 || mm > 12) return null;
-    return mm - 1;
+    return mm >= 1 && mm <= 12 ? mm - 1 : null;
 }
 function isOperasional(name?: string) {
     if (!name) return false;
@@ -376,7 +375,8 @@ const toNum = (v: any): number | null => {
             return Number(v as any);
         }
     }
-    return Number(v);
+    const n = Number(v as any);
+    return Number.isFinite(n) ? n : null;
 };
 
 // marker lunas akhir (closed)
@@ -385,7 +385,6 @@ const hasPaidMarker = (info?: string | null) =>
         info &&
         (/\[CLOSED_BY:\d{4}-\d{2}\]/.test(info) || /\[PAID_BY:/.test(info))
     );
-
 const isLunasByRules = (sisaKurang: number | null, info?: string | null) => {
     if (hasPaidMarker(info)) return true;
     if (sisaKurang === null) return false;
@@ -400,7 +399,7 @@ export async function GET(req: Request) {
             searchParams.get("year") ?? new Date().getFullYear()
         );
 
-        // ============== 1) WATER USAGE ==============
+        /* ============== 1) WATER USAGE ============== */
         const cm = await prisma.catatMeter.findMany({
             where: { deletedAt: null, periode: { tahun: year } },
             select: {
@@ -415,7 +414,7 @@ export async function GET(req: Request) {
         const zonaOrder: string[] = [];
         for (const row of cm) {
             const monthIdx = (row.periode.bulan ?? 1) - 1;
-            const val = row.pemakaianM3 ?? 0;
+            const val = toNum(row.pemakaianM3) ?? 0;
             water[monthIdx].total += val;
 
             const z =
@@ -427,7 +426,7 @@ export async function GET(req: Request) {
         }
         for (const row of cm) {
             const monthIdx = (row.periode.bulan ?? 1) - 1;
-            const val = row.pemakaianM3 ?? 0;
+            const val = toNum(row.pemakaianM3) ?? 0;
             const z =
                 row.zonaNamaSnapshot?.trim() ||
                 row.pelanggan?.zona?.nama?.trim() ||
@@ -442,7 +441,8 @@ export async function GET(req: Request) {
             else water[monthIdx].blokF += val;
         }
 
-        // ============== 2) REVENUE (hanya tagihan status PAID) ==============
+        /* ============== 2) REVENUE ============== */
+        // Semua pembayaran uang masuk dalam tahun tsb (uang sudah diterima).
         const pays = await prisma.pembayaran.findMany({
             where: {
                 deletedAt: null,
@@ -450,18 +450,22 @@ export async function GET(req: Request) {
                     gte: new Date(Date.UTC(year, 0, 1)),
                     lt: new Date(Date.UTC(year + 1, 0, 1)),
                 },
-                tagihan: { statusBayar: "PAID", deletedAt: null },
+                // Jika ingin hanya yang tagihannya PAID: aktifkan baris di bawah:
+                // tagihan: { statusBayar: "PAID", deletedAt: null },
             },
             select: { tanggalBayar: true, jumlahBayar: true },
         });
 
         const revenue = emptyRevenue();
         for (const p of pays) {
-            const idx = toMonthIdx(p.tanggalBayar);
-            revenue[idx].amount += p.jumlahBayar ?? 0;
+            const idx = toMonthIdxUTC(p.tanggalBayar);
+            revenue[idx].amount += toNum(p.jumlahBayar) ?? 0;
         }
 
-        // ============== 3) EXPENSES ==============
+        /* ============== 3) EXPENSES ============== */
+        const expenses = emptyExpenses();
+
+        // 3a. Pengeluaran operasional & lainnya (dari pengeluaranDetail)
         const details = await prisma.pengeluaranDetail.findMany({
             where: {
                 pengeluaran: {
@@ -478,16 +482,35 @@ export async function GET(req: Request) {
             },
         });
 
-        const expenses = emptyExpenses();
         for (const d of details) {
-            const idx = toMonthIdx(d.pengeluaran.tanggalPengeluaran);
-            const amt = d.nominal ?? 0;
+            const idx = toMonthIdxUTC(d.pengeluaran.tanggalPengeluaran);
+            const amt = toNum(d.nominal) ?? 0;
             if (isOperasional(d.masterBiaya?.nama))
                 expenses[idx].operasional += amt;
             else expenses[idx].lainnya += amt;
         }
 
-        // ============== 4) PROFIT/LOSS ==============
+        // 3b. **Tambahan**: Pembelian inventaris (Purchase) berstatus CLOSE
+        const purchases = await prisma.purchase.findMany({
+            where: {
+                deletedAt: null,
+                status: "CLOSE",
+                tanggal: {
+                    gte: new Date(Date.UTC(year, 0, 1)),
+                    lt: new Date(Date.UTC(year + 1, 0, 1)),
+                },
+            },
+            select: { tanggal: true, total: true },
+        });
+
+        for (const p of purchases) {
+            const idx = toMonthIdxUTC(p.tanggal);
+            const amt = toNum(p.total) ?? 0;
+            // masukkan ke biaya lainnya (bisa dipisah jadi field sendiri kalau mau)
+            expenses[idx].lainnya += amt;
+        }
+
+        /* ============== 4) PROFIT/LOSS ============== */
         const profitLoss = MONTHS.map((m, i) => ({
             month: m,
             profit:
@@ -495,7 +518,7 @@ export async function GET(req: Request) {
                 (expenses[i].operasional + expenses[i].lainnya),
         }));
 
-        // ============== 5) OUTSTANDING & TABLE (Belum Bayar + Belum Lunas) ==============
+        /* ============== 5) OUTSTANDING & TABLE ============== */
         const tagihans = await prisma.tagihan.findMany({
             where: {
                 deletedAt: null,
@@ -517,7 +540,6 @@ export async function GET(req: Request) {
                 pelanggan: {
                     select: { nama: true, zona: { select: { nama: true } } },
                 },
-                // ambil pembayaran untuk deteksi "parsial"
                 pembayarans: {
                     where: { deletedAt: null },
                     select: { jumlahBayar: true },
@@ -525,7 +547,6 @@ export async function GET(req: Request) {
             },
         });
 
-        // periode yg diclearkan oleh bulan berikutnya
         const parsePrevCleared = (info?: string | null): string[] => {
             if (!info) return [];
             const m = info.match(/\[PREV_CLEARED:([0-9,\-\s]+)\]/);
@@ -538,9 +559,8 @@ export async function GET(req: Request) {
         const clearedSet = new Set<string>();
         for (const t of tagihans) {
             const clears = parsePrevCleared(t.info);
-            if (clears.length && t.pelangganId) {
+            if (clears.length && t.pelangganId)
                 for (const p of clears) clearedSet.add(`${t.pelangganId}|${p}`);
-            }
         }
 
         const outstandingData = MONTHS.map((m) => ({ month: m, amount: 0 }));
@@ -562,33 +582,26 @@ export async function GET(req: Request) {
             const sisaKurangNum = toNum(t.sisaKurang);
             const lunas = isLunasByRules(sisaKurangNum, t.info);
 
-            // skip bila periode ini sudah diclearkan
             if (
                 t.pelangganId &&
                 t.periode &&
                 clearedSet.has(`${t.pelangganId}|${t.periode}`)
-            ) {
+            )
                 continue;
-            }
 
             const outstandingAmount = lunas ? 0 : sisaKurangNum ?? totalDue;
 
-            // ke grafik
             const mIdx = monthIdxFromPeriode(t.periode);
             if (mIdx !== null && outstandingAmount > 0) {
                 outstandingData[mIdx].amount += outstandingAmount;
             }
 
-            // ===== tentukan status yang benar =====
             if (!lunas && outstandingAmount > 0) {
                 const totalBayar = (t.pembayarans || []).reduce(
-                    (s, p) => s + (p.jumlahBayar || 0),
+                    (s, p) => s + (toNum(p.jumlahBayar) ?? 0),
                     0
                 );
-
-                // ⬇️ perbaikan utama: partial hanya jika sudah ada pembayaran DAN masih ada sisa
                 const isPartial = totalBayar > 0 && outstandingAmount > 0;
-
                 const status: "BELUM_LUNAS" | "BELUM_BAYAR" =
                     tagihanLaluNum < 0 || isPartial
                         ? "BELUM_LUNAS"
@@ -620,7 +633,7 @@ export async function GET(req: Request) {
             expenseData: expenses,
             profitLossData: profitLoss,
             zoneNames,
-            unpaidBills, // ← sekarang: EFDAL & SUDIYONO (Sep) = BELUM_LUNAS; lainnya = BELUM_BAYAR
+            unpaidBills,
             outstandingData,
             outstandingTotal,
         });
