@@ -450,7 +450,6 @@
 //     </div>
 //   );
 // }
-
 // app/pengeluaran/[id]/page.tsx
 "use client";
 
@@ -655,6 +654,7 @@ export default function DetailPengeluaranPage() {
                                 <h2 className="text-xl font-semibold">
                                     Detail Pengeluaran
                                 </h2>
+
                                 <Dialog
                                     open={isModalOpen}
                                     onOpenChange={setIsModalOpen}
@@ -818,6 +818,19 @@ export default function DetailPengeluaranPage() {
                                 </div>
                             </div>
                         </GlassCard>
+                        {/* KANAN: tombol Posting + Tambah Detail (posisi atas kanan, mobile & desktop) */}
+                        <div className="flex items-right gap-2 mb-5">
+                            {expense.status === "Draft" && (
+                                <Button
+                                    onClick={handlePost}
+                                    className="bg-green-600 hover:bg-green-700"
+                                    size="default"
+                                >
+                                    <Send className="h-4 w-4 mr-2" />
+                                    Posting
+                                </Button>
+                            )}
+                        </div>
 
                         {/* Desktop Table — tema sama dengan list pengeluaran */}
                         <GlassCard className="hidden md:block mb-6 p-4">
@@ -991,18 +1004,7 @@ export default function DetailPengeluaranPage() {
                             </GlassCard>
                         </div>
 
-                        {expense.status === "Draft" && (
-                            <div className="flex justify-center mt-4">
-                                <Button
-                                    onClick={handlePost}
-                                    className="bg-green-600 hover:bg-green-700 px-8 py-3 text-lg"
-                                    size="lg"
-                                >
-                                    <Send className="h-5 w-5 mr-2" />
-                                    Posting
-                                </Button>
-                            </div>
-                        )}
+                        {/* ⛔️ Tombol Posting di bawah DIHILANGKAN, karena sudah dipindah ke header atas */}
                     </AppShell>
                 </AuthGuard>
             </div>

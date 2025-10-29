@@ -291,14 +291,14 @@ export default function ZonaPage() {
                         </div>
 
                         {/* Jika quota habis, disable tombol tambah */}
-                        <Button
+                        {/* <Button
                             className="flex items-center gap-2"
                             form="zona-form"
                             disabled={quotaHabis}
                         >
                             <Plus className="w-4 h-4" />
                             Tambah Blok
-                        </Button>
+                        </Button> */}
                     </div>
 
                     <GlassCard className="p-6">

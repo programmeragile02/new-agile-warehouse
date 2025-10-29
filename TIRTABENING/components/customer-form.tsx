@@ -1,3 +1,573 @@
+// "use client";
+
+// import { useEffect, useMemo, useRef, useState } from "react";
+// import useSWR, { useSWRConfig } from "swr";
+// import dynamic from "next/dynamic";
+// import L from "leaflet";
+
+// import { Button } from "@/components/ui/button";
+// import { Input } from "@/components/ui/input";
+// import { Label } from "@/components/ui/label";
+// import { Textarea } from "@/components/ui/textarea";
+// import { useToast } from "@/hooks/use-toast";
+// import { Crosshair } from "lucide-react";
+// import { defaultLeafletIcon } from "@/lib/leaflet-icons";
+// import { FeatureGate } from "@/components/feature-gate";
+
+// const MapContainer = dynamic(
+//     async () => (await import("react-leaflet")).MapContainer,
+//     { ssr: false }
+// );
+// const TileLayer = dynamic(
+//     async () => (await import("react-leaflet")).TileLayer,
+//     { ssr: false }
+// );
+// const Marker = dynamic(async () => (await import("react-leaflet")).Marker, {
+//     ssr: false,
+// });
+// const useMapEvents = dynamic(
+//     async () => (await import("react-leaflet")).useMapEvents,
+//     { ssr: false }
+// ) as unknown as typeof import("react-leaflet").useMapEvents;
+
+// const DefaultIcon = L.icon({
+//     iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+//     iconRetinaUrl:
+//         "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+//     shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+//     iconSize: [25, 41],
+//     iconAnchor: [12, 41],
+// });
+// (L.Marker.prototype as any).options.icon = DefaultIcon;
+
+// type ZonaLite = { id: string; nama: string; kode: string; deskripsi?: string };
+
+// type CustomerData = {
+//     nama: string;
+//     noWA: string;
+//     noWA2: string;
+//     kodeCustomer: string;
+//     alamat: string;
+//     meterAwal: string;
+//     zonaId: string;
+//     lat: string;
+//     lng: string;
+// };
+
+// const fetcher = (url: string) => fetch(url).then((r) => r.json());
+// function normalizeWA(v: string) {
+//     const digits = v.replace(/\D/g, "");
+//     if (!digits) return "";
+//     if (digits.startsWith("0")) return `62${digits.slice(1)}`;
+//     if (digits.startsWith("62")) return digits;
+//     return digits;
+// }
+// function genCustomerCode() {
+//     const ts = Date.now().toString().slice(-6);
+//     const rnd = Math.floor(Math.random() * 100)
+//         .toString()
+//         .padStart(2, "0");
+//     return `TB${ts}${rnd}`;
+// }
+// const numOrNull = (v: string): number | null => {
+//     if (v.trim() === "") return null;
+//     const n = Number(v);
+//     return Number.isFinite(n) ? n : null;
+// };
+
+// function ClickPicker({
+//     onPick,
+// }: {
+//     onPick: (lat: number, lng: number) => void;
+// }) {
+//     // @ts-ignore
+//     useMapEvents({
+//         click(e: any) {
+//             const { lat, lng } = e.latlng;
+//             onPick(lat, lng);
+//         },
+//     });
+//     return null;
+// }
+
+// function FeatureDisabledBanner() {
+//     return (
+//         <div className="p-4 border border-red-300 bg-red-50 text-red-900 rounded-md">
+//             <div className="font-medium">Fitur tidak tersedia</div>
+//             <div className="text-sm">
+//                 Paket kamu belum memiliki fitur pendaftaran pelanggan. Silakan{" "}
+//                 <a href="/upgrade" className="underline">
+//                     upgrade paket
+//                 </a>{" "}
+//                 untuk mengaktifkannya.
+//             </div>
+//         </div>
+//     );
+// }
+
+// export function CustomerForm() {
+//     const [isLoading, setIsLoading] = useState(false);
+//     const [formData, setFormData] = useState<CustomerData>({
+//         nama: "",
+//         noWA: "",
+//         noWA2: "",
+//         kodeCustomer: "",
+//         alamat: "",
+//         meterAwal: "",
+//         zonaId: "",
+//         lat: "",
+//         lng: "",
+//     });
+
+//     const { toast } = useToast();
+//     const { mutate } = useSWRConfig();
+
+//     const {
+//         data: zonaResp,
+//         isLoading: loadingZona,
+//         error: zonaError,
+//     } = useSWR<{ ok: boolean; items: ZonaLite[] }>(
+//         "/api/zona?page=1&pageSize=500&q=",
+//         fetcher,
+//         { revalidateOnFocus: false }
+//     );
+//     const zonaList = Array.isArray(zonaResp?.items) ? zonaResp!.items : [];
+
+//     // QUOTA
+//     const { data: quotaResp } = useSWR<{
+//         ok: boolean;
+//         quota: { used: number; max: number; remaining: number };
+//     }>("/api/pelanggan?quota=1", fetcher, { revalidateOnFocus: true });
+//     const remaining = quotaResp?.quota?.remaining ?? Infinity;
+//     const quotaHabis = Number.isFinite(remaining) && remaining <= 0;
+
+//     const mapRef = useRef<L.Map | null>(null);
+//     const latNum = useMemo(() => numOrNull(formData.lat), [formData.lat]);
+//     const lngNum = useMemo(() => numOrNull(formData.lng), [formData.lng]);
+//     const hasCoord = latNum != null && lngNum != null;
+
+//     const initialCenter: [number, number] = hasCoord
+//         ? [latNum!, lngNum!]
+//         : [-6.2, 106.816666];
+//     const initialZoom = hasCoord ? 15 : 12;
+
+//     useEffect(() => {
+//         const m: any = mapRef.current;
+//         if (!m || latNum == null || lngNum == null) return;
+//         const curZoom = typeof m.getZoom === "function" ? m.getZoom() : 15;
+//         if (typeof m.flyTo === "function") {
+//             m.flyTo([latNum, lngNum], Math.max(15, curZoom), { animate: true });
+//         } else if (typeof m.setView === "function") {
+//             m.setView([latNum, lngNum], Math.max(15, curZoom));
+//         }
+//     }, [latNum, lngNum]);
+
+//     const handleUseMyLocation = () => {
+//         if (!navigator.geolocation) return;
+//         navigator.geolocation.getCurrentPosition(
+//             (pos) => {
+//                 const la = +pos.coords.latitude.toFixed(6);
+//                 const lo = +pos.coords.longitude.toFixed(6);
+//                 setFormData((p) => ({
+//                     ...p,
+//                     lat: String(la),
+//                     lng: String(lo),
+//                 }));
+//             },
+//             () => {
+//                 toast({
+//                     title: "Gagal mengambil lokasi",
+//                     description:
+//                         "Pastikan izin lokasi aktif & sinyal GPS bagus, lalu coba lagi.",
+//                     variant: "destructive",
+//                 });
+//             },
+//             { enableHighAccuracy: true, timeout: 8000 }
+//         );
+//     };
+
+//     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+//         e.preventDefault();
+
+//         // Guard kuota habis (FE)
+//         if (quotaHabis) {
+//             toast({
+//                 title: "Kuota pelanggan habis",
+//                 description:
+//                     "Paket sudah mencapai maksimum pelanggan. Hapus pelanggan tidak aktif atau upgrade paket.",
+//                 variant: "destructive",
+//             });
+//             return;
+//         }
+
+//         if (isLoading) return;
+//         setIsLoading(true);
+
+//         try {
+//             const payload: Record<string, unknown> = {
+//                 nama: formData.nama.trim(),
+//                 wa: normalizeWA(formData.noWA),
+//                 wa2: formData.noWA2 ? normalizeWA(formData.noWA2) : undefined,
+//                 alamat: formData.alamat.trim(),
+//                 meterAwal: Number(formData.meterAwal || 0),
+//                 kode: formData.kodeCustomer?.trim() || undefined,
+//                 zonaId: formData.zonaId || undefined,
+//                 lat: numOrNull(formData.lat),
+//                 lng: numOrNull(formData.lng),
+//             };
+
+//             const res = await fetch("/api/pelanggan", {
+//                 method: "POST",
+//                 headers: { "Content-Type": "application/json" },
+//                 body: JSON.stringify(payload),
+//             });
+//             const data = await res.json();
+
+//             if (!res.ok || !data?.ok) {
+//                 const msg =
+//                     data?.message ||
+//                     (res.status === 403
+//                         ? "Kuota pelanggan habis. Upgrade paket untuk menambah kuota."
+//                         : "Gagal menyimpan pelanggan");
+//                 throw new Error(msg);
+//             }
+
+//             await mutate("/api/pelanggan");
+
+//             const kodeFix = data?.data?.pelanggan?.kode ?? payload.kode;
+//             const username = data?.data?.user?.username;
+//             const tempPass = data?.data?.tempPassword;
+
+//             toast({
+//                 title: "Pelanggan berhasil ditambahkan",
+//                 description:
+//                     `Kode: ${kodeFix}` +
+//                     (username ? ` • User: ${username}` : "") +
+//                     (tempPass ? ` • Password: ${tempPass}` : ""),
+//             });
+
+//             setFormData({
+//                 nama: "",
+//                 noWA: "",
+//                 noWA2: "",
+//                 kodeCustomer: "",
+//                 alamat: "",
+//                 meterAwal: "",
+//                 zonaId: "",
+//                 lat: "",
+//                 lng: "",
+//             });
+
+//             // refresh kuota agar remaining berkurang di UI
+//             await mutate("/api/pelanggan?quota=1");
+//         } catch (err) {
+//             const msg =
+//                 err instanceof Error
+//                     ? err.message
+//                     : "Terjadi kesalahan, silakan coba lagi";
+//             toast({
+//                 title: "Gagal Menambahkan Pelanggan",
+//                 description: msg,
+//                 variant: "destructive",
+//             });
+//         } finally {
+//             setIsLoading(false);
+//         }
+//     };
+
+//     const set =
+//         (field: keyof CustomerData) =>
+//         (
+//             e: React.ChangeEvent<
+//                 HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+//             >
+//         ) =>
+//             setFormData((p) => ({ ...p, [field]: e.target.value }));
+
+//     return (
+//         <FeatureGate
+//             code="maksimal.pelanggan"
+//             fallback={<FeatureDisabledBanner />}
+//         >
+//             <form onSubmit={handleSubmit} className="space-y-6">
+//                 {quotaHabis && (
+//                     <div className="p-4 border border-amber-300 bg-amber-50 text-amber-900 rounded-md">
+//                         <div className="font-medium">Kuota pelanggan habis</div>
+//                         <div className="text-sm">
+//                             Paket kamu sudah mencapai maksimum pelanggan. Hapus
+//                             pelanggan tidak aktif atau{" "}
+//                             <a href="/upgrade" className="underline">
+//                                 upgrade paket
+//                             </a>{" "}
+//                             untuk menambah kuota.
+//                         </div>
+//                     </div>
+//                 )}
+
+//                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+//                     <div className="space-y-2">
+//                         <Label htmlFor="nama" className="text-base font-medium">
+//                             Nama Lengkap *
+//                         </Label>
+//                         <Input
+//                             id="nama"
+//                             value={formData.nama}
+//                             onChange={set("nama")}
+//                             placeholder="Masukkan nama pelanggan"
+//                             required
+//                             className="h-12 text-base"
+//                         />
+//                     </div>
+
+//                     <div className="space-y-2">
+//                         <Label htmlFor="noWA" className="text-base font-medium">
+//                             No. WhatsApp 1*
+//                         </Label>
+//                         <Input
+//                             id="noWA"
+//                             type="tel"
+//                             placeholder="Masukkan nomer whatsapp 1 "
+//                             value={formData.noWA}
+//                             onChange={set("noWA")}
+//                             required
+//                             className="h-12 text-base"
+//                         />
+//                     </div>
+
+//                     <div className="space-y-2">
+//                         <Label
+//                             htmlFor="noWA2"
+//                             className="text-base font-medium"
+//                         >
+//                             No. WhatsApp 2 (opsional)
+//                         </Label>
+//                         <Input
+//                             id="noWA2"
+//                             type="tel"
+//                             placeholder="Masukkan nomer whatsapp 2 "
+//                             value={formData.noWA2}
+//                             onChange={set("noWA2")}
+//                             className="h-12 text-base"
+//                         />
+//                     </div>
+
+//                     <div className="space-y-2">
+//                         <Label
+//                             htmlFor="kodeCustomer"
+//                             className="text-base font-medium"
+//                         >
+//                             Kode Customer
+//                         </Label>
+//                         <div className="flex gap-2">
+//                             <Input
+//                                 id="kodeCustomer"
+//                                 placeholder="Auto generate jika kosong"
+//                                 value={formData.kodeCustomer}
+//                                 onChange={set("kodeCustomer")}
+//                                 className="h-12 text-base"
+//                             />
+//                             <Button
+//                                 type="button"
+//                                 variant="outline"
+//                                 onClick={() =>
+//                                     setFormData((p) => ({
+//                                         ...p,
+//                                         kodeCustomer: genCustomerCode(),
+//                                     }))
+//                                 }
+//                             >
+//                                 Generate
+//                             </Button>
+//                         </div>
+//                     </div>
+
+//                     <div className="space-y-2">
+//                         <Label
+//                             htmlFor="meterAwal"
+//                             className="text-base font-medium"
+//                         >
+//                             Meter Awal *
+//                         </Label>
+//                         <Input
+//                             id="meterAwal"
+//                             type="number"
+//                             min={0}
+//                             placeholder="Masukkan meter awal"
+//                             value={formData.meterAwal}
+//                             onChange={set("meterAwal")}
+//                             required
+//                             className="h-12 text-base"
+//                         />
+//                     </div>
+
+//                     <div className="space-y-2 md:col-span-2">
+//                         <Label htmlFor="zona" className="text-base font-medium">
+//                             Blok
+//                         </Label>
+//                         <select
+//                             id="zona"
+//                             value={formData.zonaId}
+//                             onChange={set("zonaId")}
+//                             className="w-full h-12 px-3 py-2 text-base bg-card/60 border border-primary/30 rounded-md text-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
+//                             disabled={loadingZona}
+//                         >
+//                             <option value="">
+//                                 {loadingZona
+//                                     ? "Memuat blok…"
+//                                     : "— Pilih blok —"}
+//                             </option>
+//                             {zonaList.map((z) => (
+//                                 <option key={z.id} value={z.id}>
+//                                     {z.nama}{" "}
+//                                     {z.deskripsi ? `– ${z.deskripsi}` : ""}
+//                                 </option>
+//                             ))}
+//                         </select>
+//                         {zonaError ? (
+//                             <p className="text-xs text-destructive mt-1">
+//                                 Gagal memuat daftar blok.
+//                             </p>
+//                         ) : null}
+//                     </div>
+//                 </div>
+
+//                 <div className="space-y-2">
+//                     <Label htmlFor="alamat" className="text-base font-medium">
+//                         Alamat Lengkap *
+//                     </Label>
+//                     <Textarea
+//                         id="alamat"
+//                         value={formData.alamat}
+//                         onChange={set("alamat")}
+//                         placeholder="Masukkan alamat lengkap"
+//                         required
+//                         className="min-h-[100px] text-base resize-none"
+//                     />
+//                 </div>
+
+//                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+//                     <div className="space-y-2">
+//                         <Label htmlFor="lat" className="text-base font-medium">
+//                             Latitude
+//                         </Label>
+//                         <Input
+//                             id="lat"
+//                             type="number"
+//                             step="0.000001"
+//                             min={-90}
+//                             max={90}
+//                             placeholder="Masukkan latitude"
+//                             value={formData.lat}
+//                             onChange={set("lat")}
+//                             className="h-12 text-base"
+//                         />
+//                     </div>
+//                     <div className="space-y-2">
+//                         <Label htmlFor="lng" className="text-base font-medium">
+//                             Longitude
+//                         </Label>
+//                         <Input
+//                             id="lng"
+//                             type="number"
+//                             step="0.000001"
+//                             min={-180}
+//                             max={180}
+//                             placeholder="masukkan longitude"
+//                             value={formData.lng}
+//                             onChange={set("lng")}
+//                             className="h-12 text-base"
+//                         />
+//                     </div>
+//                 </div>
+
+//                 <div className="flex items-center gap-2">
+//                     <Button
+//                         type="button"
+//                         variant="outline"
+//                         onClick={handleUseMyLocation}
+//                     >
+//                         <Crosshair className="w-4 h-4 mr-2" /> Ambil Lokasi Saya
+//                     </Button>
+//                     <Button
+//                         type="button"
+//                         variant="outline"
+//                         onClick={() =>
+//                             setFormData((p) => ({ ...p, lat: "", lng: "" }))
+//                         }
+//                     >
+//                         Hapus Koordinat
+//                     </Button>
+//                 </div>
+
+//                 <div className="rounded-md overflow-hidden border border-primary/20">
+//                     <div className="h-64">
+//                         {typeof window !== "undefined" && (
+//                             <MapContainer
+//                                 ref={mapRef as any}
+//                                 center={initialCenter}
+//                                 zoom={initialZoom}
+//                                 style={{ height: "100%", width: "100%" }}
+//                             >
+//                                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+//                                 <ClickPicker
+//                                     onPick={(la, lo) =>
+//                                         setFormData((p) => ({
+//                                             ...p,
+//                                             lat: la.toFixed(6),
+//                                             lng: lo.toFixed(6),
+//                                         }))
+//                                     }
+//                                 />
+//                                 {hasCoord &&
+//                                     latNum != null &&
+//                                     lngNum != null && (
+//                                         // @ts-ignore
+//                                         <Marker
+//                                             icon={defaultLeafletIcon}
+//                                             position={[latNum, lngNum]}
+//                                             draggable
+//                                             // @ts-ignore
+//                                             eventHandlers={{
+//                                                 dragend: (e: any) => {
+//                                                     const { lat, lng } =
+//                                                         e.target.getLatLng();
+//                                                     setFormData((p) => ({
+//                                                         ...p,
+//                                                         lat: lat.toFixed(6),
+//                                                         lng: lng.toFixed(6),
+//                                                     }));
+//                                                 },
+//                                             }}
+//                                         />
+//                                     )}
+//                             </MapContainer>
+//                         )}
+//                     </div>
+//                 </div>
+//                 <div className="text-xs text-muted-foreground">
+//                     Tip: klik lokasi saya lalu marker bisa digeser.
+//                 </div>
+
+//                 <div className="flex justify-end">
+//                     <Button
+//                         type="submit"
+//                         className="px-8 h-12 text-base"
+//                         disabled={isLoading || quotaHabis}
+//                     >
+//                         {isLoading ? (
+//                             <span className="flex items-center gap-2">
+//                                 <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+//                                 Menyimpan...
+//                             </span>
+//                         ) : (
+//                             "Simpan Pelanggan"
+//                         )}
+//                     </Button>
+//                 </div>
+//             </form>
+//         </FeatureGate>
+//     );
+// }
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -20,7 +590,9 @@ const MapContainer = dynamic(
 );
 const TileLayer = dynamic(
     async () => (await import("react-leaflet")).TileLayer,
-    { ssr: false }
+    {
+        ssr: false,
+    }
 );
 const Marker = dynamic(async () => (await import("react-leaflet")).Marker, {
     ssr: false,
@@ -54,7 +626,10 @@ type CustomerData = {
     lng: string;
 };
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
+/* ===================== Helpers ===================== */
+const fetcher = (url: string) =>
+    fetch(url, { cache: "no-store" }).then((r) => r.json());
+
 function normalizeWA(v: string) {
     const digits = v.replace(/\D/g, "");
     if (!digits) return "";
@@ -62,6 +637,7 @@ function normalizeWA(v: string) {
     if (digits.startsWith("62")) return digits;
     return digits;
 }
+
 function genCustomerCode() {
     const ts = Date.now().toString().slice(-6);
     const rnd = Math.floor(Math.random() * 100)
@@ -69,12 +645,35 @@ function genCustomerCode() {
         .padStart(2, "0");
     return `TB${ts}${rnd}`;
 }
+
 const numOrNull = (v: string): number | null => {
     if (v.trim() === "") return null;
     const n = Number(v);
     return Number.isFinite(n) ? n : null;
 };
 
+/** Broadcast sinkronisasi ke semua tab & komponen */
+function signalPelangganChanged() {
+    try {
+        const ch = new BroadcastChannel("tb:pelanggan");
+        ch.postMessage({ type: "changed" });
+        ch.close();
+    } catch {}
+    if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("tb:pelanggan:changed"));
+        try {
+            localStorage.setItem("tb:pelanggan:ping", String(Date.now()));
+        } catch {}
+        // kompatibel dengan exposé dari CustomerList (kalau ada)
+        // @ts-ignore
+        if (typeof window.__tbPelangganChanged === "function") {
+            // @ts-ignore
+            window.__tbPelangganChanged();
+        }
+    }
+}
+
+/* ===================== Map click picker ===================== */
 function ClickPicker({
     onPick,
 }: {
@@ -105,6 +704,7 @@ function FeatureDisabledBanner() {
     );
 }
 
+/* ===================== Form ===================== */
 export function CustomerForm() {
     const [isLoading, setIsLoading] = useState(false);
     const [formData, setFormData] = useState<CustomerData>({
@@ -122,6 +722,7 @@ export function CustomerForm() {
     const { toast } = useToast();
     const { mutate } = useSWRConfig();
 
+    // ZONA
     const {
         data: zonaResp,
         isLoading: loadingZona,
@@ -141,6 +742,7 @@ export function CustomerForm() {
     const remaining = quotaResp?.quota?.remaining ?? Infinity;
     const quotaHabis = Number.isFinite(remaining) && remaining <= 0;
 
+    // Map
     const mapRef = useRef<L.Map | null>(null);
     const latNum = useMemo(() => numOrNull(formData.lat), [formData.lat]);
     const lngNum = useMemo(() => numOrNull(formData.lng), [formData.lng]);
@@ -186,10 +788,10 @@ export function CustomerForm() {
         );
     };
 
+    /* ===== Submit: tambah pelanggan + invalidasi global instan ===== */
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
-        // Guard kuota habis (FE)
         if (quotaHabis) {
             toast({
                 title: "Kuota pelanggan habis",
@@ -199,7 +801,6 @@ export function CustomerForm() {
             });
             return;
         }
-
         if (isLoading) return;
         setIsLoading(true);
 
@@ -210,7 +811,7 @@ export function CustomerForm() {
                 wa2: formData.noWA2 ? normalizeWA(formData.noWA2) : undefined,
                 alamat: formData.alamat.trim(),
                 meterAwal: Number(formData.meterAwal || 0),
-                kode: formData.kodeCustomer?.trim() || undefined,
+                // kodeCustomer itu hanya untuk UI; API generate 'kode' sendiri → jangan kirim untuk menghindari bingung
                 zonaId: formData.zonaId || undefined,
                 lat: numOrNull(formData.lat),
                 lng: numOrNull(formData.lng),
@@ -232,16 +833,25 @@ export function CustomerForm() {
                 throw new Error(msg);
             }
 
-            await mutate("/api/pelanggan");
+            // ====== 1) Revalidate SEMUA daftar pelanggan sekarang juga ======
+            await mutate(
+                (key) =>
+                    typeof key === "string" && key.startsWith("/api/pelanggan"),
+                undefined,
+                { revalidate: true }
+            );
 
-            const kodeFix = data?.data?.pelanggan?.kode ?? payload.kode;
+            // ====== 2) Broadcast ke semua tab/komponen lain ======
+            signalPelangganChanged();
+
+            const kodeFix = data?.data?.pelanggan?.kode;
             const username = data?.data?.user?.username;
             const tempPass = data?.data?.tempPassword;
 
             toast({
                 title: "Pelanggan berhasil ditambahkan",
                 description:
-                    `Kode: ${kodeFix}` +
+                    (kodeFix ? `Kode: ${kodeFix}` : "") +
                     (username ? ` • User: ${username}` : "") +
                     (tempPass ? ` • Password: ${tempPass}` : ""),
             });
@@ -258,16 +868,17 @@ export function CustomerForm() {
                 lng: "",
             });
 
-            // refresh kuota agar remaining berkurang di UI
-            await mutate("/api/pelanggan?quota=1");
+            // Segarkan kuota agar UI langsung berkurang
+            await mutate("/api/pelanggan?quota=1", undefined, {
+                revalidate: true,
+            });
         } catch (err) {
-            const msg =
-                err instanceof Error
-                    ? err.message
-                    : "Terjadi kesalahan, silakan coba lagi";
             toast({
                 title: "Gagal Menambahkan Pelanggan",
-                description: msg,
+                description:
+                    err instanceof Error
+                        ? err.message
+                        : "Terjadi kesalahan, silakan coba lagi",
                 variant: "destructive",
             });
         } finally {
@@ -472,7 +1083,7 @@ export function CustomerForm() {
                             step="0.000001"
                             min={-180}
                             max={180}
-                            placeholder="masukkan longitude"
+                            placeholder="Masukkan longitude"
                             value={formData.lng}
                             onChange={set("lng")}
                             className="h-12 text-base"
