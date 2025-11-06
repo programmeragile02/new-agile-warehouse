@@ -695,9 +695,7 @@ function FeatureDisabledBanner() {
             <div className="font-medium">Fitur tidak tersedia</div>
             <div className="text-sm">
                 Paket kamu belum memiliki fitur pendaftaran pelanggan. Silakan{" "}
-                <a href="/upgrade" className="underline">
-                    upgrade paket
-                </a>{" "}
+                <a href="https://agilestore.id/my-account">upgrade paket</a>{" "}
                 untuk mengaktifkannya.
             </div>
         </div>

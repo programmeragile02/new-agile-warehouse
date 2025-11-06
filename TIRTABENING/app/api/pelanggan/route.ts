@@ -5,6 +5,11 @@
 // import { Prisma } from "@prisma/client";
 // import jwt from "jsonwebtoken";
 // import { warehouseUpsertCpiu } from "@/lib/warehouse-users";
+// import { revalidateTag } from "next/cache";
+
+// /* ====== Force fresh for this route (hindari caching tak sengaja) ====== */
+// export const dynamic = "force-dynamic";
+// export const revalidate = 0;
 
 // /* ===================== ENV & DEFAULTS ===================== */
 // const WAREHOUSE_API_BASE =
@@ -12,6 +17,10 @@
 // const WAREHOUSE_API_KEY = process.env.WAREHOUSE_API_KEY || "";
 // const PRODUCT_CODE = process.env.PRODUCT_CODE || "NATABANYU";
 // const DEFAULT_MAX_CUSTOMERS = Number(process.env.DEFAULT_MAX_CUSTOMERS ?? 30);
+
+// // akhiran username jika custom
+// const DEFAULT_USERNAME_DOMAIN =
+//   process.env.DEFAULT_USERNAME_DOMAIN?.trim() || "email.com";
 
 // /* ===================== Company & Plan helpers ===================== */
 // function getCompanyIdFromReq(req: NextRequest): string | null {
@@ -49,9 +58,9 @@
 //     return `TB${base.slice(0, 2)}${four}`;
 // }
 // function genUsername(name: string) {
-//     const slug = (name || "warga").toLowerCase().replace(/[^a-z0-9]/g, "");
-//     const n = Math.random().toString(36).slice(2, 5);
-//     return `${slug}${n}`;
+//   const slug = (name || "warga").toLowerCase().replace(/[^a-z0-9]/g, "");
+//   const n = Math.random().toString(36).slice(2, 5);
+//   return `${slug}${n}@${DEFAULT_USERNAME_DOMAIN}`;
 // }
 // const normalizeWA = (v?: string) => {
 //     if (!v) return undefined;
@@ -88,7 +97,7 @@
 //         .string()
 //         .min(3)
 //         .max(30)
-//         .regex(/^[a-z0-9_]+$/i)
+//         .regex(/^[a-z0-9._%+\-@]+$/i)
 //         .optional(),
 //     password: z.string().min(6).max(100).optional(),
 //     lat: latSchema.optional(),
@@ -96,8 +105,6 @@
 // });
 
 // /* ===================== Entitlement resolve & cache ===================== */
-// type MaybeNum = number | null | undefined;
-
 // type WarehouseEntitlement = {
 //     code: string;
 //     value_number?: number | null;
@@ -315,7 +322,7 @@
 //                     phone: waNorm ?? null,
 //                     role: "WARGA",
 //                     isActive: true,
-//                     companyId: companyId, // <-- penting: kaitkan user dengan company
+//                     companyId: companyId, // kaitkan user dengan company
 //                 },
 //                 select: { id: true, username: true, name: true },
 //             });
@@ -380,8 +387,7 @@
 //             );
 //         }
 
-//         // Setelah transaksi commit, sink ke Warehouse.
-//         // Jika sink gagal -> rollback manual: hapus user & pelanggan yang baru dibuat.
+//         // Sink ke Warehouse. Jika gagal → rollback manual.
 //         try {
 //             await warehouseUpsertCpiu({
 //                 email: out.user.username,
@@ -391,7 +397,6 @@
 //                 isActive: true,
 //             });
 //         } catch (err: any) {
-//             // cleanup: hapus user + pelanggan yang baru dibuat (hard delete)
 //             try {
 //                 await prisma.user.delete({ where: { id: out.user.id } });
 //             } catch (e) {
@@ -421,7 +426,9 @@
 //             );
 //         }
 
-//         // sukses semua
+//         // sukses semua → revalidate list
+//         revalidateTag("pelanggan");
+
 //         return NextResponse.json(
 //             {
 //                 ok: true,
@@ -479,10 +486,13 @@
 //             const planHint = getPlanFromReq(req);
 //             const max = await resolveMaxCustomers(companyId, planHint);
 //             const used = await countActiveCustomers(prisma);
-//             return NextResponse.json({
-//                 ok: true,
-//                 quota: { used, max, remaining: Math.max(0, max - used) },
-//             });
+//             return NextResponse.json(
+//                 {
+//                     ok: true,
+//                     quota: { used, max, remaining: Math.max(0, max - used) },
+//                 },
+//                 { headers: { "Cache-Control": "no-store" } }
+//             );
 //         }
 
 //         const pageRaw = parseInt(sp.get("page") ?? "1", 10);
@@ -565,11 +575,20 @@
 //             },
 //         });
 
-//         return NextResponse.json({
-//             ok: true,
-//             items,
-//             pagination: { page: safePage, pageSize, total, totalPages },
-//         });
+//         return NextResponse.json(
+//             {
+//                 ok: true,
+//                 items,
+//                 pagination: { page: safePage, pageSize, total, totalPages },
+//             },
+//             {
+//                 headers: {
+//                     // Hindari cache perantara agar refetch client segera dapat data baru
+//                     "Cache-Control": "no-store",
+//                     Vary: "Cookie, Authorization",
+//                 },
+//             }
+//         );
 //     } catch (e: any) {
 //         console.error("❌ GET /api/pelanggan error:", e);
 //         return NextResponse.json(
@@ -641,14 +660,13 @@
 //                 { status: 400 }
 //             );
 
-//         // normalisasi zonaId: "" → null (sudah nullable di schema, tapi FE kadang kirim "")
+//         // normalisasi zonaId: "" → null
 //         const zonaIdNorm =
 //             body.zonaId !== undefined
 //                 ? body.zonaId === ""
 //                     ? null
 //                     : body.zonaId
 //                 : undefined;
-
 //         const noUrutNorm = body.noUrutRumah; // sudah dipreprocess di atas
 
 //         if (zonaIdNorm !== undefined && zonaIdNorm !== null) {
@@ -680,14 +698,14 @@
 //         if (body.alamat !== undefined) data.alamat = body.alamat;
 //         if (body.status !== undefined)
 //             data.statusAktif = body.status === "aktif";
-//         if (body.lat !== undefined) (data as any).lat = body.lat; // bisa number atau null
-//         if (body.lng !== undefined) (data as any).lng = body.lng; // bisa number atau null
+//         if (typeof body.lat !== "undefined") (data as any).lat = body.lat; // number | null
+//         if (typeof body.lng !== "undefined") (data as any).lng = body.lng; // number | null
 
 //         // WA utama
 //         if (body.wa !== undefined)
 //             (data as any).wa = normalizeWA(body.wa) ?? null;
 
-//         // WA2: null → kosongkan; string → normalisasi
+//         // WA2
 //         if (body.wa2 === null) {
 //             (data as any).wa2 = null;
 //         } else if (body.wa2 !== undefined) {
@@ -734,7 +752,6 @@
 //             const targetZonaId =
 //                 zonaIdNorm === undefined ? current.zonaId : zonaIdNorm;
 
-//             // set zonaId jika dikirim (termasuk null)
 //             if (zonaIdNorm !== undefined) {
 //                 data.zonaId = zonaIdNorm;
 //             }
@@ -824,7 +841,6 @@
 //                 }
 //                 if (targetZonaId === null) {
 //                     (data as any).noUrutRumah = null;
-//                     meta.clearedZona = true;
 //                 } else {
 //                     const last = await tx.pelanggan.findFirst({
 //                         where: {
@@ -874,11 +890,10 @@
 //             typeof meta.to === "number"
 //         ) {
 //             successMsg = `Nomor urut pelanggan "${updated.nama}" dipindah ke ${updated.noUrutRumah}.`;
-//         } else if (meta.zonaChanged && meta.clearedZona) {
-//             successMsg = `Zona dikosongkan dan nomor urut dihapus.`;
-//         } else if (meta.zonaChanged && meta.appended) {
-//             successMsg = `Pelanggan dipindah ke zona baru dan diberi nomor urut ${updated.noUrutRumah}.`;
 //         }
+
+//         // ✅ invalidasi list setelah update
+//         revalidateTag("pelanggan");
 
 //         return NextResponse.json({
 //             ok: true,
@@ -981,6 +996,9 @@
 //             );
 //         }
 
+//         // ✅ invalidasi list setelah delete
+//         revalidateTag("pelanggan");
+
 //         return NextResponse.json({
 //             ok: true,
 //             message: "Pelanggan berhasil dihapus (soft delete)",
@@ -1022,7 +1040,7 @@ const DEFAULT_MAX_CUSTOMERS = Number(process.env.DEFAULT_MAX_CUSTOMERS ?? 30);
 
 // akhiran username jika custom
 const DEFAULT_USERNAME_DOMAIN =
-  process.env.DEFAULT_USERNAME_DOMAIN?.trim() || "email.com";
+    process.env.DEFAULT_USERNAME_DOMAIN?.trim() || "email.com";
 
 /* ===================== Company & Plan helpers ===================== */
 function getCompanyIdFromReq(req: NextRequest): string | null {
@@ -1060,9 +1078,9 @@ function genCustomerCode(name: string) {
     return `TB${base.slice(0, 2)}${four}`;
 }
 function genUsername(name: string) {
-  const slug = (name || "warga").toLowerCase().replace(/[^a-z0-9]/g, "");
-  const n = Math.random().toString(36).slice(2, 5);
-  return `${slug}${n}@${DEFAULT_USERNAME_DOMAIN}`;
+    const slug = (name || "warga").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const n = Math.random().toString(36).slice(2, 5);
+    return `${slug}${n}@${DEFAULT_USERNAME_DOMAIN}`;
 }
 const normalizeWA = (v?: string) => {
     if (!v) return undefined;
@@ -1132,12 +1150,17 @@ type WarehouseResp =
           };
       };
 
+// ====== Ubah limits sesuai permintaan ======
 const TierLimit: Record<string, number> = {
-    BASIC: 30,
-    PREMIUM: 100,
-    PROFESSIONAL: 500,
+    BASIC: 20,
+    PREMIUM: 40,
+    PROFESSIONAL: 70,
 };
 
+// harga per addon (1 addon = 1 pelanggan tambahan)
+const ADDON_UNIT_PRICE = Number(process.env.ADDON_UNIT_PRICE ?? 5000);
+
+// cache sekarang keyed by companyId + addons so different addons don't collide
 const EntCache: Record<string, { max: number; exp: number }> =
     Object.create(null);
 const now = () => Date.now();
@@ -1195,14 +1218,20 @@ async function fetchEntitlementsFromWarehouse(companyId: string): Promise<{
  * 1) Entitlement "maksimal.pelanggan" (numerik)
  * 2) package/plan dari Warehouse (offering.slug)
  * 3) hint dari request (tb_offering/tb_plan/tb_package/head­er/env)
- * 4) DEFAULT (30)
+ * 4) DEFAULT (DEFAULT_MAX_CUSTOMERS)
+ *
+ * Fungsi sekarang menerima `addons` (jumlah pelanggan tambahan dari cookie tb_addons)
  */
 async function resolveMaxCustomers(
     companyId: string | null,
-    planHint?: string | null
+    planHint?: string | null,
+    addons: number = 0
 ): Promise<number> {
+    const safeAddons = Math.max(0, Math.floor(Number(addons) || 0));
+    const cacheKey = `${companyId ?? "nogroup"}::addons:${safeAddons}`;
+
     if (companyId) {
-        const hit = EntCache[companyId];
+        const hit = EntCache[cacheKey];
         if (hit && hit.exp > now()) return hit.max;
     }
 
@@ -1220,15 +1249,17 @@ async function resolveMaxCustomers(
                     ? Number(ent.value_string)
                     : undefined);
             if (Number.isFinite(val)) {
-                const max = Number(val);
-                EntCache[companyId] = { max, exp: now() + 5 * 60_000 };
+                const base = Number(val);
+                const max = Math.max(0, base + safeAddons);
+                EntCache[cacheKey] = { max, exp: now() + 5 * 60_000 };
                 return max;
             }
 
             pkgFromWh = resp.packageCode?.toUpperCase();
             if (pkgFromWh && TierLimit[pkgFromWh]) {
-                const max = TierLimit[pkgFromWh];
-                EntCache[companyId] = { max, exp: now() + 5 * 60_000 };
+                const base = TierLimit[pkgFromWh];
+                const max = base + safeAddons;
+                EntCache[cacheKey] = { max, exp: now() + 5 * 60_000 };
                 return max;
             }
         }
@@ -1236,13 +1267,14 @@ async function resolveMaxCustomers(
 
     const hint = (planHint || pkgFromWh || "").toUpperCase();
     if (hint && TierLimit[hint]) {
-        const max = TierLimit[hint];
-        if (companyId) EntCache[companyId] = { max, exp: now() + 60_000 };
+        const base = TierLimit[hint];
+        const max = base + safeAddons;
+        if (companyId) EntCache[cacheKey] = { max, exp: now() + 60_000 };
         return max;
     }
 
-    const max = DEFAULT_MAX_CUSTOMERS;
-    if (companyId) EntCache[companyId] = { max, exp: now() + 60_000 };
+    const max = DEFAULT_MAX_CUSTOMERS + safeAddons;
+    if (companyId) EntCache[cacheKey] = { max, exp: now() + 60_000 };
     return max;
 }
 
@@ -1308,9 +1340,15 @@ export async function POST(req: NextRequest) {
         const companyId = getCompanyIdFromReq(req);
         const planHint = getPlanFromReq(req);
 
+        // baca cookie tb_addons (integer), 1 addon = 1 pelanggan tambahan
+        const addons = Math.max(
+            0,
+            parseInt(req.cookies.get("tb_addons")?.value ?? "0", 10) || 0
+        );
+
         // ====== KUOTA: cek dalam transaksi (anti-race) ======
         const out = await prisma.$transaction(async (tx) => {
-            const max = await resolveMaxCustomers(companyId, planHint);
+            const max = await resolveMaxCustomers(companyId, planHint, addons);
             const used = await countActiveCustomers(tx);
             if (used >= max) {
                 return { blocked: true as const, used, max };
@@ -1442,6 +1480,10 @@ export async function POST(req: NextRequest) {
                         used: out.used,
                         max: out.max,
                         remaining: Math.max(0, out.max - out.used),
+                        // sertakan info addons agar UI bisa menampilkan biaya tambahan
+                        addons,
+                        addonUnitPrice: ADDON_UNIT_PRICE,
+                        addonCost: (addons || 0) * ADDON_UNIT_PRICE,
                     },
                 },
                 message:
@@ -1486,12 +1528,23 @@ export async function GET(req: NextRequest) {
         if (sp.get("quota") === "1") {
             const companyId = getCompanyIdFromReq(req);
             const planHint = getPlanFromReq(req);
-            const max = await resolveMaxCustomers(companyId, planHint);
+            const addons = Math.max(
+                0,
+                parseInt(req.cookies.get("tb_addons")?.value ?? "0", 10) || 0
+            );
+            const max = await resolveMaxCustomers(companyId, planHint, addons);
             const used = await countActiveCustomers(prisma);
             return NextResponse.json(
                 {
                     ok: true,
-                    quota: { used, max, remaining: Math.max(0, max - used) },
+                    quota: {
+                        used,
+                        max,
+                        remaining: Math.max(0, max - used),
+                        addons,
+                        addonUnitPrice: ADDON_UNIT_PRICE,
+                        addonCost: (addons || 0) * ADDON_UNIT_PRICE,
+                    },
                 },
                 { headers: { "Cache-Control": "no-store" } }
             );

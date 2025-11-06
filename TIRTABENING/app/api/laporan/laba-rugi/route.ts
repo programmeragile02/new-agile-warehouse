@@ -267,10 +267,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthUserWithRole } from "@/lib/auth-user-server";
-import { PengeluaranStatus, MetodeBayar, PurchaseStatus } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
+/* =========================
+   Helpers: Date & Period
+========================= */
 function monthRange(ym: string) {
     const [y, m] = ym.split("-").map(Number);
     const start = new Date(Date.UTC(y, (m ?? 1) - 1, 1, 0, 0, 0));
@@ -294,17 +296,35 @@ function formatPeriodeID(ym?: string | null) {
         timeZone: "UTC",
     });
 }
+function monthsBetween(start: Date, end: Date) {
+    const arr: string[] = [];
+    const cur = new Date(
+        Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), 1)
+    );
+    while (cur < end) {
+        const ym = `${cur.getUTCFullYear()}-${String(
+            cur.getUTCMonth() + 1
+        ).padStart(2, "0")}`;
+        arr.push(ym);
+        cur.setUTCMonth(cur.getUTCMonth() + 1);
+    }
+    return arr;
+}
 
+/* =========================
+   Handler
+========================= */
 export async function GET(req: NextRequest) {
     const prisma = await db();
     try {
         // Auth
         const me = await getAuthUserWithRole(req);
-        if (!me)
+        if (!me) {
             return NextResponse.json(
                 { ok: false, error: "UNAUTHORIZED" },
                 { status: 401 }
             );
+        }
         if (me.role !== "ADMIN" && me.role !== "PETUGAS") {
             return NextResponse.json(
                 { ok: false, error: "FORBIDDEN" },
@@ -315,7 +335,9 @@ export async function GET(req: NextRequest) {
         const sp = req.nextUrl.searchParams;
         const multi = (sp.get("multi") || "").toLowerCase();
 
-        // ============ NEW: rekap bulanan setahun ============
+        /* ==========================================================
+       MODE 1: Rekap 12 Bulan (multi=months&year=YYYY)
+    ========================================================== */
         if (multi === "months") {
             const now = new Date();
             const year = Number(sp.get("year") || now.getUTCFullYear());
@@ -331,7 +353,7 @@ export async function GET(req: NextRequest) {
                 const ym = `${year}-${String(m).padStart(2, "0")}`;
                 const { start, end } = monthRange(ym);
 
-                // pendapatan
+                // 1) Pendapatan (Pembayaran)
                 const payments = await prisma.pembayaran.findMany({
                     where: {
                         deletedAt: null,
@@ -344,30 +366,80 @@ export async function GET(req: NextRequest) {
                     0
                 );
 
-                // beban (pengeluaran close + purchase close)
+                // 2) Beban: Pengeluaran CLOSE
                 const pengeluaranDetails =
                     await prisma.pengeluaranDetail.findMany({
                         where: {
                             pengeluaran: {
-                                status: PengeluaranStatus.CLOSE,
+                                status: "CLOSE",
                                 tanggalPengeluaran: { gte: start, lt: end },
                             },
                         },
                         select: { nominal: true },
                     });
+                const bebanPengeluaran = pengeluaranDetails.reduce(
+                    (s, d) => s + (d.nominal || 0),
+                    0
+                );
+
+                // 3) Beban: Purchase CLOSE
                 const purchases = await prisma.purchase.findMany({
                     where: {
-                        status: PurchaseStatus.CLOSE,
+                        status: "CLOSE",
                         deletedAt: null,
                         tanggal: { gte: start, lt: end },
                     },
                     select: { total: true },
                 });
-                const beban =
-                    pengeluaranDetails.reduce(
-                        (s, d) => s + (d.nominal || 0),
+                const bebanPurchase = purchases.reduce(
+                    (s, p) => s + (p.total || 0),
+                    0
+                );
+
+                // 4) Beban: Pajak CLOSE (via periode.id)
+                const periode = await prisma.catatPeriode.findFirst({
+                    where: { kodePeriode: ym },
+                    select: { id: true },
+                });
+                let bebanPajak = 0;
+                if (periode?.id) {
+                    const pajaks = await prisma.pajak.findMany({
+                        where: { status: "CLOSE", periodeId: periode.id },
+                        select: { nominalBayarPajak: true },
+                    });
+                    bebanPajak = pajaks.reduce(
+                        (s, pj) => s + (pj.nominalBayarPajak || 0),
                         0
-                    ) + purchases.reduce((s, p) => s + (p.total || 0), 0);
+                    );
+                }
+
+                // 5) Beban: Pembayaran Hutang (detail) dengan parent CLOSE & tanggal range
+                const paymentsClose = await prisma.hutangPayment.findMany({
+                    where: {
+                        status: "CLOSE",
+                        tanggalBayar: { gte: start, lt: end },
+                    },
+                    select: { id: true },
+                });
+                let bebanHutang = 0;
+                if (paymentsClose.length > 0) {
+                    const hutangDetail =
+                        await prisma.hutangPaymentDetail.findMany({
+                            where: {
+                                paymentId: {
+                                    in: paymentsClose.map((p) => p.id),
+                                },
+                            },
+                            select: { amount: true },
+                        });
+                    bebanHutang = hutangDetail.reduce(
+                        (s, d) => s + (d.amount || 0),
+                        0
+                    );
+                }
+
+                const beban =
+                    bebanPengeluaran + bebanPurchase + bebanPajak + bebanHutang;
 
                 months.push({
                     ym,
@@ -386,9 +458,10 @@ export async function GET(req: NextRequest) {
 
             return NextResponse.json({ ok: true, months });
         }
-        // ============ /NEW ============
 
-        // ====== (kode lama) satu periode: scope=month|year|all + ledger detail ======
+        /* ==========================================================
+       MODE 2: Satu Periode (scope=month|year|all) + Ledger Detail
+    ========================================================== */
         const scope = (sp.get("scope") || "month").toLowerCase(); // month|year|all
         const now = new Date();
         const ymDefault = `${now.getUTCFullYear()}-${String(
@@ -397,14 +470,17 @@ export async function GET(req: NextRequest) {
 
         let start: Date | null = null,
             end: Date | null = null,
-            periodLabel = "";
+            periodLabel = "",
+            ymList: string[] = []; // utk filter pajak per periode
 
         if (scope === "all") {
             periodLabel = "Semua Periode";
+            // ambil semua pajak CLOSE nanti (tanpa filter periode)
         } else if (scope === "year") {
             const y = sp.get("year") || String(now.getUTCFullYear());
             ({ start, end } = yearRange(y));
             periodLabel = `Tahun ${y}`;
+            ymList = monthsBetween(start!, end!);
         } else {
             const ym = sp.get("month") || ymDefault;
             ({ start, end } = monthRange(ym));
@@ -414,6 +490,7 @@ export async function GET(req: NextRequest) {
                 year: "numeric",
                 timeZone: "UTC",
             });
+            ymList = [ym];
         }
 
         // ===== PENDAPATAN =====
@@ -430,22 +507,17 @@ export async function GET(req: NextRequest) {
             (s, p) => s + (p.jumlahBayar || 0),
             0
         );
-        const pendapatanByMetode: Record<string, number> = {};
-        for (const m of Object.values(MetodeBayar)) pendapatanByMetode[m] = 0;
-        for (const p of payments) {
-            pendapatanByMetode[p.metode] =
-                (pendapatanByMetode[p.metode] || 0) + (p.jumlahBayar || 0);
-        }
 
-        // ===== BEBAN =====
+        // ===== BEBAN: Pengeluaran CLOSE =====
         const pengeluaranDetailWhere: any = {
-            pengeluaran: { status: PengeluaranStatus.CLOSE },
+            pengeluaran: { status: "CLOSE" },
         };
-        if (start && end)
+        if (start && end) {
             pengeluaranDetailWhere.pengeluaran.tanggalPengeluaran = {
                 gte: start,
                 lt: end,
             };
+        }
         const pengeluaranDetails = await prisma.pengeluaranDetail.findMany({
             where: pengeluaranDetailWhere,
             include: {
@@ -457,10 +529,8 @@ export async function GET(req: NextRequest) {
             orderBy: { createdAt: "asc" },
         });
 
-        const purchaseWhere: any = {
-            status: PurchaseStatus.CLOSE,
-            deletedAt: null,
-        };
+        // ===== BEBAN: Purchase CLOSE =====
+        const purchaseWhere: any = { status: "CLOSE", deletedAt: null };
         if (start && end) purchaseWhere.tanggal = { gte: start, lt: end };
         const purchases = await prisma.purchase.findMany({
             where: purchaseWhere,
@@ -468,24 +538,129 @@ export async function GET(req: NextRequest) {
             orderBy: { tanggal: "asc" },
         });
 
+        // ===== BEBAN: Pajak CLOSE (via periodeId IN ...)
+        let pajaks: Array<{
+            nominalBayarPajak: number;
+            periode?: {
+                kodePeriode: string | null;
+                bulan: number | null;
+                tahun: number | null;
+            } | null;
+        }> = [];
+        if (scope === "all") {
+            pajaks = await prisma.pajak.findMany({
+                where: { status: "CLOSE" },
+                include: {
+                    periode: {
+                        select: { kodePeriode: true, bulan: true, tahun: true },
+                    },
+                },
+                orderBy: { id: "asc" },
+            });
+        } else {
+            // ambil periode id dari ymList
+            const periods = await prisma.catatPeriode.findMany({
+                where: { kodePeriode: { in: ymList } },
+                select: { id: true },
+            });
+            if (periods.length > 0) {
+                pajaks = await prisma.pajak.findMany({
+                    where: {
+                        status: "CLOSE",
+                        periodeId: { in: periods.map((p) => p.id) },
+                    },
+                    include: {
+                        periode: {
+                            select: {
+                                kodePeriode: true,
+                                bulan: true,
+                                tahun: true,
+                            },
+                        },
+                    },
+                    orderBy: { id: "asc" },
+                });
+            }
+        }
+
+        // ===== BEBAN: HutangPaymentDetail (parent HutangPayment CLOSE & date filter)
+        let hutangDetails: Array<{
+            amount: number;
+            payment?: { tanggalBayar: Date; refNo: string | null } | null;
+            hutang?: {
+                keterangan: string;
+                pemberi: string | null;
+                noBukti: string | null;
+            } | null;
+            hutangDetail?: {
+                keterangan: string | null;
+                tanggal: Date | null;
+            } | null;
+        }> = [];
+        // cari payment CLOSE + tanggal range
+        const payWhere: any = { status: "CLOSE" };
+        if (start && end) payWhere.tanggalBayar = { gte: start, lt: end };
+        const hp = await prisma.hutangPayment.findMany({
+            where: payWhere,
+            select: { id: true },
+        });
+        if (hp.length > 0) {
+            hutangDetails = await prisma.hutangPaymentDetail.findMany({
+                where: { paymentId: { in: hp.map((x) => x.id) } },
+                include: {
+                    payment: { select: { tanggalBayar: true, refNo: true } },
+                    hutang: {
+                        select: {
+                            keterangan: true,
+                            pemberi: true,
+                            noBukti: true,
+                        },
+                    },
+                    hutangDetail: {
+                        select: { keterangan: true, tanggal: true },
+                    },
+                },
+                orderBy: { id: "asc" },
+            });
+        }
+
+        // ===== Aggregations =====
         const bebanPengeluaran = pengeluaranDetails.reduce(
             (s, d) => s + (d.nominal || 0),
             0
         );
         const bebanPurchase = purchases.reduce((s, p) => s + (p.total || 0), 0);
-        const bebanTotal = bebanPengeluaran + bebanPurchase;
+        const bebanPajak = pajaks.reduce(
+            (s, pj) => s + (pj.nominalBayarPajak || 0),
+            0
+        );
+        const bebanHutang = hutangDetails.reduce(
+            (s, d) => s + (d.amount || 0),
+            0
+        );
 
+        const bebanTotal =
+            bebanPengeluaran + bebanPurchase + bebanPajak + bebanHutang;
+
+        // ===== byKategori =====
         const bebanByKategori: Record<string, { nama: string; total: number }> =
             {};
+
         for (const d of pengeluaranDetails) {
-            const key = d.masterBiayaId || d.biayaNamaSnapshot || "Lainnya";
-            if (!bebanByKategori[key])
+            const key =
+                (d as any).masterBiayaId ||
+                (d as any).biayaNamaSnapshot ||
+                "Lainnya";
+            if (!bebanByKategori[key]) {
                 bebanByKategori[key] = {
                     nama:
-                        d.masterBiaya?.nama || d.biayaNamaSnapshot || "Lainnya",
+                        d.masterBiaya?.nama ||
+                        (d as any).biayaNamaSnapshot ||
+                        "Biaya",
                     total: 0,
                 };
-            bebanByKategori[key].total += d.nominal || 0;
+            }
+            bebanByKategori[key].total += (d as any).nominal || 0;
         }
         if (bebanPurchase > 0) {
             const key = "_PEMBELIAN_";
@@ -493,8 +668,20 @@ export async function GET(req: NextRequest) {
                 bebanByKategori[key] = { nama: "Pembelian", total: 0 };
             bebanByKategori[key].total += bebanPurchase;
         }
+        if (bebanPajak > 0) {
+            const key = "_PAJAK_";
+            if (!bebanByKategori[key])
+                bebanByKategori[key] = { nama: "Pajak", total: 0 };
+            bebanByKategori[key].total += bebanPajak;
+        }
+        if (bebanHutang > 0) {
+            const key = "_PEMBAYARAN_HUTANG_";
+            if (!bebanByKategori[key])
+                bebanByKategori[key] = { nama: "Pembayaran Hutang", total: 0 };
+            bebanByKategori[key].total += bebanHutang;
+        }
 
-        // ===== LEDGER =====
+        // ===== Ledger =====
         type Row = {
             tanggal: Date;
             keterangan: string;
@@ -503,26 +690,67 @@ export async function GET(req: NextRequest) {
             jenisPendapatan: string | null;
             jenisBeban: string | null;
         };
+
         const ledgerPengeluaran: Row[] = pengeluaranDetails.map((d) => ({
-            tanggal: d.pengeluaran.tanggalPengeluaran,
+            tanggal: (d as any).pengeluaran.tanggalPengeluaran,
             keterangan: `${
-                d.biayaNamaSnapshot || d.masterBiaya?.nama || "Biaya"
-            } • ${d.keterangan || ""}`.trim(),
-            debit: d.nominal,
+                (d as any).biayaNamaSnapshot || d.masterBiaya?.nama || "Biaya"
+            } • ${((d as any).keterangan || "").trim()}`.trim(),
+            debit: (d as any).nominal,
             kredit: 0,
             jenisPendapatan: null,
-            jenisBeban: d.masterBiaya?.nama || d.biayaNamaSnapshot || "Biaya",
+            jenisBeban:
+                d.masterBiaya?.nama || (d as any).biayaNamaSnapshot || "Biaya",
         }));
+
         const ledgerPurchases: Row[] = purchases.map((p) => ({
             tanggal: p.tanggal,
-            keterangan: `Pembelian ${p.item?.nama || ""}${
+            keterangan: `Pembelian ${(p.item?.nama || "").trim()}${
                 p.item?.kode ? ` (${p.item.kode})` : ""
-            }`,
+            }`.trim(),
             debit: p.total,
             kredit: 0,
             jenisPendapatan: null,
-            jenisBeban: `Pembelian ${p.item?.nama || ""}`.trim(),
+            jenisBeban: `Pembelian ${(p.item?.nama || "").trim()}`.trim(),
         }));
+
+        const ledgerPajak: Row[] = pajaks.map((pj) => {
+            const tahun = pj.periode?.tahun ?? 1970;
+            const bulan = (pj.periode?.bulan ?? 1) - 1;
+            const tanggalPeriode = new Date(Date.UTC(tahun, bulan, 1));
+            const label = pj.periode?.kodePeriode
+                ? `Pajak Periode ${formatPeriodeID(pj.periode.kodePeriode)}`
+                : "Pajak";
+            return {
+                tanggal: tanggalPeriode,
+                keterangan: label,
+                debit: pj.nominalBayarPajak || 0,
+                kredit: 0,
+                jenisPendapatan: null,
+                jenisBeban: "Pajak",
+            };
+        });
+
+        const ledgerHutang: Row[] = hutangDetails.map((d) => {
+            const tanggal = d.payment?.tanggalBayar ?? new Date();
+            const ref = d.payment?.refNo ? ` [Ref ${d.payment.refNo}]` : "";
+            const hutangKet = (
+                d.hutangDetail?.keterangan ||
+                d.hutang?.keterangan ||
+                `Hutang ${d.hutang?.noBukti || ""}`
+            ).trim();
+            const pemberi = d.hutang?.pemberi ? ` • ${d.hutang.pemberi}` : "";
+            return {
+                tanggal,
+                keterangan:
+                    `Pembayaran Hutang${ref} • ${hutangKet}${pemberi}`.trim(),
+                debit: d.amount || 0,
+                kredit: 0,
+                jenisPendapatan: null,
+                jenisBeban: "Pembayaran Hutang",
+            };
+        });
+
         const ledgerPayments: Row[] = payments.map((p) => ({
             tanggal: p.tanggalBayar,
             keterangan: `Pembayaran Tagihan Bulan ${formatPeriodeID(
@@ -533,13 +761,16 @@ export async function GET(req: NextRequest) {
             jenisPendapatan: "Pembayaran Tagihan",
             jenisBeban: null,
         }));
+
         const ledgerAll: Row[] = [
             ...ledgerPengeluaran,
             ...ledgerPurchases,
+            ...ledgerPajak,
+            ...ledgerHutang,
             ...ledgerPayments,
         ].sort((a, b) => +new Date(a.tanggal) - +new Date(b.tanggal));
 
-        // pagination in-memory (tetap)
+        // pagination in-memory
         const size = Math.max(
             1,
             Math.min(5000, Number(sp.get("size") || 1000))
@@ -552,6 +783,14 @@ export async function GET(req: NextRequest) {
         const ledger = ledgerAll.slice(startIdx, endIdx);
 
         const labaBersih = pendapatanTotal - bebanTotal;
+
+        // Pendapatan by metode (tanpa enum import)
+        const pendapatanByMetode: Record<string, number> = {};
+        for (const p of payments) {
+            const k = (p as any).metode || "UNKNOWN";
+            pendapatanByMetode[k] =
+                (pendapatanByMetode[k] || 0) + ((p as any).jumlahBayar || 0);
+        }
 
         return NextResponse.json({
             ok: true,
@@ -569,6 +808,8 @@ export async function GET(req: NextRequest) {
                 byKategori: Object.values(bebanByKategori),
                 pengeluaranDetails,
                 purchases,
+                pajaks,
+                hutangDetails,
             },
             ledger,
             pagination: {

@@ -52,7 +52,6 @@ import { db } from "@/lib/db";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-
 const ymUTC = (d: Date) =>
   `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 
@@ -77,29 +76,40 @@ export async function GET() {
       select: { tanggal: true },
     });
 
-    // (BARU) Hutang → tanggalInput
+    // Hutang → tanggalInput
     const hutang = await prisma.hutang.findMany({
       select: { tanggalInput: true },
     });
 
-    // (BARU) Pembayaran Hutang → tanggalBayar
+    // Pembayaran Hutang → tanggalBayar
     const hutangPays = await prisma.hutangPayment.findMany({
       select: { tanggalBayar: true },
     });
 
+    // Pajak CLOSE - ambil relasi periode (CatatPeriode.kodePeriode)
+    const pajaks = await prisma.pajak.findMany({
+      where: { status: "CLOSE" },
+      select: {
+        // pajak sendiri tidak punya tanggal di schema; ambil periode relasi
+        periode: { select: { kodePeriode: true } },
+      },
+    });
+
     const set = new Set<string>();
-    for (const p of pembayaran)
-      if (p.tanggalBayar) set.add(ymUTC(new Date(p.tanggalBayar)));
+    for (const p of pembayaran) if (p.tanggalBayar) set.add(ymUTC(new Date(p.tanggalBayar)));
     for (const p of pengeluaran) {
       const src = p.tanggalInput ?? p.tanggalPengeluaran ?? p.createdAt;
       if (src) set.add(ymUTC(new Date(src)));
     }
-    for (const p of purchases)
-      if (p.tanggal) set.add(ymUTC(new Date(p.tanggal)));
-    for (const h of hutang)
-      if (h.tanggalInput) set.add(ymUTC(new Date(h.tanggalInput)));
-    for (const hp of hutangPays)
-      if (hp.tanggalBayar) set.add(ymUTC(new Date(hp.tanggalBayar)));
+    for (const p of purchases) if (p.tanggal) set.add(ymUTC(new Date(p.tanggal)));
+    for (const h of hutang) if (h.tanggalInput) set.add(ymUTC(new Date(h.tanggalInput)));
+    for (const hp of hutangPays) if (hp.tanggalBayar) set.add(ymUTC(new Date(hp.tanggalBayar)));
+
+    // dari pajak gunakan periode.kodePeriode (format "YYYY-MM")
+    for (const px of pajaks) {
+      const kode = px.periode?.kodePeriode;
+      if (kode) set.add(kode);
+    }
 
     const periods = Array.from(set).sort((a, b) => (a < b ? 1 : -1)); // terbaru dulu
     return NextResponse.json({ ok: true, periods });
