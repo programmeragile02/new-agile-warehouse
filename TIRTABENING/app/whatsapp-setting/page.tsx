@@ -38,6 +38,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { getTenantContext } from "@/lib/tenant-context";
 
 type WAStatus = {
     ok: boolean;
@@ -144,12 +145,33 @@ export default function WASettingPage() {
     const [forceRefreshTick, setForceRefreshTick] = useState(0);
     const [logs, setLogs] = useState<LogItem[]>([]);
     const [logLimit, setLogLimit] = useState(200);
+    const [offering, setOffering] = useState<string | null>(null);
 
     // state tooltip (untuk Dialog di mobile)
     const [openTip, setOpenTip] = useState(false);
 
     // toast
     const { toast } = useToast();
+
+    useEffect(() => {
+        let alive = true;
+        (async () => {
+            try {
+                const r = await fetch("/api/tenant/info", {
+                    cache: "no-store",
+                });
+                if (!alive) return;
+                const j = await r.json().catch(() => null);
+                if (j?.ok && j?.offering)
+                    setOffering(String(j.offering).toLowerCase());
+            } catch (e) {
+                // ignore
+            }
+        })();
+        return () => {
+            alive = false;
+        };
+    }, []);
 
     // ---- POLLING STATUS & QR ----
     useEffect(() => {
@@ -305,10 +327,18 @@ export default function WASettingPage() {
                 });
                 return;
             }
-            toast({
-                title: "Client dibuat",
-                description: "Silakan scan QR di panel ini jika muncul.",
-            });
+            if (offering === "premium") {
+                toast({
+                    title: "Client Terhubung",
+                    description:
+                        "Whatsapp di paket anda memakai Whatsapp Nata Banyu.",
+                });
+            } else {
+                toast({
+                    title: "Client dibuat",
+                    description: "Silakan scan QR di panel ini jika muncul.",
+                });
+            }
             setForceRefreshTick((n) => n + 1);
         } catch (e) {
             console.error("onboard error", e);
@@ -375,7 +405,7 @@ export default function WASettingPage() {
                     }
                 />
 
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 mt-4">
                     {/* Panel Whatsapp */}
                     <div className="max-w-4xl mx-auto">
                         <GlassCard className="p-4 md:p-6">
@@ -479,14 +509,16 @@ export default function WASettingPage() {
 
                                     <div className="pt-2">
                                         <div className="flex gap-2">
-                                            <Button
-                                                variant="destructive"
-                                                onClick={handleLogout}
-                                                disabled={loadingLogout}
-                                            >
-                                                <LogOut className="w-4 h-4 mr-2" />
-                                                Logout Session
-                                            </Button>
+                                            {offering !== "premium" && (
+                                                <Button
+                                                    variant="destructive"
+                                                    onClick={handleLogout}
+                                                    disabled={loadingLogout}
+                                                >
+                                                    <LogOut className="w-4 h-4 mr-2" />
+                                                    Logout Session
+                                                </Button>
+                                            )}
 
                                             <Button
                                                 variant="secondary"
@@ -499,11 +531,19 @@ export default function WASettingPage() {
                                                     : "Connect WhatsApp"}
                                             </Button>
                                         </div>
-                                        <div className="text-xs text-muted-foreground mt-2">
-                                            Logout akan menghapus sesi. Setelah
-                                            itu, Connect Whatsapp lagi untuk
-                                            login.
-                                        </div>
+                                        {offering === "premium" ? (
+                                            <div className="text-xs text-muted-foreground mt-2">
+                                                Connect Whatsapp untuk
+                                                menghubungkan ke nomor Nata
+                                                Banyu
+                                            </div>
+                                        ) : (
+                                            <div className="text-xs text-muted-foreground mt-2">
+                                                Logout akan menghapus sesi.
+                                                Setelah itu, Connect Whatsapp
+                                                lagi untuk login
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
@@ -541,106 +581,112 @@ export default function WASettingPage() {
                     </div>
 
                     {/* Logs */}
-                    <div className="w-96 mx-auto min-h-0">
-                        <GlassCard className="p-4 md:p-5 min-h-0">
-                            <div className="flex items-center justify-between gap-3 mb-3">
-                                <div className="flex items-center gap-3">
-                                    <Logs className="w-6 h-6" />
-                                    <div className="text-lg font-semibold">
-                                        Logs
+                    {offering !== "premium" && (
+                        <div className="w-96 mx-auto min-h-0">
+                            <GlassCard className="p-4 md:p-5 min-h-0">
+                                <div className="flex items-center justify-between gap-3 mb-3">
+                                    <div className="flex items-center gap-3">
+                                        <Logs className="w-6 h-6" />
+                                        <div className="text-lg font-semibold">
+                                            Logs
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <p className="text-sm">Limit:</p>
+                                        <Select
+                                            value={String(logLimit)}
+                                            onValueChange={(v) =>
+                                                setLogLimit(Number(v))
+                                            }
+                                        >
+                                            <SelectTrigger className="h-8 px-2 text-xs w-[84px]">
+                                                <SelectValue placeholder="Limit" />
+                                            </SelectTrigger>
+                                            <SelectContent className="z-[60]">
+                                                <SelectItem value="100">
+                                                    100
+                                                </SelectItem>
+                                                <SelectItem value="200">
+                                                    200
+                                                </SelectItem>
+                                                <SelectItem value="300">
+                                                    300
+                                                </SelectItem>
+                                                <SelectItem value="500">
+                                                    500
+                                                </SelectItem>
+                                            </SelectContent>
+                                        </Select>
+
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            onClick={() =>
+                                                setForceRefreshTick(
+                                                    (n) => n + 1
+                                                )
+                                            }
+                                            title="Refresh"
+                                        >
+                                            <RefreshCcw className="w-4 h-4" />
+                                        </Button>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <p className="text-sm">Limit:</p>
-                                    <Select
-                                        value={String(logLimit)}
-                                        onValueChange={(v) =>
-                                            setLogLimit(Number(v))
-                                        }
-                                    >
-                                        <SelectTrigger className="h-8 px-2 text-xs w-[84px]">
-                                            <SelectValue placeholder="Limit" />
-                                        </SelectTrigger>
-                                        <SelectContent className="z-[60]">
-                                            <SelectItem value="100">
-                                                100
-                                            </SelectItem>
-                                            <SelectItem value="200">
-                                                200
-                                            </SelectItem>
-                                            <SelectItem value="300">
-                                                300
-                                            </SelectItem>
-                                            <SelectItem value="500">
-                                                500
-                                            </SelectItem>
-                                        </SelectContent>
-                                    </Select>
 
-                                    <Button
-                                        variant="outline"
-                                        size="icon"
-                                        onClick={() =>
-                                            setForceRefreshTick((n) => n + 1)
-                                        }
-                                        title="Refresh"
-                                    >
-                                        <RefreshCcw className="w-4 h-4" />
-                                    </Button>
-                                </div>
-                            </div>
+                                <Separator className="my-4" />
 
-                            <Separator className="my-4" />
-
-                            <div
-                                className="mt-3 rounded-lg border flex flex-col overflow-hidden"
-                                style={{ height: 495 }}
-                            >
                                 <div
-                                    className="flex-1 overflow-y-auto"
-                                    style={{ overscrollBehavior: "contain" }}
+                                    className="mt-3 rounded-lg border flex flex-col overflow-hidden"
+                                    style={{ height: 495 }}
                                 >
-                                    {logs.length === 0 ? (
-                                        <div className="text-sm text-center text-muted-foreground p-4">
-                                            Belum ada log.
-                                        </div>
-                                    ) : (
-                                        logs.map((l, i) => (
-                                            <div
-                                                key={i}
-                                                className="grid grid-cols-12 items-start px-3 py-2 border-t text-sm"
-                                            >
-                                                <div className="col-span-3 tabular-nums">
-                                                    {fmt(l.ts)}
-                                                </div>
-                                                <div className="col-span-3">
-                                                    {levelBadge(l.level)}
-                                                </div>
-                                                <div className="col-span-6 break-words">
-                                                    {l.msg}
-                                                </div>
-                                                <div className="col-span-12 mt-2">
-                                                    {l.meta ? (
-                                                        <pre className="text-xs bg-muted rounded p-2 overflow-auto max-h-32">
-                                                            {JSON.stringify(
-                                                                l.meta,
-                                                                null,
-                                                                2
-                                                            )}
-                                                        </pre>
-                                                    ) : (
-                                                        <span className="text-muted-foreground">
-                                                            -
-                                                        </span>
-                                                    )}
-                                                </div>
+                                    <div
+                                        className="flex-1 overflow-y-auto"
+                                        style={{
+                                            overscrollBehavior: "contain",
+                                        }}
+                                    >
+                                        {logs.length === 0 ? (
+                                            <div className="text-sm text-center text-muted-foreground p-4">
+                                                Belum ada log.
                                             </div>
-                                        ))
-                                    )}
+                                        ) : (
+                                            logs.map((l, i) => (
+                                                <div
+                                                    key={i}
+                                                    className="grid grid-cols-12 items-start px-3 py-2 border-t text-sm"
+                                                >
+                                                    <div className="col-span-3 tabular-nums">
+                                                        {fmt(l.ts)}
+                                                    </div>
+                                                    <div className="col-span-3">
+                                                        {levelBadge(l.level)}
+                                                    </div>
+                                                    <div className="col-span-6 break-words">
+                                                        {l.msg}
+                                                    </div>
+                                                    <div className="col-span-12 mt-2">
+                                                        {l.meta ? (
+                                                            <pre className="text-xs bg-muted rounded p-2 overflow-auto max-h-32">
+                                                                {JSON.stringify(
+                                                                    l.meta,
+                                                                    null,
+                                                                    2
+                                                                )}
+                                                            </pre>
+                                                        ) : (
+                                                            <span className="text-muted-foreground">
+                                                                -
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        </GlassCard>
-                    </div>
+                            </GlassCard>
+                        </div>
+                    )}
                 </div>
             </AppShell>
         </AuthGuard>

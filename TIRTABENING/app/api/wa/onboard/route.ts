@@ -6,6 +6,8 @@ const WA_SERVER_BASE = (
     process.env.WA_SENDER_URL || "http://localhost:4001"
 ).replace(/\/+$/, "");
 const WA_SERVER_API_KEY = process.env.WA_SENDER_API_KEY || "";
+const INTERNAL_CLIENT_ID =
+    process.env.WA_INTERNAL_CLIENT_ID || "internal_natabanyu";
 
 export async function POST() {
     const prisma = await db();
@@ -18,7 +20,18 @@ export async function POST() {
         );
 
     const companyId = tenant.companyId;
-    const clientId = `tenant_${companyId}`;
+
+    const offering = tenant.packageCode
+        ? String(tenant.packageCode).toLowerCase()
+        : null;
+
+    if (offering === "basic")
+        return NextResponse.json(
+            { ok: false, message: "Paket Basic tidak mendukung WhatsApp" },
+            { status: 403 }
+        );
+
+    const clientId = offering === "premium" ? INTERNAL_CLIENT_ID : `tenant_${companyId}`;
 
     // call wa-sender to create client
     const url = `${WA_SERVER_BASE}/clients/${encodeURIComponent(clientId)}`;
