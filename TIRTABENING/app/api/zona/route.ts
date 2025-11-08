@@ -331,6 +331,7 @@
 //   }
 // }
 
+// app/api/zona/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { z } from "zod";
@@ -391,12 +392,12 @@ type WarehouseResp =
       };
 
 const BlockTierLimit: Record<string, number> = {
-    BASIC: 10,
-    PREMIUM: 50,
-    PROFESSIONAL: 200,
+    BASIC: 2,
+    PREMIUM: 5,
+    PROFESSIONAL: 10,
 };
 
-// in-memory cache 5 menit per company
+// in-memory cache 5 menit per "company"
 const EntCache: Record<string, { max: number; exp: number }> =
     Object.create(null);
 const now = () => Date.now();
@@ -420,6 +421,7 @@ async function fetchEntitlementsFromWarehouse(companyId: string): Promise<{
                 company_id: companyId,
                 product_code: PRODUCT_CODE,
             }),
+            cache: "no-store",
         });
         if (!res.ok) return null;
         const raw = (await res.json()) as WarehouseResp;
@@ -445,7 +447,7 @@ async function fetchEntitlementsFromWarehouse(companyId: string): Promise<{
     }
 }
 
-/** Priority:
+/** Priority urutan max blok:
  * 1) Entitlement "maksimal.blok" (numeric)
  * 2) package/plan (offering slug) → tier map
  * 3) plan hint dari cookie/header/env
@@ -499,11 +501,7 @@ async function resolveMaxBlocks(
     return max;
 }
 
-async function countBlocks(): Promise<number> {
-    return prisma.zona.count();
-}
-
-/* ===================== Helpers lama ===================== */
+/* ===================== Utils ===================== */
 function genZonaCode() {
     const ts = Date.now().toString().slice(-5);
     const rnd = Math.floor(Math.random() * 100)
@@ -553,7 +551,10 @@ export async function POST(req: NextRequest) {
         // ====== QUOTA: cek dalam transaksi (anti-race) ======
         const result = await prisma.$transaction(async (tx) => {
             const max = await resolveMaxBlocks(companyId, planHint);
-            const used = await tx.zona.count(); // hanya blok aktif (zona tidak ada soft delete di skema ini)
+
+            // ❗ TANPA companyId filter (skema zona kamu tidak punya companyId)
+            const used = await tx.zona.count();
+
             if (used >= max) {
                 return { blocked: true as const, used, max };
             }
@@ -625,6 +626,7 @@ export async function POST(req: NextRequest) {
 
             const created = await tx.zona.create({
                 data: {
+                    // ❌ tidak ada companyId di skema zona kamu
                     nama: namaRaw.trim(),
                     kode,
                     deskripsi: deskripsiRaw ? deskripsiRaw.trim() : null,
@@ -703,12 +705,15 @@ export async function GET(req: NextRequest) {
     try {
         const sp = req.nextUrl.searchParams;
 
-        // Quick quota lookup untuk UI
+        // Quick quota lookup untuk UI banner
         if (sp.get("quota") === "1") {
-            const companyId = getCompanyIdFromReq(req);
+            const companyId = getCompanyIdFromReq(req); // masih dipakai untuk entitlement
             const planHint = getPlanFromReq(req);
             const max = await resolveMaxBlocks(companyId, planHint);
-            const used = await countBlocks();
+
+            // ❗ TANPA filter companyId (tidak ada di skema)
+            const used = await prisma.zona.count();
+
             return NextResponse.json({
                 ok: true,
                 quota: { used, max, remaining: Math.max(0, max - used) },

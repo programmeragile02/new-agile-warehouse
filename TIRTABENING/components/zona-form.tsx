@@ -348,6 +348,7 @@ import {
     SelectItem,
     SelectValue,
 } from "@/components/ui/select";
+import { AlertTriangle } from "lucide-react";
 
 /* ===================== Types ===================== */
 type ZonaData = {
@@ -367,6 +368,11 @@ const fetcher = (url: string) => fetch(url).then((r) => r.json());
 function genZonaCode() {
     const ts = Date.now().toString().slice(-5);
     return `Z${ts}`;
+}
+// ✅ pastikan angka walau server kirim string
+function toNum(v: unknown, fallback = NaN) {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : fallback;
 }
 
 /* ===================== Component ===================== */
@@ -390,18 +396,23 @@ export function ZonaForm() {
     const { toast } = useToast();
     const { mutate } = useSWRConfig();
 
-    /* ====== QUOTA: ambil sisa kuota blok ======
-     endpoint: GET /api/zona?quota=1  -> { ok: true, quota: { used, max, remaining } }
-  */
+    /* ====== QUOTA ====== */
     const { data: quotaResp, error: quotaError } = useSWR<{
         ok: boolean;
-        quota: { used: number; max: number; remaining: number };
+        quota: {
+            used: number | string;
+            max: number | string;
+            remaining: number | string;
+        };
     }>("/api/zona?quota=1", fetcher, { revalidateOnFocus: true });
 
-    const used = quotaResp?.quota?.used ?? 0;
-    const max = quotaResp?.quota?.max ?? Infinity;
-    const remaining = quotaResp?.quota?.remaining ?? Infinity;
-    const quotaHabis = Number.isFinite(remaining) && remaining <= 0;
+    // 🔧 Pakai parser angka agar robust
+    const usedNum = toNum(quotaResp?.quota?.used, 0);
+    const maxNum = toNum(quotaResp?.quota?.max, NaN);
+    const remainingNum = toNum(quotaResp?.quota?.remaining, NaN);
+
+    const hasQuota = !Number.isNaN(remainingNum);
+    const quotaHabis = hasQuota && remainingNum <= 0;
 
     /* ====== Data petugas ====== */
     useEffect(() => {
@@ -416,7 +427,6 @@ export function ZonaForm() {
                 if (!res.ok || !data?.items)
                     throw new Error(data?.message || "Gagal memuat petugas");
                 if (!cancelled) {
-                    // Normalize: pastikan items punya id,name,username
                     const items = (data.items as any[]).map((it) => ({
                         id: it.id ?? it.user_id ?? it.uuid ?? "",
                         name: it.name ?? it.nama ?? it.fullname ?? "",
@@ -435,7 +445,7 @@ export function ZonaForm() {
         };
     }, []);
 
-    /* ====== Data tandon (opsional) ====== */
+    /* ====== Data tandon ====== */
     useEffect(() => {
         let cancelled = false;
         (async () => {
@@ -478,13 +488,12 @@ export function ZonaForm() {
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
-        // Guard kuota habis (FE)
         if (quotaHabis) {
             toast({
                 title: "Kuota blok habis",
-                description: `Paket sudah mencapai maksimum blok (${used} / ${
-                    Number.isFinite(max) ? max : "∞"
-                }). Hapus blok yang tidak dipakai atau upgrade paket.`,
+                description: Number.isNaN(maxNum)
+                    ? `Paket sudah mencapai maksimum blok. Hapus blok yang tidak dipakai atau upgrade paket.`
+                    : `Paket sudah mencapai maksimum blok (${usedNum} / ${maxNum}). Hapus blok yang tidak dipakai atau upgrade paket.`,
                 variant: "destructive",
             });
             return;
@@ -522,19 +531,19 @@ export function ZonaForm() {
             const data = await res.json();
 
             if (!res.ok || !data?.ok) {
-                // handle quota error specially
                 if (res.status === 403 && data?.code === "QUOTA_EXCEEDED") {
                     const meta = data?.meta ?? {};
                     toast({
                         title: "Kuota blok habis",
-                        description:
-                            data?.message ??
-                            `Kuota blok habis (${meta.used ?? used} / ${
-                                meta.max ?? max
-                            }). Upgrade paket untuk menambah kuota.`,
+                        description: `Kuota blok habis (${toNum(
+                            meta.used,
+                            usedNum
+                        )} / ${toNum(
+                            meta.max,
+                            maxNum
+                        )}). Upgrade paket untuk menambah kuota.`,
                         variant: "destructive",
                     });
-                    // refresh quota
                     await mutate("/api/zona?quota=1");
                     throw new Error("QUOTA_EXCEEDED");
                 }
@@ -562,7 +571,6 @@ export function ZonaForm() {
                 } • Meter Awal: ${payload.initialMeter}`,
             });
 
-            // refresh list & quota
             await mutate(
                 (key) => typeof key === "string" && key.startsWith("/api/zona")
             );
@@ -579,7 +587,6 @@ export function ZonaForm() {
         } catch (err) {
             const msg =
                 err instanceof Error ? err.message : "Terjadi kesalahan";
-            // If it's QUOTA_EXCEEDED we already showed toast; avoid duplicate destructive toast
             if (String(msg) !== "QUOTA_EXCEEDED") {
                 toast({
                     title: "Gagal Menambahkan Blok",
@@ -594,51 +601,54 @@ export function ZonaForm() {
 
     return (
         <form onSubmit={handleSubmit} id="zona-form" className="space-y-6">
-            {/* Banner kuota (lebih informatif) */}
-            {quotaHabis ? (
-                <div className="p-4 border border-amber-300 bg-amber-50 text-amber-900 rounded-md">
-                    <div className="font-medium">Kuota blok habis</div>
-                    <div className="text-sm">
-                        Paket kamu sudah mencapai maksimum blok.
-                        <div className="mt-1">
-                            <strong>{used}</strong> terpakai dari{" "}
-                            <strong>{Number.isFinite(max) ? max : "∞"}</strong>.
-                            <span className="ml-2">
-                                Sisa:{" "}
-                                {Math.max(
-                                    0,
-                                    Number.isFinite(max) ? max - used : 0
-                                )}
-                            </span>
-                        </div>
-                        <div className="mt-2">
-                            Hapus blok yang tidak dipakai atau{" "}
-                            <a href="/upgrade" className="underline">
-                                upgrade paket
-                            </a>{" "}
-                            untuk menambah kuota.
-                        </div>
-                        {quotaError ? (
-                            <div className="mt-2 text-xs text-destructive">
-                                Gagal memeriksa kuota. Silakan muat ulang
-                                halaman.
+            {/* ===== Banner Kuota Habis (robust ke string "0") ===== */}
+            {/* {hasQuota && remainingNum <= 0 && (
+                <div
+                    role="alert"
+                    className="mb-4 rounded-md border border-amber-300 bg-amber-50 text-amber-900"
+                >
+                    <div className="flex items-start gap-3 p-4">
+                        <AlertTriangle className="h-5 w-5 mt-0.5 shrink-0 opacity-80" />
+                        <div className="space-y-1">
+                            <div className="font-semibold">
+                                Kuota blok habis
                             </div>
-                        ) : null}
+                            <div className="text-sm leading-relaxed">
+                                Paket kamu sudah mencapai maksimum blok
+                                {!Number.isNaN(maxNum)
+                                    ? ` (${maxNum} blok)`
+                                    : ""}
+                                . Hapus blok yang tidak digunakan atau{" "}
+                                <a href="/upgrade" className="underline">
+                                    upgrade paket
+                                </a>{" "}
+                                untuk menambah kuota.
+                            </div>
+                            {!Number.isNaN(maxNum) && (
+                                <div className="text-xs">
+                                    Terpakai <strong>{usedNum}</strong> dari{" "}
+                                    <strong>{maxNum}</strong> • Sisa{" "}
+                                    <strong>0</strong>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
-            ) : (
-                // optional small info when quota near limit
-                Number.isFinite(max) &&
-                max - used <= 3 && ( // tunjukkan peringatan kalau tinggal sedikit
+            )} */}
+
+            {/* Info kuota menipis (opsional) */}
+            {hasQuota &&
+                remainingNum > 0 &&
+                !Number.isNaN(maxNum) &&
+                maxNum - usedNum <= 3 && (
                     <div className="p-3 border border-amber-200 bg-amber-50 text-amber-900 rounded-md">
                         <div className="text-sm">
-                            Kuota blok: <strong>{used}</strong>/
-                            <strong>{max}</strong> — sisa{" "}
-                            <strong>{Math.max(0, max - used)}</strong>.
+                            Kuota blok: <strong>{usedNum}</strong>/
+                            <strong>{maxNum}</strong> — sisa{" "}
+                            <strong>{Math.max(0, maxNum - usedNum)}</strong>.
                         </div>
                     </div>
-                )
-            )}
+                )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
@@ -804,6 +814,12 @@ export function ZonaForm() {
                     {isLoading ? "Menyimpan..." : "Simpan Blok"}
                 </Button>
             </div>
+
+            {quotaError && (
+                <div className="text-xs text-destructive">
+                    Gagal memeriksa kuota. Muat ulang halaman.
+                </div>
+            )}
         </form>
     );
 }

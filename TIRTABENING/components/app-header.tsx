@@ -29,6 +29,7 @@ import {
     HandCoins,
     Network,
     ReceiptText,
+    LifeBuoy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter, usePathname } from "next/navigation";
@@ -384,6 +385,23 @@ const MENU_ITEMS: MenuItem[] = [
         group: "Admin",
         section: "Pengaturan",
     },
+    // Support
+    {
+        href: "/support",
+        label: "Pusat Bantuan",
+        icon: LifeBuoy,
+        roles: ["ADMIN", "OPERATOR", "PETUGAS", "WARGA"],
+        group: "Admin",
+        section: "Support",
+    },
+    {
+        href: "/admin/support",
+        label: "CS Center",
+        icon: LifeBuoy,
+        roles: ["ADMIN"],
+        group: "Admin",
+        section: "Support",
+    },
 
     // Petugas
     {
@@ -431,6 +449,7 @@ const SECTION_ORDER = [
     "Laporan",
     "Distribusi",
     "Pengaturan",
+    "Support",
     "Petugas",
     "Warga",
     "Akun",
@@ -449,7 +468,13 @@ const SECTION_ITEM_ORDER: Record<string, string[]> = {
     ],
     Master: ["/pelanggan", "/zona", "/inventaris"],
     Meteran: ["/catat-tandon", "/catat-blok"],
-    Keuangan: ["/tagihan-pembayaran", "/biaya", "/pengeluaran", "/hutang"],
+    Keuangan: [
+        "/tagihan-pembayaran",
+        "/biaya",
+        "/pengeluaran",
+        "/hutang",
+        "/pajak",
+    ],
     Laporan: [
         "/laporan-catat-meter",
         "/laporan-summary",
@@ -466,6 +491,7 @@ const SECTION_ITEM_ORDER: Record<string, string[]> = {
         "/distribusi/peta",
     ],
     Pengaturan: ["/pengaturan", "/whatsapp-setting", "/tools/import-export"],
+    Support: ["/support", "/admin/support"],
 };
 const getItemOrder = (section: string, href: string) => {
     const arr = SECTION_ITEM_ORDER[section];
@@ -492,6 +518,7 @@ const PATH_LABELS: Record<string, string> = {
     "/biaya": "Kategori Biaya",
     "/pengeluaran": "Input Pengeluaran",
     "/hutang": "Hutang",
+    "/pajak": "Pengelolaan Pajak",
     "/laporan-summary": "Laporan Summary",
     "/laporan/konsumsi-zona": "Laporan Konsumsi Blok",
     "/laporan-status-pembayaran": "Laporan Status Pembayaran",
@@ -504,6 +531,8 @@ const PATH_LABELS: Record<string, string> = {
     "/distribusi/rekonsiliasi": "Rekonsiliasi",
     "/distribusi/peta": "Peta Pemakaian Air",
     "/pengaturan": "Pengaturan",
+    "/support": "Pusat Bantuan",
+    "/admin/support": "CS Center",
     "/tools/import-export": "Import/Export",
     "/warga-dashboard": "Dashboard Warga",
     "/login": "Login",

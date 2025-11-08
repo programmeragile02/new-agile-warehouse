@@ -277,9 +277,9 @@ type WarehouseResp =
       };
 
 const TierLimitTandon: Record<string, number> = {
-    BASIC: 10,
-    PREMIUM: 25,
-    PROFESSIONAL: 50,
+    BASIC: 1,
+    PREMIUM: 3,
+    PROFESSIONAL: 5,
 };
 
 const EntCache: Record<string, { max: number; exp: number }> =
@@ -334,9 +334,7 @@ function getPlanFromReq(
     return null;
 }
 
-async function fetchEntitlementsFromWarehouse(
-    companyId: string
-): Promise<{
+async function fetchEntitlementsFromWarehouse(companyId: string): Promise<{
     entitlements: WarehouseEntitlement[];
     packageCode?: string;
 } | null> {
