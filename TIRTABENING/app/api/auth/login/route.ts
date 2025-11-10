@@ -49,6 +49,38 @@ async function fetchAddons(instanceId?: string): Promise<string[]> {
         .filter(Boolean);
 }
 
+async function fetchExtraCustomers(companyId: string): Promise<number> {
+    try {
+        const url = `${String(WAREHOUSE_API).replace(
+            /\/+$/,
+            ""
+        )}/api/company/entitlements`;
+        const res = await fetch(url, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-API-KEY": WAREHOUSE_KEY,
+            },
+            body: JSON.stringify({
+                company_id: companyId,
+                product_code: "NATABANYU",
+            }), // sesuaikan PRODUCT_CODE jika dynamic
+        });
+        if (!res.ok) return 0;
+        const json = await res.json();
+        const ent = Array.isArray(json?.entitlements) ? json.entitlements : [];
+        const extra = ent.find(
+            (e: any) => (e?.code || "").toLowerCase() === "extra.customers"
+        );
+        const num = Number(
+            extra?.value_number ?? extra?.value ?? extra?.value_string
+        );
+        return Number.isFinite(num) ? Math.max(0, Math.floor(num)) : 0;
+    } catch {
+        return 0;
+    }
+}
+
 export async function POST(req: Request) {
     try {
         const body = await req.json().catch(() => ({}));
@@ -90,6 +122,7 @@ export async function POST(req: Request) {
             );
         }
 
+        const extraCustomers = await fetchExtraCustomers(info.companyId);
         const offering = normalizeOffering(info.packageCode);
         const addons = await fetchAddons(info.subscriptionInstanceId);
         const requirePasswordChange = !!user.mustChangePassword;
@@ -185,6 +218,15 @@ export async function POST(req: Request) {
                 }
             );
         }
+
+        // extra pelanggan
+        res.cookies.set("tb_addons", String(extraCustomers), {
+            httpOnly: false,
+            sameSite: "lax",
+            secure: process.env.NODE_ENV === "production",
+            path: "/",
+            maxAge: 60 * 60,
+        });
 
         if (!requirePasswordChange) {
             await prisma.user.update({

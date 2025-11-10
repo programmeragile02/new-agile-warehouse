@@ -61,13 +61,21 @@ class JobsController extends Controller
             'customer_email' => 'required|email',
             'customer_phone' => 'nullable|string|max:30',
 
-            'addons'                           => 'nullable|array',
-            'addons.parents'                   => 'nullable|array',
-            'addons.parents.*.feature_code'    => 'required_with:addons.parents|string',
-            'addons.parents.*.name'            => 'nullable|string',
-            'addons.parents.*.price'           => 'nullable|integer',
-            'addons.grant'                     => 'nullable|array',
-            'addons.grant.*'                   => 'string',
+            'addons'                               => 'nullable|array',
+            'addons.parents'                       => 'nullable|array',
+            'addons.parents.*.feature_code'        => 'nullable|string',
+            'addons.parents.*.addon_code'          => 'required_without:addons.parents.*.feature_code|string',
+            'addons.parents.*.name'                => 'nullable|string',
+            'addons.parents.*.price'               => 'nullable|integer',
+            'addons.parents.*.qty'                 => 'nullable|integer|min:1',
+            'addons.parents.*.kind'                => 'nullable|string|in:feature,master',
+            'addons.parents.*.currency'            => 'nullable|string|max:8',
+            'addons.grant'                         => 'nullable|array',
+            'addons.grant.*'                       => 'string',
+
+            'policy'                               => 'nullable|array',
+            'policy.bill_cycle_offset'             => 'nullable|integer|min:0|max:3',
+            'policy.billable_from_start'           => 'nullable|date',
         ]);
 
         // Idempotent insert
@@ -98,6 +106,7 @@ class JobsController extends Controller
                     'customer_email' => $data['customer_email'],
                     'customer_phone' => $data['customer_phone'] ?? null,
                     'addons'         => $data['addons'] ?? null,
+                    'policy'         => $data['policy'] ?? null,    // bill_cycle_offset, billable_from_start
                 ],
             ]
         );

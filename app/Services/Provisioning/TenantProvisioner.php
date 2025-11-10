@@ -401,71 +401,122 @@ class TenantProvisioner
     /**
      * ADD ON
      */
+
     protected function applyAddon(ProvisioningJob $job): void
     {
-        // Wajib punya instance id
         $instanceId = $job->subscription_instance_id;
         if (!$instanceId) {
             throw new \InvalidArgumentException('Missing subscription_instance_id for addon.');
         }
 
-        $parents = data_get($job->meta, 'addons.parents', []); // array of {feature_code,name,price}
-        $grant   = data_get($job->meta, 'addons.grant', []);   // array of codes (parent + children)
+        $parents = (array) data_get($job->meta, 'addons.parents', []);
+        $grant   = (array) data_get($job->meta, 'addons.grant', []);
+        $policy  = (array) data_get($job->meta, 'policy', []);
 
         \Log::info('TP: addon payload', [
             'parents_count' => count($parents),
-            'grant_count'   => is_array($grant) ? count($grant) : 0,
+            'grant_count'   => count($grant),
+            'policy'        => $policy,
         ]);
 
-        // 1) Catat pembelian parent berharga → subscription_addons
         foreach ($parents as $p) {
-            $code  = (string)($p['feature_code'] ?? '');
-            if ($code === '') continue;
+            $featureCode = trim((string)($p['feature_code'] ?? ''));
+            $addonCode   = trim((string)($p['addon_code']   ?? ''));
 
-            SubscriptionAddon::updateOrCreate(
-                [
-                    'subscription_instance_id' => $instanceId,
-                    'feature_code'             => $code,
-                ],
-                [
-                    'feature_name'      => (string)($p['name'] ?? $code),
-                    'price_amount'      => (int)($p['price'] ?? 0),
-                    'currency'          => 'IDR',
-                    'order_id'          => $job->order_id,
-                    'midtrans_order_id' => $job->midtrans_order_id,
-                    'purchased_at'      => now(),
-                ]
-            );
+            // jika tak ada salah satu kode, lewati
+            if ($featureCode === '' && $addonCode === '') continue;
+
+            $name        = (string)($p['name'] ?? ($featureCode ?: $addonCode));
+            $currency    = (string)($p['currency'] ?? 'IDR');
+            $kindRaw     = (string)($p['kind'] ?? ($addonCode ? 'master' : 'feature'));
+            $kind        = in_array($kindRaw, ['feature','master'], true) ? $kindRaw : ($addonCode ? 'master' : 'feature');
+
+            $pricingMode = (string)($p['pricing_mode'] ?? ($addonCode ? 'per_unit' : 'flat')); // feature default flat
+            $unitPrice   = (int)   ($p['unit_price']   ?? 0);
+            $qtyReq      = (int)   ($p['qty']          ?? 1);
+            if ($qtyReq < 1) $qtyReq = 1;
+
+            // Ambil/siapkan row dengan key yang tepat (feature vs master)
+            $key = ['subscription_instance_id' => $instanceId]
+                + ($addonCode !== '' ? ['addon_code' => $addonCode] : ['feature_code' => $featureCode]);
+
+            /** @var \App\Models\SubscriptionAddon $row */
+            $row = SubscriptionAddon::firstOrNew($key);
+
+            // Pastikan kolom "sisi lain" di-null-kan agar baris tidak ambigu
+            $row->feature_code = $featureCode !== '' ? $featureCode : null;
+            $row->addon_code   = $addonCode   !== '' ? $addonCode   : null;
+
+            // ===== QTY & HARGA (recalc) =====
+            // Jika row sudah ada & ini master, kita akumulasi qty-nya;
+            // lalu SET ULANG price_amount berdasarkan qty final + pricing_mode.
+            $newQty = $qtyReq;
+            if ($addonCode !== '') {
+                $current = (int)($row->qty ?? 0);
+                $newQty  = $current + $qtyReq;
+            } else {
+                // feature selalu dianggap 1, flat
+                $newQty = 1;
+            }
+
+            // Hitung unit_price bila kosong tapi ada total (fallback)
+            if ($unitPrice <= 0) {
+                $fallbackAmount = (int)($p['price'] ?? 0);
+                if ($fallbackAmount > 0) {
+                    $unitPrice = ($pricingMode === 'per_unit')
+                        ? (int) round($fallbackAmount / max(1, $qtyReq))
+                        : $fallbackAmount;
+                }
+            }
+
+            // price_amount untuk penagihan renew:
+            // - per_unit  : unit_price * qty
+            // - flat      : unit_price (qty diabaikan)
+            $priceAmount = 0;
+            if (strtolower($pricingMode) === 'per_unit') {
+                $priceAmount = (int) $unitPrice * max(1, $newQty);
+            } else { // flat
+                $priceAmount = (int) $unitPrice;
+                $newQty      = ($addonCode !== '') ? max(1, $newQty) : 1; // qty tetap disimpan untuk info, tapi tidak memengaruhi harga
+            }
+
+            // ===== Bill policy (set sekali jika sebelumnya null) =====
+            if (is_null($row->billable_from_start))  {
+                $row->billable_from_start = data_get($policy, 'billable_from_start'); // "YYYY-MM-DD"|null
+            }
+            if (is_null($row->follow_base_duration)) {
+                $row->follow_base_duration = 1; // tinyint(1)
+            }
+            if (is_null($row->cycle_code)) {
+                $row->cycle_code = null; // atau isi dari policy kalau kamu kirimkan
+            }
+
+            // ===== Persist kolom lainnya =====
+            $row->feature_name      = $name;
+            $row->currency          = $currency;
+            $row->order_id          = $job->order_id;
+            $row->midtrans_order_id = $job->midtrans_order_id;
+            $row->purchased_at      = now();
+
+            $row->kind         = $kind;
+            $row->pricing_mode = $pricingMode;
+            $row->unit_price   = $unitPrice;
+            $row->qty          = $newQty;        // qty final
+            $row->price_amount = $priceAmount;   // total yang akan ditagih per siklus
+
+            $row->save();
         }
 
-        // 2) Enable seluruh fitur yang digrant (parent + anak) → overrides
-        foreach ((array)$grant as $code) {
-            $code = (string)$code;
+        // Grant (parent + children) → langsung aktif di overrides
+        foreach ($grant as $code) {
+            $code = (string) $code;
             if ($code === '') continue;
 
             SubscriptionFeatureOverride::updateOrCreate(
-                [
-                    'subscription_instance_id' => $instanceId,
-                    'feature_code'             => $code,
-                ],
-                [
-                    'enabled'    => true,
-                    'source'     => 'addon',
-                    'updated_at' => now(),
-                ]
+                ['subscription_instance_id' => $instanceId, 'feature_code' => $code],
+                ['enabled' => true, 'source' => 'addon', 'updated_at' => now()]
             );
         }
-
-        // (Opsional) jika kamu mau set flag di tenant DB, panggil driver di sini:
-        // $manifest = $this->getManifest($job->product_code);
-        // $driver   = $this->resolveDriver($manifest);
-        // if ($instance = \App\Models\CustomerProductInstance::where('subscription_instance_id', $instanceId)->first()) {
-        //     if ($db = $instance->database_name) {
-        //         // tulis ke tabel feature_flags tenant, dsb. (tidak diimplementasi sekarang)
-        //     }
-        // }
-
-        // Anggap add-on selalu non-downtime & tanpa ubah status job instance.
 
         // --- Notifikasi: Email & WhatsApp (tidak memblok proses) ---
         try {
@@ -526,6 +577,132 @@ class TenantProvisioner
             Log::warning('TP: notification (email/wa) wrapper failed', ['err' => $e->getMessage()]);
         }
     }
+
+    // protected function applyAddon(ProvisioningJob $job): void
+    // {
+    //     // Wajib punya instance id
+    //     $instanceId = $job->subscription_instance_id;
+    //     if (!$instanceId) {
+    //         throw new \InvalidArgumentException('Missing subscription_instance_id for addon.');
+    //     }
+
+    //     $parents = data_get($job->meta, 'addons.parents', []); // array of {feature_code,name,price}
+    //     $grant   = data_get($job->meta, 'addons.grant', []);   // array of codes (parent + children)
+
+    //     \Log::info('TP: addon payload', [
+    //         'parents_count' => count($parents),
+    //         'grant_count'   => is_array($grant) ? count($grant) : 0,
+    //     ]);
+
+    //     // 1) Catat pembelian parent berharga → subscription_addons
+    //     foreach ($parents as $p) {
+    //         $code  = (string)($p['feature_code'] ?? '');
+    //         if ($code === '') continue;
+
+    //         SubscriptionAddon::updateOrCreate(
+    //             [
+    //                 'subscription_instance_id' => $instanceId,
+    //                 'feature_code'             => $code,
+    //             ],
+    //             [
+    //                 'feature_name'      => (string)($p['name'] ?? $code),
+    //                 'price_amount'      => (int)($p['price'] ?? 0),
+    //                 'currency'          => 'IDR',
+    //                 'order_id'          => $job->order_id,
+    //                 'midtrans_order_id' => $job->midtrans_order_id,
+    //                 'purchased_at'      => now(),
+    //             ]
+    //         );
+    //     }
+
+    //     // 2) Enable seluruh fitur yang digrant (parent + anak) → overrides
+    //     foreach ((array)$grant as $code) {
+    //         $code = (string)$code;
+    //         if ($code === '') continue;
+
+    //         SubscriptionFeatureOverride::updateOrCreate(
+    //             [
+    //                 'subscription_instance_id' => $instanceId,
+    //                 'feature_code'             => $code,
+    //             ],
+    //             [
+    //                 'enabled'    => true,
+    //                 'source'     => 'addon',
+    //                 'updated_at' => now(),
+    //             ]
+    //         );
+    //     }
+
+    //     // (Opsional) jika kamu mau set flag di tenant DB, panggil driver di sini:
+    //     // $manifest = $this->getManifest($job->product_code);
+    //     // $driver   = $this->resolveDriver($manifest);
+    //     // if ($instance = \App\Models\CustomerProductInstance::where('subscription_instance_id', $instanceId)->first()) {
+    //     //     if ($db = $instance->database_name) {
+    //     //         // tulis ke tabel feature_flags tenant, dsb. (tidak diimplementasi sekarang)
+    //     //     }
+    //     // }
+
+    //     // Anggap add-on selalu non-downtime & tanpa ubah status job instance.
+
+    //     // --- Notifikasi: Email & WhatsApp (tidak memblok proses) ---
+    //     try {
+    //         $email    = data_get($job->meta, 'customer_email');
+    //         $phone    = data_get($job->meta, 'customer_phone');
+    //         $custName = data_get($job->meta, 'customer_name', 'Customer');
+
+    //         // URL aplikasi (opsional, untuk tombol di email & info di WA)
+    //         $instance = CustomerProductInstance::where('subscription_instance_id', $instanceId)->first();
+    //         $appUrl   = $instance?->app_url ?? '#';
+
+    //         // Ambil parent berbayar untuk notifikasi (nama + harga)
+    //         $parentsForNotify = collect($parents)
+    //             ->map(fn($p) => [
+    //                 'name'  => (string)($p['name'] ?? ($p['feature_code'] ?? '-')),
+    //                 'price' => (int)($p['price'] ?? 0),
+    //             ])
+    //             ->values()
+    //             ->all();
+
+    //         // ==== EMAIL ====
+    //         if ($email && !empty($parentsForNotify)) {
+    //             try {
+    //                 // gunakan queue agar provisioning cepat & idempotent
+    //                 Mail::to($email)->send(new AddonActivatedMail(
+    //                     product:       $job->product_name ?? $job->product_code,
+    //                     appUrl:        $appUrl,
+    //                     recipientName: $custName,
+    //                     addons:        $parentsForNotify // parent saja
+    //                 ));
+    //             } catch (\Throwable $e) {
+    //                 Log::warning('TP: send AddonActivatedMail failed', ['err' => $e->getMessage()]);
+    //             }
+    //         }
+
+    //         // ==== WHATSAPP ====
+    //         if ($phone && !empty($parentsForNotify)) {
+    //             try {
+    //                 // Kirim sesuai kontrak WhatsappTemplates::addon => expects ['addons' => [ ['name','price'], ... ]]
+    //                 $waText = WhatsappTemplates::addon([
+    //                     'product_name'  => $job->product_name ?? $job->product_code,
+    //                     'customer_name' => $custName,
+    //                     'addons'        => $parentsForNotify,   // parent saja
+    //                     // opsional, jika mau dipakai di template:
+    //                     'app_url'       => $appUrl,
+    //                     'granted_total' => is_array($grant) ? count($grant) : 0,
+    //                 ]);
+
+    //                 app(WhatsappSender::class)->sendTemplate(
+    //                     to:   $phone,
+    //                     text: $waText
+    //                 );
+    //             } catch (\Throwable $e) {
+    //                 Log::warning('TP: send WA addon failed', ['err' => $e->getMessage()]);
+    //             }
+    //         }
+    //     } catch (\Throwable $e) {
+    //         Log::warning('TP: notification (email/wa) wrapper failed', ['err' => $e->getMessage()]);
+    //     }
+    // }
 
     /**
      * Cari instance untuk renew/upgrade:

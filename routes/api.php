@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthSyncController;
+use App\Http\Controllers\Api\CompanyEntitlementsController;
 use App\Http\Controllers\Api\SubscriptionFeaturesController;
 use App\Http\Controllers\Api\SyncUserController;
 use App\Http\Controllers\Api\TenantResolveController;
@@ -108,3 +109,6 @@ Route::middleware([RequireClientApiKey::class])->group(function () {
 
 // addons ke aplikasi
 Route::middleware([RequireClientApiKey::class])->get('/subscriptions/{instanceId}/features', [SubscriptionFeaturesController::class, 'show']);
+
+// logika addon tambah pelanggan
+Route::middleware([RequireClientApiKey::class])->post('/company/entitlements', CompanyEntitlementsController::class);

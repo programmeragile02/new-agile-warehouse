@@ -9,6 +9,7 @@ const ALLOW_DELETE = new Set([
     "tb_tenant",
     "tb_offering",
     "tb_company",
+    "tb_addons"
 ]);
 
 function shouldDelete(name: string) {
