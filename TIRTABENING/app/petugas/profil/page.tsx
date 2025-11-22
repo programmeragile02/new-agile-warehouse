@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Save, Shield, UserCog, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { PermissionGate } from "@/components/permission-gate";
+import { AclDeniedAlert } from "@/components/acl-denied-alert";
 
 type ZonaLite = { id: string; kode: string; nama: string };
 type Profil = {
@@ -193,269 +195,292 @@ export default function ProfilPetugasPage() {
 
     return (
         <AuthGuard requiredRole="PETUGAS">
-            <AppShell>
-                <div className="max-w-6xl mx-auto space-y-6">
-                    <AppHeader title="Profil Petugas" />
-
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                        <p className="text-muted-foreground">
-                            Kelola informasi akun petugas catat meter.
-                        </p>
+            <PermissionGate
+                path="/petugas/profil"
+                action="view"
+                fallback={<AclDeniedAlert fullPage />}
+                loadingFallback={
+                    <div className="min-h-screen flex items-center justify-center">
+                        <div className="flex items-center gap-2 text-primary">
+                            <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                            <span className="text-lg">Memuat…</span>
+                        </div>
                     </div>
+                }
+            >
+                <AppShell>
+                    <div className="max-w-6xl mx-auto space-y-6">
+                        <AppHeader title="Profil Petugas" />
 
-                    {/* Kartu Profil Dasar */}
-                    <GlassCard className="p-6">
-                        <div className="flex items-center gap-2 mb-4">
-                            <UserCog className="w-5 h-5 text-emerald-700" />
-                            <h2 className="text-xl font-semibold">
-                                Informasi Akun
-                            </h2>
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                            <p className="text-muted-foreground">
+                                Kelola informasi akun petugas catat meter.
+                            </p>
                         </div>
 
-                        {loading ? (
-                            <div className="text-sm text-muted-foreground">
-                                Memuat…
+                        {/* Kartu Profil Dasar */}
+                        <GlassCard className="p-6">
+                            <div className="flex items-center gap-2 mb-4">
+                                <UserCog className="w-5 h-5 text-emerald-700" />
+                                <h2 className="text-xl font-semibold">
+                                    Informasi Akun
+                                </h2>
                             </div>
-                        ) : !data ? (
-                            <div className="text-sm text-muted-foreground">
-                                Data tidak tersedia
-                            </div>
-                        ) : (
-                            <div className="space-y-5">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="text-xs font-medium text-muted-foreground">
-                                            Username
-                                        </label>
-                                        <Input value={data.username} disabled />
+
+                            {loading ? (
+                                <div className="text-sm text-muted-foreground">
+                                    Memuat…
+                                </div>
+                            ) : !data ? (
+                                <div className="text-sm text-muted-foreground">
+                                    Data tidak tersedia
+                                </div>
+                            ) : (
+                                <div className="space-y-5">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="text-xs font-medium text-muted-foreground">
+                                                Username
+                                            </label>
+                                            <Input
+                                                value={data.username}
+                                                disabled
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-medium text-muted-foreground">
+                                                Role
+                                            </label>
+                                            <Input value={data.role} disabled />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-medium text-muted-foreground">
+                                                Nama
+                                            </label>
+                                            <Input
+                                                value={form.name}
+                                                onChange={(e) =>
+                                                    setForm((f) => ({
+                                                        ...f,
+                                                        name: e.target.value,
+                                                    }))
+                                                }
+                                                placeholder="Nama lengkap"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-medium text-muted-foreground">
+                                                No. WhatsApp
+                                            </label>
+                                            <Input
+                                                value={form.phone}
+                                                onChange={(e) =>
+                                                    setForm((f) => ({
+                                                        ...f,
+                                                        phone: e.target.value,
+                                                    }))
+                                                }
+                                                placeholder="Masukkan Nomer Whatsapp"
+                                            />
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label className="text-xs font-medium text-muted-foreground">
-                                            Role
-                                        </label>
-                                        <Input value={data.role} disabled />
+
+                                    <div className="text-xs text-muted-foreground">
+                                        Dibuat:{" "}
+                                        {new Date(
+                                            data.createdAt
+                                        ).toLocaleDateString("id-ID", {
+                                            day: "2-digit",
+                                            month: "long",
+                                            year: "numeric",
+                                        })}
                                     </div>
-                                    <div>
-                                        <label className="text-xs font-medium text-muted-foreground">
-                                            Nama
-                                        </label>
-                                        <Input
-                                            value={form.name}
-                                            onChange={(e) =>
-                                                setForm((f) => ({
-                                                    ...f,
-                                                    name: e.target.value,
-                                                }))
-                                            }
-                                            placeholder="Nama lengkap"
-                                        />
+
+                                    <div className="flex justify-end">
+                                        <Button
+                                            onClick={onSave}
+                                            disabled={saving}
+                                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                                        >
+                                            <Save className="w-4 h-4 mr-2" />
+                                            {saving
+                                                ? "Menyimpan…"
+                                                : "Simpan Perubahan"}
+                                        </Button>
                                     </div>
-                                    <div>
-                                        <label className="text-xs font-medium text-muted-foreground">
-                                            No. WhatsApp
-                                        </label>
-                                        <Input
-                                            value={form.phone}
-                                            onChange={(e) =>
-                                                setForm((f) => ({
-                                                    ...f,
-                                                    phone: e.target.value,
-                                                }))
-                                            }
-                                            placeholder="Masukkan Nomer Whatsapp"
-                                        />
+
+                                    <Separator />
+
+                                    {/* Zona yang dipegang */}
+                                    <div className="space-y-2">
+                                        <div className="font-medium">
+                                            Blok yang Dipegang
+                                        </div>
+                                        {data.zonas?.length ? (
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                                                {data.zonas.map((z) => (
+                                                    <div
+                                                        key={z.id}
+                                                        className="rounded-lg border px-3 py-2 text-sm bg-muted/40"
+                                                    >
+                                                        <div className="font-medium">
+                                                            {z.nama}
+                                                        </div>
+                                                        <div className="text-xs text-muted-foreground">
+                                                            {z.kode}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="text-sm text-muted-foreground">
+                                                Belum ada blok yang ditugaskan.
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
+                            )}
+                        </GlassCard>
 
-                                <div className="text-xs text-muted-foreground">
-                                    Dibuat:{" "}
-                                    {new Date(
-                                        data.createdAt
-                                    ).toLocaleDateString("id-ID", {
-                                        day: "2-digit",
-                                        month: "long",
-                                        year: "numeric",
-                                    })}
-                                </div>
+                        {/* Kartu Ubah Password */}
+                        <GlassCard className="p-6">
+                            <div className="flex items-center gap-2 mb-4">
+                                <Shield className="w-5 h-5 text-emerald-700" />
+                                <h2 className="text-xl font-semibold">
+                                    Keamanan Akun
+                                </h2>
+                            </div>
 
-                                <div className="flex justify-end">
-                                    <Button
-                                        onClick={onSave}
-                                        disabled={saving}
-                                        className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div className="relative">
+                                    <label className="text-xs font-medium text-muted-foreground">
+                                        Sandi Lama
+                                    </label>
+                                    <Input
+                                        type={show.old ? "text" : "password"}
+                                        value={pwd.oldPassword}
+                                        onChange={(e) =>
+                                            setPwd((p) => ({
+                                                ...p,
+                                                oldPassword: e.target.value,
+                                            }))
+                                        }
+                                        placeholder="Masukkan sandi lama"
+                                    />
+                                    <button
+                                        type="button"
+                                        className="absolute right-2 top-7 p-1 rounded hover:bg-muted"
+                                        onClick={() =>
+                                            setShow((s) => ({
+                                                ...s,
+                                                old: !s.old,
+                                            }))
+                                        }
+                                        aria-label={
+                                            show.old
+                                                ? "Sembunyikan sandi lama"
+                                                : "Tampilkan sandi lama"
+                                        }
                                     >
-                                        <Save className="w-4 h-4 mr-2" />
-                                        {saving
-                                            ? "Menyimpan…"
-                                            : "Simpan Perubahan"}
-                                    </Button>
+                                        {show.old ? (
+                                            <EyeOff className="h-4 w-4" />
+                                        ) : (
+                                            <Eye className="h-4 w-4" />
+                                        )}
+                                    </button>
                                 </div>
 
-                                <Separator />
+                                <div className="relative">
+                                    <label className="text-xs font-medium text-muted-foreground">
+                                        Sandi Baru
+                                    </label>
+                                    <Input
+                                        type={show.nw ? "text" : "password"}
+                                        value={pwd.newPassword}
+                                        onChange={(e) =>
+                                            setPwd((p) => ({
+                                                ...p,
+                                                newPassword: e.target.value,
+                                            }))
+                                        }
+                                        placeholder="Minimal 6 karakter"
+                                    />
+                                    <button
+                                        type="button"
+                                        className="absolute right-2 top-7 p-1 rounded hover:bg-muted"
+                                        onClick={() =>
+                                            setShow((s) => ({
+                                                ...s,
+                                                nw: !s.nw,
+                                            }))
+                                        }
+                                        aria-label={
+                                            show.nw
+                                                ? "Sembunyikan sandi baru"
+                                                : "Tampilkan sandi baru"
+                                        }
+                                    >
+                                        {show.nw ? (
+                                            <EyeOff className="h-4 w-4" />
+                                        ) : (
+                                            <Eye className="h-4 w-4" />
+                                        )}
+                                    </button>
+                                </div>
 
-                                {/* Zona yang dipegang */}
-                                <div className="space-y-2">
-                                    <div className="font-medium">
-                                        Blok yang Dipegang
-                                    </div>
-                                    {data.zonas?.length ? (
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                                            {data.zonas.map((z) => (
-                                                <div
-                                                    key={z.id}
-                                                    className="rounded-lg border px-3 py-2 text-sm bg-muted/40"
-                                                >
-                                                    <div className="font-medium">
-                                                        {z.nama}
-                                                    </div>
-                                                    <div className="text-xs text-muted-foreground">
-                                                        {z.kode}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <div className="text-sm text-muted-foreground">
-                                            Belum ada blok yang ditugaskan.
-                                        </div>
-                                    )}
+                                <div className="relative">
+                                    <label className="text-xs font-medium text-muted-foreground">
+                                        Konfirmasi Sandi Baru
+                                    </label>
+                                    <Input
+                                        type={show.conf ? "text" : "password"}
+                                        value={pwd.confirm}
+                                        onChange={(e) =>
+                                            setPwd((p) => ({
+                                                ...p,
+                                                confirm: e.target.value,
+                                            }))
+                                        }
+                                        placeholder="Ulangi sandi baru"
+                                    />
+                                    <button
+                                        type="button"
+                                        className="absolute right-2 top-7 p-1 rounded hover:bg-muted"
+                                        onClick={() =>
+                                            setShow((s) => ({
+                                                ...s,
+                                                conf: !s.conf,
+                                            }))
+                                        }
+                                        aria-label={
+                                            show.conf
+                                                ? "Sembunyikan konfirmasi sandi"
+                                                : "Tampilkan konfirmasi sandi"
+                                        }
+                                    >
+                                        {show.conf ? (
+                                            <EyeOff className="h-4 w-4" />
+                                        ) : (
+                                            <Eye className="h-4 w-4" />
+                                        )}
+                                    </button>
                                 </div>
                             </div>
-                        )}
-                    </GlassCard>
 
-                    {/* Kartu Ubah Password */}
-                    <GlassCard className="p-6">
-                        <div className="flex items-center gap-2 mb-4">
-                            <Shield className="w-5 h-5 text-emerald-700" />
-                            <h2 className="text-xl font-semibold">
-                                Keamanan Akun
-                            </h2>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <div className="relative">
-                                <label className="text-xs font-medium text-muted-foreground">
-                                    Sandi Lama
-                                </label>
-                                <Input
-                                    type={show.old ? "text" : "password"}
-                                    value={pwd.oldPassword}
-                                    onChange={(e) =>
-                                        setPwd((p) => ({
-                                            ...p,
-                                            oldPassword: e.target.value,
-                                        }))
-                                    }
-                                    placeholder="Masukkan sandi lama"
-                                />
-                                <button
-                                    type="button"
-                                    className="absolute right-2 top-7 p-1 rounded hover:bg-muted"
-                                    onClick={() =>
-                                        setShow((s) => ({ ...s, old: !s.old }))
-                                    }
-                                    aria-label={
-                                        show.old
-                                            ? "Sembunyikan sandi lama"
-                                            : "Tampilkan sandi lama"
-                                    }
+                            <div className="flex justify-end mt-4">
+                                <Button
+                                    onClick={onChangePassword}
+                                    disabled={savingPass}
+                                    variant="outline"
+                                    className="bg-transparent"
                                 >
-                                    {show.old ? (
-                                        <EyeOff className="h-4 w-4" />
-                                    ) : (
-                                        <Eye className="h-4 w-4" />
-                                    )}
-                                </button>
+                                    {savingPass ? "Menyimpan…" : "Ubah Sandi"}
+                                </Button>
                             </div>
-
-                            <div className="relative">
-                                <label className="text-xs font-medium text-muted-foreground">
-                                    Sandi Baru
-                                </label>
-                                <Input
-                                    type={show.nw ? "text" : "password"}
-                                    value={pwd.newPassword}
-                                    onChange={(e) =>
-                                        setPwd((p) => ({
-                                            ...p,
-                                            newPassword: e.target.value,
-                                        }))
-                                    }
-                                    placeholder="Minimal 6 karakter"
-                                />
-                                <button
-                                    type="button"
-                                    className="absolute right-2 top-7 p-1 rounded hover:bg-muted"
-                                    onClick={() =>
-                                        setShow((s) => ({ ...s, nw: !s.nw }))
-                                    }
-                                    aria-label={
-                                        show.nw
-                                            ? "Sembunyikan sandi baru"
-                                            : "Tampilkan sandi baru"
-                                    }
-                                >
-                                    {show.nw ? (
-                                        <EyeOff className="h-4 w-4" />
-                                    ) : (
-                                        <Eye className="h-4 w-4" />
-                                    )}
-                                </button>
-                            </div>
-
-                            <div className="relative">
-                                <label className="text-xs font-medium text-muted-foreground">
-                                    Konfirmasi Sandi Baru
-                                </label>
-                                <Input
-                                    type={show.conf ? "text" : "password"}
-                                    value={pwd.confirm}
-                                    onChange={(e) =>
-                                        setPwd((p) => ({
-                                            ...p,
-                                            confirm: e.target.value,
-                                        }))
-                                    }
-                                    placeholder="Ulangi sandi baru"
-                                />
-                                <button
-                                    type="button"
-                                    className="absolute right-2 top-7 p-1 rounded hover:bg-muted"
-                                    onClick={() =>
-                                        setShow((s) => ({
-                                            ...s,
-                                            conf: !s.conf,
-                                        }))
-                                    }
-                                    aria-label={
-                                        show.conf
-                                            ? "Sembunyikan konfirmasi sandi"
-                                            : "Tampilkan konfirmasi sandi"
-                                    }
-                                >
-                                    {show.conf ? (
-                                        <EyeOff className="h-4 w-4" />
-                                    ) : (
-                                        <Eye className="h-4 w-4" />
-                                    )}
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="flex justify-end mt-4">
-                            <Button
-                                onClick={onChangePassword}
-                                disabled={savingPass}
-                                variant="outline"
-                                className="bg-transparent"
-                            >
-                                {savingPass ? "Menyimpan…" : "Ubah Sandi"}
-                            </Button>
-                        </div>
-                    </GlassCard>
-                </div>
-            </AppShell>
+                        </GlassCard>
+                    </div>
+                </AppShell>
+            </PermissionGate>
         </AuthGuard>
     );
 }

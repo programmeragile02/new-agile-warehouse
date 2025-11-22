@@ -61,6 +61,8 @@ import {
 } from "@/lib/master-biaya-store";
 import { useToast } from "@/hooks/use-toast";
 import { useMobile } from "@/hooks/use-mobile";
+import { PermissionGate } from "@/components/permission-gate";
+import { AclDeniedAlert } from "@/components/acl-denied-alert";
 
 interface BiayaFormData {
     nama: string;
@@ -483,216 +485,245 @@ export default function MasterBiayaPage() {
 
     return (
         <AuthGuard>
-            <AppShell>
-                <div className="min-h-screen pb-20">
-                    <AppHeader title="Kategori Biaya" />
+            <PermissionGate
+                path="/biaya"
+                action="view"
+                fallback={<AclDeniedAlert fullPage />}
+                loadingFallback={
+                    <div className="min-h-screen flex items-center justify-center">
+                        <div className="flex items-center gap-2 text-primary">
+                            <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                            <span className="text-lg">Memuat…</span>
+                        </div>
+                    </div>
+                }
+            >
+                <AppShell>
+                    <div className="min-h-screen pb-20">
+                        <AppHeader title="Kategori Biaya" />
 
-                    <div className="container mx-auto px-4 space-y-6">
-                        {/* Add Button for Desktop */}
-                        {!isMobile && (
-                            <div className="flex justify-end">
-                                <Button
-                                    onClick={() => handleOpenForm()}
-                                    size="lg"
-                                >
-                                    <Plus className="h-4 w-4 mr-2" />
-                                    Tambah Kategori Biaya
-                                </Button>
-                            </div>
-                        )}
-                        {/* Header Section */}
-                        <GlassCard className="p-6">
-                            <div className="flex items-start gap-4">
-                                <div className="p-3 bg-primary/10 rounded-lg">
-                                    <FolderOpen className="h-6 w-6 text-primary" />
+                        <div className="container mx-auto px-4 space-y-6">
+                            {/* Add Button for Desktop */}
+                            {!isMobile && (
+                                <div className="flex justify-end">
+                                    <Button
+                                        onClick={() => handleOpenForm()}
+                                        size="lg"
+                                    >
+                                        <Plus className="h-4 w-4 mr-2" />
+                                        Tambah Kategori Biaya
+                                    </Button>
                                 </div>
-                                <div className="flex-1">
-                                    <h2 className="text-2xl font-bold text-foreground mb-2">
-                                        Kategori Biaya
-                                    </h2>
-                                    <p className="text-muted-foreground">
-                                        Kelola entri kategori biaya menggunakan
-                                        menu ini.
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* Filters */}
-                            <div className="flex flex-col sm:flex-row gap-4 mt-6">
-                                <Select
-                                    value={selectedYear}
-                                    onValueChange={setSelectedYear}
-                                >
-                                    <SelectTrigger className="w-full sm:w-40">
-                                        <SelectValue placeholder="Pilih Tahun" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {years.map((year) => (
-                                            <SelectItem key={year} value={year}>
-                                                {year}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-
-                                <div className="relative flex-1">
-                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                    <Input
-                                        placeholder="Cari nama, kode, atau deskripsi..."
-                                        value={searchTerm}
-                                        onChange={(e) =>
-                                            setSearchTerm(e.target.value)
-                                        }
-                                        className="pl-10"
-                                    />
-                                </div>
-                            </div>
-                        </GlassCard>
-
-                        {/* Content */}
-                        {isMobile ? renderMobileCards() : renderDesktopTable()}
-
-                        {/* Form Dialog */}
-                        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-                            <DialogContent className="sm:max-w-md">
-                                <DialogHeader>
-                                    <DialogTitle>
-                                        {editingBiaya
-                                            ? "Edit KAtegori Biaya"
-                                            : "Tambah Kategori Biaya"}
-                                    </DialogTitle>
-                                    <DialogDescription>
-                                        {editingBiaya
-                                            ? "Perbarui informasi Kategori biaya yang dipilih."
-                                            : "Tambahkan Kategori biaya baru ke dalam sistem."}
-                                    </DialogDescription>
-                                </DialogHeader>
-
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="nama">
-                                            Kategori Biaya *
-                                        </Label>
-                                        <Input
-                                            id="nama"
-                                            value={formData.nama}
-                                            onChange={(e) =>
-                                                handleNamaChange(e.target.value)
-                                            }
-                                            placeholder="Masukkan kategori biaya"
-                                            className={
-                                                formErrors.nama
-                                                    ? "border-red-500"
-                                                    : ""
-                                            }
-                                        />
-                                        {formErrors.nama && (
-                                            <p className="text-sm text-red-500">
-                                                {formErrors.nama}
-                                            </p>
-                                        )}
+                            )}
+                            {/* Header Section */}
+                            <GlassCard className="p-6">
+                                <div className="flex items-start gap-4">
+                                    <div className="p-3 bg-primary/10 rounded-lg">
+                                        <FolderOpen className="h-6 w-6 text-primary" />
                                     </div>
-
-                                    <div className="space-y-2">
-                                        <Label htmlFor="kode">
-                                            Kode (Otomatis)
-                                        </Label>
-                                        <Input
-                                            id="kode"
-                                            value={formData.kode}
-                                            placeholder="Kode akan dibuat otomatis"
-                                            disabled
-                                            className="bg-muted"
-                                        />
-                                        <p className="text-xs text-muted-foreground">
-                                            Kode dibuat otomatis berdasarkan
-                                            Kategori biaya
+                                    <div className="flex-1">
+                                        <h2 className="text-2xl font-bold text-foreground mb-2">
+                                            Kategori Biaya
+                                        </h2>
+                                        <p className="text-muted-foreground">
+                                            Kelola entri kategori biaya
+                                            menggunakan menu ini.
                                         </p>
                                     </div>
-
-                                    <div className="space-y-2">
-                                        <Label htmlFor="deskripsi">
-                                            Deskripsi
-                                        </Label>
-                                        <Textarea
-                                            id="deskripsi"
-                                            value={formData.deskripsi}
-                                            onChange={(e) =>
-                                                setFormData({
-                                                    ...formData,
-                                                    deskripsi: e.target.value,
-                                                })
-                                            }
-                                            placeholder="Masukkan deskripsi kategori biaya"
-                                            rows={3}
-                                        />
-                                    </div>
-
-                                    <div className="flex items-center space-x-2">
-                                        <Switch
-                                            id="status"
-                                            checked={
-                                                formData.status === "Aktif"
-                                            }
-                                            onCheckedChange={(checked) =>
-                                                setFormData({
-                                                    ...formData,
-                                                    status: checked
-                                                        ? "Aktif"
-                                                        : "Nonaktif",
-                                                })
-                                            }
-                                        />
-                                        <Label htmlFor="status">
-                                            Status Aktif
-                                        </Label>
-                                    </div>
                                 </div>
 
-                                <DialogFooter>
-                                    <Button
-                                        variant="outline"
-                                        onClick={handleCloseForm}
+                                {/* Filters */}
+                                <div className="flex flex-col sm:flex-row gap-4 mt-6">
+                                    <Select
+                                        value={selectedYear}
+                                        onValueChange={setSelectedYear}
                                     >
-                                        Batal
-                                    </Button>
-                                    <Button onClick={handleSubmit}>
-                                        Simpan
-                                    </Button>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
+                                        <SelectTrigger className="w-full sm:w-40">
+                                            <SelectValue placeholder="Pilih Tahun" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {years.map((year) => (
+                                                <SelectItem
+                                                    key={year}
+                                                    value={year}
+                                                >
+                                                    {year}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
 
-                        {/* Delete Confirmation Dialog */}
-                        <AlertDialog
-                            open={isDeleteDialogOpen}
-                            onOpenChange={setIsDeleteDialogOpen}
-                        >
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>
-                                        Hapus Kategori Biaya
-                                    </AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        Apakah Anda yakin ingin menghapus
-                                        Kategori biaya "{deletingBiaya?.nama}
-                                        "? Tindakan ini tidak dapat dibatalkan.
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>Batal</AlertDialogCancel>
-                                    <AlertDialogAction
-                                        onClick={handleDeleteConfirm}
-                                        className="bg-red-500 hover:bg-red-600"
-                                    >
-                                        Hapus
-                                    </AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
+                                    <div className="relative flex-1">
+                                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                        <Input
+                                            placeholder="Cari nama, kode, atau deskripsi..."
+                                            value={searchTerm}
+                                            onChange={(e) =>
+                                                setSearchTerm(e.target.value)
+                                            }
+                                            className="pl-10"
+                                        />
+                                    </div>
+                                </div>
+                            </GlassCard>
+
+                            {/* Content */}
+                            {isMobile
+                                ? renderMobileCards()
+                                : renderDesktopTable()}
+
+                            {/* Form Dialog */}
+                            <Dialog
+                                open={isFormOpen}
+                                onOpenChange={setIsFormOpen}
+                            >
+                                <DialogContent className="sm:max-w-md">
+                                    <DialogHeader>
+                                        <DialogTitle>
+                                            {editingBiaya
+                                                ? "Edit KAtegori Biaya"
+                                                : "Tambah Kategori Biaya"}
+                                        </DialogTitle>
+                                        <DialogDescription>
+                                            {editingBiaya
+                                                ? "Perbarui informasi Kategori biaya yang dipilih."
+                                                : "Tambahkan Kategori biaya baru ke dalam sistem."}
+                                        </DialogDescription>
+                                    </DialogHeader>
+
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="nama">
+                                                Kategori Biaya *
+                                            </Label>
+                                            <Input
+                                                id="nama"
+                                                value={formData.nama}
+                                                onChange={(e) =>
+                                                    handleNamaChange(
+                                                        e.target.value
+                                                    )
+                                                }
+                                                placeholder="Masukkan kategori biaya"
+                                                className={
+                                                    formErrors.nama
+                                                        ? "border-red-500"
+                                                        : ""
+                                                }
+                                            />
+                                            {formErrors.nama && (
+                                                <p className="text-sm text-red-500">
+                                                    {formErrors.nama}
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="kode">
+                                                Kode (Otomatis)
+                                            </Label>
+                                            <Input
+                                                id="kode"
+                                                value={formData.kode}
+                                                placeholder="Kode akan dibuat otomatis"
+                                                disabled
+                                                className="bg-muted"
+                                            />
+                                            <p className="text-xs text-muted-foreground">
+                                                Kode dibuat otomatis berdasarkan
+                                                Kategori biaya
+                                            </p>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="deskripsi">
+                                                Deskripsi
+                                            </Label>
+                                            <Textarea
+                                                id="deskripsi"
+                                                value={formData.deskripsi}
+                                                onChange={(e) =>
+                                                    setFormData({
+                                                        ...formData,
+                                                        deskripsi:
+                                                            e.target.value,
+                                                    })
+                                                }
+                                                placeholder="Masukkan deskripsi kategori biaya"
+                                                rows={3}
+                                            />
+                                        </div>
+
+                                        <div className="flex items-center space-x-2">
+                                            <Switch
+                                                id="status"
+                                                checked={
+                                                    formData.status === "Aktif"
+                                                }
+                                                onCheckedChange={(checked) =>
+                                                    setFormData({
+                                                        ...formData,
+                                                        status: checked
+                                                            ? "Aktif"
+                                                            : "Nonaktif",
+                                                    })
+                                                }
+                                            />
+                                            <Label htmlFor="status">
+                                                Status Aktif
+                                            </Label>
+                                        </div>
+                                    </div>
+
+                                    <DialogFooter>
+                                        <Button
+                                            variant="outline"
+                                            onClick={handleCloseForm}
+                                        >
+                                            Batal
+                                        </Button>
+                                        <Button onClick={handleSubmit}>
+                                            Simpan
+                                        </Button>
+                                    </DialogFooter>
+                                </DialogContent>
+                            </Dialog>
+
+                            {/* Delete Confirmation Dialog */}
+                            <AlertDialog
+                                open={isDeleteDialogOpen}
+                                onOpenChange={setIsDeleteDialogOpen}
+                            >
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>
+                                            Hapus Kategori Biaya
+                                        </AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            Apakah Anda yakin ingin menghapus
+                                            Kategori biaya "
+                                            {deletingBiaya?.nama}
+                                            "? Tindakan ini tidak dapat
+                                            dibatalkan.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>
+                                            Batal
+                                        </AlertDialogCancel>
+                                        <AlertDialogAction
+                                            onClick={handleDeleteConfirm}
+                                            className="bg-red-500 hover:bg-red-600"
+                                        >
+                                            Hapus
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        </div>
                     </div>
-                </div>
-            </AppShell>
+                </AppShell>
+            </PermissionGate>
         </AuthGuard>
     );
 }

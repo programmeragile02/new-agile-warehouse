@@ -22,6 +22,8 @@ import {
     DialogTitle,
     DialogDescription,
 } from "@/components/ui/dialog";
+import { PermissionGate } from "@/components/permission-gate";
+import { AclDeniedAlert } from "@/components/acl-denied-alert";
 
 type PeriodItem = {
     id: string;
@@ -434,559 +436,612 @@ export default function PajakPage() {
 
     return (
         <AuthGuard requiredRole={"ADMIN"}>
-            <AppShell>
-                <div className="mx-auto space-y-6">
-                    <AppHeader title="Pengelolaan Pajak" />
-
-                    <GlassCard className="p-4">
-                        <div className="text-lg font-semibold mb-4">
-                            Input Pajak
+            <PermissionGate
+                path="/pajak"
+                action="view"
+                fallback={<AclDeniedAlert fullPage />}
+                loadingFallback={
+                    <div className="min-h-screen flex items-center justify-center">
+                        <div className="flex items-center gap-2 text-primary">
+                            <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                            <span className="text-lg">Memuat…</span>
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                            <div>
-                                <label className="text-sm font-medium">
-                                    Periode
-                                </label>
-                                <div className="mt-2">
-                                    <Select
-                                        value={selectedPeriod}
-                                        onValueChange={(v) =>
-                                            setSelectedPeriod(v)
-                                        }
-                                    >
-                                        <SelectTrigger className="w-56">
-                                            <SelectValue placeholder="Pilih periode">
-                                                {selectedPeriodLabel ||
-                                                    "Pilih periode"}
-                                            </SelectValue>
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {months.map((m) => (
-                                                <SelectItem
-                                                    key={m.id}
-                                                    value={m.id}
-                                                >
-                                                    {safeFormatPeriode(m)}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                    </div>
+                }
+            >
+                <AppShell>
+                    <div className="mx-auto space-y-6">
+                        <AppHeader title="Pengelolaan Pajak" />
+
+                        <GlassCard className="p-4">
+                            <div className="text-lg font-semibold mb-4">
+                                Input Pajak
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                                <div>
+                                    <label className="text-sm font-medium">
+                                        Periode
+                                    </label>
+                                    <div className="mt-2">
+                                        <Select
+                                            value={selectedPeriod}
+                                            onValueChange={(v) =>
+                                                setSelectedPeriod(v)
+                                            }
+                                        >
+                                            <SelectTrigger className="w-56">
+                                                <SelectValue placeholder="Pilih periode">
+                                                    {selectedPeriodLabel ||
+                                                        "Pilih periode"}
+                                                </SelectValue>
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {months.map((m) => (
+                                                    <SelectItem
+                                                        key={m.id}
+                                                        value={m.id}
+                                                    >
+                                                        {safeFormatPeriode(m)}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div className="flex-1">
-                                <label className="text-sm font-medium">
-                                    Pemakaian Total (m³)
-                                </label>
-                                <div className="mt-2">
-                                    <Input
-                                        value={
-                                            loadingCalc
-                                                ? "Memuat..."
-                                                : String(previewPemakaian)
-                                        }
-                                        readOnly
-                                    />
+                                <div className="flex-1">
+                                    <label className="text-sm font-medium">
+                                        Pemakaian Total (m³)
+                                    </label>
+                                    <div className="mt-2">
+                                        <Input
+                                            value={
+                                                loadingCalc
+                                                    ? "Memuat..."
+                                                    : String(previewPemakaian)
+                                            }
+                                            readOnly
+                                        />
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div className="sm:col-span-1">
-                                <label className="text-sm font-medium">
-                                    Tarif Pajak / m³ (Rp)
-                                </label>
-                                <div className="mt-2">
-                                    <Input
-                                        type="number"
-                                        value={previewTarif}
-                                        onChange={(e) => {
-                                            const v = e.target.value;
-                                            if (v === "")
-                                                setTarifPajakPerM3(null);
-                                            else setTarifPajakPerM3(Number(v));
-                                        }}
-                                        placeholder="Masukkan Tarif Pajak / m³"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="sm:col-span-1">
-                                <label className="text-sm font-medium">
-                                    Nominal Bayar Pajak (Rp)
-                                </label>
-                                <div className="mt-2">
-                                    <Input
-                                        value={previewNominal}
-                                        readOnly
-                                        placeholder="(Otomatis terisi setelah input tarif)"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="sm:col-span-2">
-                                <label className="text-sm font-medium">
-                                    Keterangan
-                                </label>
-                                <div className="mt-2">
-                                    <Input value={autoKeterangan} readOnly />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="sm:col-span-4 flex justify-end mt-2 gap-2">
-                            <Button
-                                onClick={handleSave}
-                                disabled={
-                                    loadingSave ||
-                                    loadingCalc ||
-                                    existing?.status === "CLOSE"
-                                }
-                            >
-                                {loadingSave
-                                    ? "Menyimpan..."
-                                    : "Simpan / Perbarui"}
-                            </Button>
-
-                            <Button
-                                onClick={handlePostingCurrent}
-                                disabled={
-                                    !existing ||
-                                    !existing.id ||
-                                    existing.status === "CLOSE" ||
-                                    Boolean(postingId)
-                                }
-                                variant="outline"
-                                size="sm"
-                            >
-                                {postingId ? "Memposting..." : "Posting"}
-                            </Button>
-                        </div>
-
-                        <div className="mt-3 text-xs text-muted-foreground">
-                            {existing ? (
-                                <>
-                                    Data pajak untuk periode ini sudah ada —{" "}
-                                    <b>
-                                        nominal: Rp{" "}
-                                        {fmtRp(existing.nominalBayarPajak)}
-                                    </b>{" "}
-                                    <span className="ml-2">
-                                        {existing.status === "CLOSE" ? (
-                                            <span className="px-2 py-0.5 rounded-full text-xs bg-red-600 text-white">
-                                                CLOSE
-                                            </span>
-                                        ) : (
-                                            <span className="px-2 py-0.5 rounded-full text-xs bg-green-600 text-white">
-                                                DRAFT
-                                            </span>
-                                        )}
-                                    </span>
-                                </>
-                            ) : pemakaianM3 !== null ? (
-                                <>Belum ada entri pajak untuk periode ini.</>
-                            ) : (
-                                <>Pilih periode untuk menghitung pemakaian.</>
-                            )}
-                        </div>
-                    </GlassCard>
-
-                    <GlassCard className="p-4">
-                        <div className="flex items-center justify-between mb-3">
-                            <div className="text-lg font-semibold">
-                                Riwayat Pajak
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                                {loadingHistory
-                                    ? "Memuat..."
-                                    : `${history.length} entri`}
-                            </div>
-                        </div>
-
-                        {history.length === 0 ? (
-                            <div className="text-sm text-muted-foreground">
-                                Belum ada entri pajak.
-                            </div>
-                        ) : (
-                            <>
-                                {/* TABLE VIEW */}
-                                <div className="hidden sm:block overflow-x-auto">
-                                    <table className="w-full text-sm">
-                                        <thead>
-                                            <tr className="text-muted-foreground border-b">
-                                                <th className="text-left py-2 px-2">
-                                                    Periode
-                                                </th>
-                                                <th className="text-left py-2 px-2">
-                                                    Pemakaian (m³)
-                                                </th>
-                                                <th className="text-left py-2 px-2">
-                                                    Tarif / m³
-                                                </th>
-                                                <th className="text-left py-2 px-2">
-                                                    Nominal
-                                                </th>
-                                                <th className="text-left py-2 px-2">
-                                                    Keterangan
-                                                </th>
-                                                <th className="text-left py-2 px-2">
-                                                    Status
-                                                </th>
-                                                <th className="text-right py-2 px-2">
-                                                    Aksi
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {history
-                                                .slice(
-                                                    (page - 1) * perPage,
-                                                    page * perPage
-                                                )
-                                                .map((h) => {
-                                                    const periodItem =
-                                                        months.find(
-                                                            (m) =>
-                                                                m.id ===
-                                                                h.periodeId
-                                                        );
-                                                    const label = periodItem
-                                                        ? safeFormatPeriode(
-                                                              periodItem
-                                                          )
-                                                        : h.periodeId.slice(
-                                                              0,
-                                                              8
-                                                          );
-                                                    const isClosed =
-                                                        h.status === "CLOSE";
-                                                    return (
-                                                        <tr
-                                                            key={h.id}
-                                                            className="border-b"
-                                                        >
-                                                            <td className="py-2 px-2">
-                                                                {label}
-                                                            </td>
-                                                            <td className="py-2 px-2">
-                                                                {h.pemakaianM3}
-                                                            </td>
-                                                            <td className="py-2 px-2">
-                                                                Rp{" "}
-                                                                {fmtRp(
-                                                                    h.tarifPajakPerM3
-                                                                )}
-                                                            </td>
-                                                            <td className="py-2 px-2 font-semibold">
-                                                                Rp{" "}
-                                                                {fmtRp(
-                                                                    h.nominalBayarPajak
-                                                                )}
-                                                            </td>
-                                                            <td className="py-2 px-2">
-                                                                {h.keterangan}
-                                                            </td>
-                                                            <td className="py-2 px-2">
-                                                                {isClosed ? (
-                                                                    <span className="px-2 py-0.5 rounded-full text-xs bg-red-600 text-white">
-                                                                        CLOSE
-                                                                    </span>
-                                                                ) : (
-                                                                    <span className="px-2 py-0.5 rounded-full text-xs bg-green-600 text-white">
-                                                                        DRAFT
-                                                                    </span>
-                                                                )}
-                                                            </td>
-                                                            <td className="py-2 px-2 text-right">
-                                                                <div className="flex items-center justify-end gap-2">
-                                                                    <Button
-                                                                        size="sm"
-                                                                        variant="outline"
-                                                                        onClick={() => {
-                                                                            if (
-                                                                                isClosed
-                                                                            ) {
-                                                                                toast.error(
-                                                                                    "Entri ini sudah ditutup dan tidak bisa diedit."
-                                                                                );
-                                                                                return;
-                                                                            }
-                                                                            setSelectedPeriod(
-                                                                                h.periodeId
-                                                                            );
-                                                                            window.scrollTo(
-                                                                                {
-                                                                                    top: 0,
-                                                                                    behavior:
-                                                                                        "smooth",
-                                                                                }
-                                                                            );
-                                                                        }}
-                                                                        disabled={
-                                                                            isClosed
-                                                                        }
-                                                                    >
-                                                                        Edit
-                                                                    </Button>
-                                                                    <Button
-                                                                        size="sm"
-                                                                        variant="ghost"
-                                                                        onClick={() =>
-                                                                            openConfirmModal(
-                                                                                h
-                                                                            )
-                                                                        }
-                                                                        disabled={
-                                                                            deletingId ===
-                                                                                h.id ||
-                                                                            isClosed
-                                                                        }
-                                                                        className={
-                                                                            isClosed
-                                                                                ? "opacity-60 cursor-not-allowed"
-                                                                                : "bg-red-500 text-white"
-                                                                        }
-                                                                    >
-                                                                        {deletingId ===
-                                                                        h.id
-                                                                            ? "Menghapus..."
-                                                                            : isClosed
-                                                                            ? "Terkunci"
-                                                                            : "Hapus"}
-                                                                    </Button>
-                                                                </div>
-                                                            </td>
-                                                        </tr>
+                                <div className="sm:col-span-1">
+                                    <label className="text-sm font-medium">
+                                        Tarif Pajak / m³ (Rp)
+                                    </label>
+                                    <div className="mt-2">
+                                        <Input
+                                            type="number"
+                                            value={previewTarif}
+                                            onChange={(e) => {
+                                                const v = e.target.value;
+                                                if (v === "")
+                                                    setTarifPajakPerM3(null);
+                                                else
+                                                    setTarifPajakPerM3(
+                                                        Number(v)
                                                     );
-                                                })}
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                {/* CARD VIEW (mobile) */}
-                                <div className="block sm:hidden space-y-3">
-                                    {history
-                                        .slice(
-                                            (page - 1) * perPage,
-                                            page * perPage
-                                        )
-                                        .map((h) => {
-                                            const periodItem = months.find(
-                                                (m) => m.id === h.periodeId
-                                            );
-                                            const label = periodItem
-                                                ? safeFormatPeriode(periodItem)
-                                                : h.periodeId.slice(0, 8);
-                                            const isClosed =
-                                                h.status === "CLOSE";
-                                            return (
-                                                <div
-                                                    key={h.id}
-                                                    className="border rounded-lg p-3 bg-white/5 shadow-sm"
-                                                >
-                                                    <div className="flex items-start justify-between">
-                                                        <div>
-                                                            <div className="text-sm font-medium">
-                                                                {label}
-                                                            </div>
-                                                            <div className="text-xs text-muted-foreground mt-1">
-                                                                {h.keterangan}
-                                                            </div>
-                                                        </div>
-                                                        <div className="text-right">
-                                                            <div className="text-sm font-semibold">
-                                                                Rp{" "}
-                                                                {fmtRp(
-                                                                    h.nominalBayarPajak
-                                                                )}
-                                                            </div>
-                                                            <div className="text-xs text-muted-foreground">
-                                                                {h.pemakaianM3}{" "}
-                                                                m³ · Rp{" "}
-                                                                {fmtRp(
-                                                                    h.tarifPajakPerM3
-                                                                )}
-                                                                /m³
-                                                            </div>
-                                                            <div className="mt-1">
-                                                                {isClosed ? (
-                                                                    <span className="px-2 py-0.5 rounded-full text-xs bg-red-600 text-white">
-                                                                        CLOSE
-                                                                    </span>
-                                                                ) : (
-                                                                    <span className="px-2 py-0.5 rounded-full text-xs bg-green-600 text-white">
-                                                                        DRAFT
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="mt-3 flex gap-2">
-                                                        <Button
-                                                            size="sm"
-                                                            variant="outline"
-                                                            className="flex-1"
-                                                            onClick={() => {
-                                                                if (isClosed) {
-                                                                    toast.error(
-                                                                        "Entri ini sudah ditutup dan tidak bisa diedit."
-                                                                    );
-                                                                    return;
-                                                                }
-                                                                setSelectedPeriod(
-                                                                    h.periodeId
-                                                                );
-                                                                window.scrollTo(
-                                                                    {
-                                                                        top: 0,
-                                                                        behavior:
-                                                                            "smooth",
-                                                                    }
-                                                                );
-                                                            }}
-                                                            disabled={isClosed}
-                                                        >
-                                                            Edit
-                                                        </Button>
-                                                        <Button
-                                                            size="sm"
-                                                            variant="ghost"
-                                                            className="flex-1 bg-red-500 text-white"
-                                                            onClick={() => {
-                                                                if (isClosed) {
-                                                                    toast.error(
-                                                                        "Entri ini sudah ditutup dan tidak bisa dihapus."
-                                                                    );
-                                                                    return;
-                                                                }
-                                                                openConfirmModal(
-                                                                    h
-                                                                );
-                                                            }}
-                                                            disabled={
-                                                                deletingId ===
-                                                                    h.id ||
-                                                                isClosed
-                                                            }
-                                                        >
-                                                            {deletingId === h.id
-                                                                ? "Menghapus..."
-                                                                : isClosed
-                                                                ? "Terkunci"
-                                                                : "Hapus"}
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                </div>
-
-                                {/* pagination */}
-                                <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-                                    <div className="flex items-center gap-2 text-sm">
-                                        <Button
-                                            size="sm"
-                                            variant="ghost"
-                                            onClick={() =>
-                                                setPage((p) =>
-                                                    Math.max(1, p - 1)
-                                                )
-                                            }
-                                            disabled={page === 1}
-                                        >
-                                            Sebelumnya
-                                        </Button>
-                                        <div>
-                                            Halaman <b>{page}</b> dari{" "}
-                                            <b>{totalPages}</b>
-                                        </div>
-                                        <Button
-                                            size="sm"
-                                            variant="ghost"
-                                            onClick={() =>
-                                                setPage((p) =>
-                                                    Math.min(totalPages, p + 1)
-                                                )
-                                            }
-                                            disabled={page === totalPages}
-                                        >
-                                            Selanjutnya
-                                        </Button>
-                                    </div>
-
-                                    <div className="flex items-center gap-2 text-sm">
-                                        <span>Per halaman</span>
-                                        <select
-                                            value={perPage}
-                                            onChange={(e) =>
-                                                setPerPage(
-                                                    Number(e.target.value)
-                                                )
-                                            }
-                                            className="border rounded px-2 py-1 text-sm"
-                                        >
-                                            <option value={5}>5</option>
-                                            <option value={10}>10</option>
-                                            <option value={20}>20</option>
-                                            <option value={50}>50</option>
-                                        </select>
+                                            }}
+                                            placeholder="Masukkan Tarif Pajak / m³"
+                                        />
                                     </div>
                                 </div>
-                            </>
-                        )}
-                    </GlassCard>
-                </div>
 
-                {/* Confirm delete dialog */}
-                <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-                    <DialogContent className="sm:max-w-lg">
-                        <DialogHeader>
-                            <DialogTitle>Hapus Entri Pajak</DialogTitle>
-                            <DialogDescription>
-                                Anda akan menghapus entri pajak ini. Tindakan
-                                ini tidak bisa dikembalikan.
-                            </DialogDescription>
-                        </DialogHeader>
-
-                        <div className="mt-4">
-                            <div className="text-sm">
-                                <div className="mb-2">
-                                    <b>{confirmTarget?.keterangan}</b>
-                                </div>
-                                <div className="mb-4 text-muted-foreground">
-                                    Nominal: Rp{" "}
-                                    {confirmTarget
-                                        ? fmtRp(confirmTarget.nominalBayarPajak)
-                                        : "-"}
+                                <div className="sm:col-span-1">
+                                    <label className="text-sm font-medium">
+                                        Nominal Bayar Pajak (Rp)
+                                    </label>
+                                    <div className="mt-2">
+                                        <Input
+                                            value={previewNominal}
+                                            readOnly
+                                            placeholder="(Otomatis terisi setelah input tarif)"
+                                        />
+                                    </div>
                                 </div>
 
-                                <div className="flex justify-end gap-2">
-                                    <Button
-                                        variant="outline"
-                                        onClick={() => setConfirmOpen(false)}
-                                    >
-                                        Batal
-                                    </Button>
-                                    <Button
-                                        onClick={() =>
-                                            confirmTarget &&
-                                            handleDeleteConfirmed(
-                                                confirmTarget.id
-                                            )
-                                        }
-                                        className="bg-red-600 text-white"
-                                        disabled={
-                                            deletingId !== null ||
-                                            confirmTarget?.status === "CLOSE"
-                                        }
-                                    >
-                                        {deletingId ? "Menghapus..." : "Hapus"}
-                                    </Button>
+                                <div className="sm:col-span-2">
+                                    <label className="text-sm font-medium">
+                                        Keterangan
+                                    </label>
+                                    <div className="mt-2">
+                                        <Input
+                                            value={autoKeterangan}
+                                            readOnly
+                                        />
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </DialogContent>
-                </Dialog>
-            </AppShell>
+
+                            <div className="sm:col-span-4 flex justify-end mt-2 gap-2">
+                                <Button
+                                    onClick={handleSave}
+                                    disabled={
+                                        loadingSave ||
+                                        loadingCalc ||
+                                        existing?.status === "CLOSE"
+                                    }
+                                >
+                                    {loadingSave
+                                        ? "Menyimpan..."
+                                        : "Simpan / Perbarui"}
+                                </Button>
+
+                                <Button
+                                    onClick={handlePostingCurrent}
+                                    disabled={
+                                        !existing ||
+                                        !existing.id ||
+                                        existing.status === "CLOSE" ||
+                                        Boolean(postingId)
+                                    }
+                                    variant="outline"
+                                    size="sm"
+                                >
+                                    {postingId ? "Memposting..." : "Posting"}
+                                </Button>
+                            </div>
+
+                            <div className="mt-3 text-xs text-muted-foreground">
+                                {existing ? (
+                                    <>
+                                        Data pajak untuk periode ini sudah ada —{" "}
+                                        <b>
+                                            nominal: Rp{" "}
+                                            {fmtRp(existing.nominalBayarPajak)}
+                                        </b>{" "}
+                                        <span className="ml-2">
+                                            {existing.status === "CLOSE" ? (
+                                                <span className="px-2 py-0.5 rounded-full text-xs bg-red-600 text-white">
+                                                    CLOSE
+                                                </span>
+                                            ) : (
+                                                <span className="px-2 py-0.5 rounded-full text-xs bg-green-600 text-white">
+                                                    DRAFT
+                                                </span>
+                                            )}
+                                        </span>
+                                    </>
+                                ) : pemakaianM3 !== null ? (
+                                    <>
+                                        Belum ada entri pajak untuk periode ini.
+                                    </>
+                                ) : (
+                                    <>
+                                        Pilih periode untuk menghitung
+                                        pemakaian.
+                                    </>
+                                )}
+                            </div>
+                        </GlassCard>
+
+                        <GlassCard className="p-4">
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="text-lg font-semibold">
+                                    Riwayat Pajak
+                                </div>
+                                <div className="text-sm text-muted-foreground">
+                                    {loadingHistory
+                                        ? "Memuat..."
+                                        : `${history.length} entri`}
+                                </div>
+                            </div>
+
+                            {history.length === 0 ? (
+                                <div className="text-sm text-muted-foreground">
+                                    Belum ada entri pajak.
+                                </div>
+                            ) : (
+                                <>
+                                    {/* TABLE VIEW */}
+                                    <div className="hidden sm:block overflow-x-auto">
+                                        <table className="w-full text-sm">
+                                            <thead>
+                                                <tr className="text-muted-foreground border-b">
+                                                    <th className="text-left py-2 px-2">
+                                                        Periode
+                                                    </th>
+                                                    <th className="text-left py-2 px-2">
+                                                        Pemakaian (m³)
+                                                    </th>
+                                                    <th className="text-left py-2 px-2">
+                                                        Tarif / m³
+                                                    </th>
+                                                    <th className="text-left py-2 px-2">
+                                                        Nominal
+                                                    </th>
+                                                    <th className="text-left py-2 px-2">
+                                                        Keterangan
+                                                    </th>
+                                                    <th className="text-left py-2 px-2">
+                                                        Status
+                                                    </th>
+                                                    <th className="text-right py-2 px-2">
+                                                        Aksi
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {history
+                                                    .slice(
+                                                        (page - 1) * perPage,
+                                                        page * perPage
+                                                    )
+                                                    .map((h) => {
+                                                        const periodItem =
+                                                            months.find(
+                                                                (m) =>
+                                                                    m.id ===
+                                                                    h.periodeId
+                                                            );
+                                                        const label = periodItem
+                                                            ? safeFormatPeriode(
+                                                                  periodItem
+                                                              )
+                                                            : h.periodeId.slice(
+                                                                  0,
+                                                                  8
+                                                              );
+                                                        const isClosed =
+                                                            h.status ===
+                                                            "CLOSE";
+                                                        return (
+                                                            <tr
+                                                                key={h.id}
+                                                                className="border-b"
+                                                            >
+                                                                <td className="py-2 px-2">
+                                                                    {label}
+                                                                </td>
+                                                                <td className="py-2 px-2">
+                                                                    {
+                                                                        h.pemakaianM3
+                                                                    }
+                                                                </td>
+                                                                <td className="py-2 px-2">
+                                                                    Rp{" "}
+                                                                    {fmtRp(
+                                                                        h.tarifPajakPerM3
+                                                                    )}
+                                                                </td>
+                                                                <td className="py-2 px-2 font-semibold">
+                                                                    Rp{" "}
+                                                                    {fmtRp(
+                                                                        h.nominalBayarPajak
+                                                                    )}
+                                                                </td>
+                                                                <td className="py-2 px-2">
+                                                                    {
+                                                                        h.keterangan
+                                                                    }
+                                                                </td>
+                                                                <td className="py-2 px-2">
+                                                                    {isClosed ? (
+                                                                        <span className="px-2 py-0.5 rounded-full text-xs bg-red-600 text-white">
+                                                                            CLOSE
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className="px-2 py-0.5 rounded-full text-xs bg-green-600 text-white">
+                                                                            DRAFT
+                                                                        </span>
+                                                                    )}
+                                                                </td>
+                                                                <td className="py-2 px-2 text-right">
+                                                                    <div className="flex items-center justify-end gap-2">
+                                                                        <Button
+                                                                            size="sm"
+                                                                            variant="outline"
+                                                                            onClick={() => {
+                                                                                if (
+                                                                                    isClosed
+                                                                                ) {
+                                                                                    toast.error(
+                                                                                        "Entri ini sudah ditutup dan tidak bisa diedit."
+                                                                                    );
+                                                                                    return;
+                                                                                }
+                                                                                setSelectedPeriod(
+                                                                                    h.periodeId
+                                                                                );
+                                                                                window.scrollTo(
+                                                                                    {
+                                                                                        top: 0,
+                                                                                        behavior:
+                                                                                            "smooth",
+                                                                                    }
+                                                                                );
+                                                                            }}
+                                                                            disabled={
+                                                                                isClosed
+                                                                            }
+                                                                        >
+                                                                            Edit
+                                                                        </Button>
+                                                                        <Button
+                                                                            size="sm"
+                                                                            variant="ghost"
+                                                                            onClick={() =>
+                                                                                openConfirmModal(
+                                                                                    h
+                                                                                )
+                                                                            }
+                                                                            disabled={
+                                                                                deletingId ===
+                                                                                    h.id ||
+                                                                                isClosed
+                                                                            }
+                                                                            className={
+                                                                                isClosed
+                                                                                    ? "opacity-60 cursor-not-allowed"
+                                                                                    : "bg-red-500 text-white"
+                                                                            }
+                                                                        >
+                                                                            {deletingId ===
+                                                                            h.id
+                                                                                ? "Menghapus..."
+                                                                                : isClosed
+                                                                                ? "Terkunci"
+                                                                                : "Hapus"}
+                                                                        </Button>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    {/* CARD VIEW (mobile) */}
+                                    <div className="block sm:hidden space-y-3">
+                                        {history
+                                            .slice(
+                                                (page - 1) * perPage,
+                                                page * perPage
+                                            )
+                                            .map((h) => {
+                                                const periodItem = months.find(
+                                                    (m) => m.id === h.periodeId
+                                                );
+                                                const label = periodItem
+                                                    ? safeFormatPeriode(
+                                                          periodItem
+                                                      )
+                                                    : h.periodeId.slice(0, 8);
+                                                const isClosed =
+                                                    h.status === "CLOSE";
+                                                return (
+                                                    <div
+                                                        key={h.id}
+                                                        className="border rounded-lg p-3 bg-white/5 shadow-sm"
+                                                    >
+                                                        <div className="flex items-start justify-between">
+                                                            <div>
+                                                                <div className="text-sm font-medium">
+                                                                    {label}
+                                                                </div>
+                                                                <div className="text-xs text-muted-foreground mt-1">
+                                                                    {
+                                                                        h.keterangan
+                                                                    }
+                                                                </div>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <div className="text-sm font-semibold">
+                                                                    Rp{" "}
+                                                                    {fmtRp(
+                                                                        h.nominalBayarPajak
+                                                                    )}
+                                                                </div>
+                                                                <div className="text-xs text-muted-foreground">
+                                                                    {
+                                                                        h.pemakaianM3
+                                                                    }{" "}
+                                                                    m³ · Rp{" "}
+                                                                    {fmtRp(
+                                                                        h.tarifPajakPerM3
+                                                                    )}
+                                                                    /m³
+                                                                </div>
+                                                                <div className="mt-1">
+                                                                    {isClosed ? (
+                                                                        <span className="px-2 py-0.5 rounded-full text-xs bg-red-600 text-white">
+                                                                            CLOSE
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className="px-2 py-0.5 rounded-full text-xs bg-green-600 text-white">
+                                                                            DRAFT
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="mt-3 flex gap-2">
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                className="flex-1"
+                                                                onClick={() => {
+                                                                    if (
+                                                                        isClosed
+                                                                    ) {
+                                                                        toast.error(
+                                                                            "Entri ini sudah ditutup dan tidak bisa diedit."
+                                                                        );
+                                                                        return;
+                                                                    }
+                                                                    setSelectedPeriod(
+                                                                        h.periodeId
+                                                                    );
+                                                                    window.scrollTo(
+                                                                        {
+                                                                            top: 0,
+                                                                            behavior:
+                                                                                "smooth",
+                                                                        }
+                                                                    );
+                                                                }}
+                                                                disabled={
+                                                                    isClosed
+                                                                }
+                                                            >
+                                                                Edit
+                                                            </Button>
+                                                            <Button
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                className="flex-1 bg-red-500 text-white"
+                                                                onClick={() => {
+                                                                    if (
+                                                                        isClosed
+                                                                    ) {
+                                                                        toast.error(
+                                                                            "Entri ini sudah ditutup dan tidak bisa dihapus."
+                                                                        );
+                                                                        return;
+                                                                    }
+                                                                    openConfirmModal(
+                                                                        h
+                                                                    );
+                                                                }}
+                                                                disabled={
+                                                                    deletingId ===
+                                                                        h.id ||
+                                                                    isClosed
+                                                                }
+                                                            >
+                                                                {deletingId ===
+                                                                h.id
+                                                                    ? "Menghapus..."
+                                                                    : isClosed
+                                                                    ? "Terkunci"
+                                                                    : "Hapus"}
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                    </div>
+
+                                    {/* pagination */}
+                                    <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+                                        <div className="flex items-center gap-2 text-sm">
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={() =>
+                                                    setPage((p) =>
+                                                        Math.max(1, p - 1)
+                                                    )
+                                                }
+                                                disabled={page === 1}
+                                            >
+                                                Sebelumnya
+                                            </Button>
+                                            <div>
+                                                Halaman <b>{page}</b> dari{" "}
+                                                <b>{totalPages}</b>
+                                            </div>
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={() =>
+                                                    setPage((p) =>
+                                                        Math.min(
+                                                            totalPages,
+                                                            p + 1
+                                                        )
+                                                    )
+                                                }
+                                                disabled={page === totalPages}
+                                            >
+                                                Selanjutnya
+                                            </Button>
+                                        </div>
+
+                                        <div className="flex items-center gap-2 text-sm">
+                                            <span>Per halaman</span>
+                                            <select
+                                                value={perPage}
+                                                onChange={(e) =>
+                                                    setPerPage(
+                                                        Number(e.target.value)
+                                                    )
+                                                }
+                                                className="border rounded px-2 py-1 text-sm"
+                                            >
+                                                <option value={5}>5</option>
+                                                <option value={10}>10</option>
+                                                <option value={20}>20</option>
+                                                <option value={50}>50</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                        </GlassCard>
+                    </div>
+
+                    {/* Confirm delete dialog */}
+                    <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+                        <DialogContent className="sm:max-w-lg">
+                            <DialogHeader>
+                                <DialogTitle>Hapus Entri Pajak</DialogTitle>
+                                <DialogDescription>
+                                    Anda akan menghapus entri pajak ini.
+                                    Tindakan ini tidak bisa dikembalikan.
+                                </DialogDescription>
+                            </DialogHeader>
+
+                            <div className="mt-4">
+                                <div className="text-sm">
+                                    <div className="mb-2">
+                                        <b>{confirmTarget?.keterangan}</b>
+                                    </div>
+                                    <div className="mb-4 text-muted-foreground">
+                                        Nominal: Rp{" "}
+                                        {confirmTarget
+                                            ? fmtRp(
+                                                  confirmTarget.nominalBayarPajak
+                                              )
+                                            : "-"}
+                                    </div>
+
+                                    <div className="flex justify-end gap-2">
+                                        <Button
+                                            variant="outline"
+                                            onClick={() =>
+                                                setConfirmOpen(false)
+                                            }
+                                        >
+                                            Batal
+                                        </Button>
+                                        <Button
+                                            onClick={() =>
+                                                confirmTarget &&
+                                                handleDeleteConfirmed(
+                                                    confirmTarget.id
+                                                )
+                                            }
+                                            className="bg-red-600 text-white"
+                                            disabled={
+                                                deletingId !== null ||
+                                                confirmTarget?.status ===
+                                                    "CLOSE"
+                                            }
+                                        >
+                                            {deletingId
+                                                ? "Menghapus..."
+                                                : "Hapus"}
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
+                </AppShell>
+            </PermissionGate>
         </AuthGuard>
     );
 }

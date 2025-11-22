@@ -35,6 +35,8 @@ import {
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { FeatureGate } from "@/components/feature-gate";
+import { AclDeniedAlert } from "@/components/acl-denied-alert";
+import { PermissionGate } from "@/components/permission-gate";
 
 /* ================== Types ================== */
 type Row = {
@@ -399,54 +401,67 @@ export default function PiutangPage() {
 
     return (
         <AuthGuard requiredRole={"ADMIN"}>
-            <AppShell>
-                <AppHeader title="Laporan Piutang" />
-                <div className="space-y-4">
-                    {/* ======== Header Stats ======== */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        <GlassCard className="p-4 flex items-center gap-3">
-                            <div className="rounded-2xl p-2 bg-primary/10">
-                                <Wallet className="w-5 h-5" />
-                            </div>
-                            <div>
-                                <div className="text-xs text-muted-foreground">
-                                    Total Piutang
+            <PermissionGate
+                path="/laporan/piutang"
+                action="view"
+                loadingFallback={
+                    <div className="min-h-screen flex items-center justify-center">
+                        <div className="flex items-center gap-2 text-primary">
+                            <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                            <span className="text-lg">Memuat…</span>
+                        </div>
+                    </div>
+                }
+                fallback={<AclDeniedAlert fullPage />}
+            >
+                <AppShell>
+                    <AppHeader title="Laporan Piutang" />
+                    <div className="space-y-4">
+                        {/* ======== Header Stats ======== */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <GlassCard className="p-4 flex items-center gap-3">
+                                <div className="rounded-2xl p-2 bg-primary/10">
+                                    <Wallet className="w-5 h-5" />
                                 </div>
-                                <div className="text-lg font-bold">
-                                    {totalPiutangText}
+                                <div>
+                                    <div className="text-xs text-muted-foreground">
+                                        Total Piutang
+                                    </div>
+                                    <div className="text-lg font-bold">
+                                        {totalPiutangText}
+                                    </div>
                                 </div>
-                            </div>
-                        </GlassCard>
+                            </GlassCard>
 
-                        <GlassCard className="p-4 flex items-center gap-3">
-                            <div className="rounded-2xl p-2 bg-primary/10">
-                                <Users className="w-5 h-5" />
-                            </div>
-                            <div>
-                                <div className="text-xs text-muted-foreground">
-                                    Jumlah Tagihan
+                            <GlassCard className="p-4 flex items-center gap-3">
+                                <div className="rounded-2xl p-2 bg-primary/10">
+                                    <Users className="w-5 h-5" />
                                 </div>
-                                <div className="text-lg font-bold">
-                                    {summary?.totalCount ?? 0}
+                                <div>
+                                    <div className="text-xs text-muted-foreground">
+                                        Jumlah Tagihan
+                                    </div>
+                                    <div className="text-lg font-bold">
+                                        {summary?.totalCount ?? 0}
+                                    </div>
                                 </div>
-                            </div>
-                        </GlassCard>
+                            </GlassCard>
 
-                        <GlassCard className="p-4 flex items-center gap-3">
-                            <div className="rounded-2xl p-2 bg-primary/10">
-                                <Clock className="w-5 h-5" />
-                            </div>
-                            <div>
-                                <div className="text-xs text-muted-foreground">
-                                    Rata Umur Piutang
+                            <GlassCard className="p-4 flex items-center gap-3">
+                                <div className="rounded-2xl p-2 bg-primary/10">
+                                    <Clock className="w-5 h-5" />
                                 </div>
-                                <div className="text-lg font-bold">
-                                    {summary?.avgOverdueDays ?? 0} hari
+                                <div>
+                                    <div className="text-xs text-muted-foreground">
+                                        Rata Umur Piutang
+                                    </div>
+                                    <div className="text-lg font-bold">
+                                        {summary?.avgOverdueDays ?? 0} hari
+                                    </div>
                                 </div>
-                            </div>
-                        </GlassCard>
+                            </GlassCard>
 
-                        {/* <GlassCard className="p-4 hidden md:flex items-center gap-3">
+                            {/* <GlassCard className="p-4 hidden md:flex items-center gap-3">
               <div className="rounded-2xl p-2 bg-primary/10">
                 <AlertTriangle className="w-5 h-5" />
               </div>
@@ -459,537 +474,573 @@ export default function PiutangPage() {
                 </div>
               </div>
             </GlassCard> */}
-                    </div>
+                        </div>
 
-                    {/* ======== Filters ======== */}
-                    <GlassCard className="p-4">
-                        <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-end">
-                            {/* Periode */}
-                            <div className="w-full md:w-56">
-                                <label className="text-xs text-muted-foreground">
-                                    Periode
-                                </label>
-                                <Select
-                                    value={month}
-                                    onValueChange={(v) => {
-                                        setMonth(v);
-                                        setPage(1);
-                                    }}
-                                >
-                                    <SelectTrigger className="w-full">
-                                        <SelectValue placeholder="Pilih periode" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="ALL">
-                                            Semua Periode
-                                        </SelectItem>
-                                        {(months || []).map((m) => (
-                                            <SelectItem
-                                                key={m.kodePeriode}
-                                                value={m.kodePeriode}
-                                            >
-                                                {formatPeriodeLabel(
-                                                    m.kodePeriode
-                                                )}
+                        {/* ======== Filters ======== */}
+                        <GlassCard className="p-4">
+                            <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-end">
+                                {/* Periode */}
+                                <div className="w-full md:w-56">
+                                    <label className="text-xs text-muted-foreground">
+                                        Periode
+                                    </label>
+                                    <Select
+                                        value={month}
+                                        onValueChange={(v) => {
+                                            setMonth(v);
+                                            setPage(1);
+                                        }}
+                                    >
+                                        <SelectTrigger className="w-full">
+                                            <SelectValue placeholder="Pilih periode" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="ALL">
+                                                Semua Periode
                                             </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                                            {(months || []).map((m) => (
+                                                <SelectItem
+                                                    key={m.kodePeriode}
+                                                    value={m.kodePeriode}
+                                                >
+                                                    {formatPeriodeLabel(
+                                                        m.kodePeriode
+                                                    )}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
 
-                            {/* Zona */}
-                            <div className="w-full md:w-56">
-                                <label className="text-xs text-muted-foreground">
-                                    Blok
-                                </label>
-                                <Select
-                                    value={zoneId}
-                                    onValueChange={(v) => {
-                                        setZoneId(v);
-                                        setPage(1);
-                                    }}
-                                >
-                                    <SelectTrigger className="w-full">
-                                        <SelectValue placeholder="Semua blok" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="ALL">
-                                            Semua Blok
-                                        </SelectItem>
-                                        {(zones || []).map((z) => (
-                                            <SelectItem key={z.id} value={z.id}>
-                                                {z.nama}
+                                {/* Zona */}
+                                <div className="w-full md:w-56">
+                                    <label className="text-xs text-muted-foreground">
+                                        Blok
+                                    </label>
+                                    <Select
+                                        value={zoneId}
+                                        onValueChange={(v) => {
+                                            setZoneId(v);
+                                            setPage(1);
+                                        }}
+                                    >
+                                        <SelectTrigger className="w-full">
+                                            <SelectValue placeholder="Semua blok" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="ALL">
+                                                Semua Blok
                                             </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                                            {(zones || []).map((z) => (
+                                                <SelectItem
+                                                    key={z.id}
+                                                    value={z.id}
+                                                >
+                                                    {z.nama}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
 
-                            {/* Pencarian */}
-                            <div className="w-full md:flex-1">
-                                <label className="text-xs text-muted-foreground">
-                                    Cari
-                                </label>
-                                <Input
-                                    placeholder="Nama / Kode / WA / Alamat"
-                                    value={q}
-                                    onChange={(e) => {
-                                        setQ(e.target.value);
-                                        setPage(1);
-                                    }}
-                                />
-                            </div>
+                                {/* Pencarian */}
+                                <div className="w-full md:flex-1">
+                                    <label className="text-xs text-muted-foreground">
+                                        Cari
+                                    </label>
+                                    <Input
+                                        placeholder="Nama / Kode / WA / Alamat"
+                                        value={q}
+                                        onChange={(e) => {
+                                            setQ(e.target.value);
+                                            setPage(1);
+                                        }}
+                                    />
+                                </div>
 
-                            {/* Urutkan */}
-                            <div className="w-full md:w-56">
-                                <label className="text-xs text-muted-foreground">
-                                    Urutkan
-                                </label>
-                                <Select
-                                    value={sort}
-                                    onValueChange={(v) => {
-                                        setSort(v);
-                                        setPage(1);
-                                    }}
-                                >
-                                    <SelectTrigger className="w-full">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="overdue_desc,piutang_desc">
-                                            Terlama & Terbesar
-                                        </SelectItem>
-                                        <SelectItem value="piutang_desc,overdue_desc">
-                                            Piutang Terbesar
-                                        </SelectItem>
-                                        <SelectItem value="nama_asc">
-                                            Nama A–Z
-                                        </SelectItem>
-                                        <SelectItem value="overdue_asc">
-                                            Umur Terpendek
-                                        </SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                                {/* Urutkan */}
+                                <div className="w-full md:w-56">
+                                    <label className="text-xs text-muted-foreground">
+                                        Urutkan
+                                    </label>
+                                    <Select
+                                        value={sort}
+                                        onValueChange={(v) => {
+                                            setSort(v);
+                                            setPage(1);
+                                        }}
+                                    >
+                                        <SelectTrigger className="w-full">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="overdue_desc,piutang_desc">
+                                                Terlama & Terbesar
+                                            </SelectItem>
+                                            <SelectItem value="piutang_desc,overdue_desc">
+                                                Piutang Terbesar
+                                            </SelectItem>
+                                            <SelectItem value="nama_asc">
+                                                Nama A–Z
+                                            </SelectItem>
+                                            <SelectItem value="overdue_asc">
+                                                Umur Terpendek
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
 
-                            {/* Page size + Export */}
-                            <div className="flex gap-2 md:ml-auto">
-                                <Select
-                                    value={String(pageSize)}
-                                    onValueChange={(v) => {
-                                        setPageSize(Number(v));
-                                        setPage(1);
-                                    }}
-                                >
-                                    <SelectTrigger className="w-28">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="25">
-                                            25 / halaman
-                                        </SelectItem>
-                                        <SelectItem value="50">
-                                            50 / halaman
-                                        </SelectItem>
-                                        <SelectItem value="100">
-                                            100 / halaman
-                                        </SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                {/* <Button
+                                {/* Page size + Export */}
+                                <div className="flex gap-2 md:ml-auto">
+                                    <Select
+                                        value={String(pageSize)}
+                                        onValueChange={(v) => {
+                                            setPageSize(Number(v));
+                                            setPage(1);
+                                        }}
+                                    >
+                                        <SelectTrigger className="w-28">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="25">
+                                                25 / halaman
+                                            </SelectItem>
+                                            <SelectItem value="50">
+                                                50 / halaman
+                                            </SelectItem>
+                                            <SelectItem value="100">
+                                                100 / halaman
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    {/* <Button
                                     variant="outline"
                                     onClick={exportToExcel}
                                 >
                                     <Download className="w-4 h-4 mr-2" />
                                     Export (Excel)
                                 </Button> */}
-                                {/* === Tombol Export: digate pakai fitur === */}
-                                <FeatureGate
-                                    code="export.excel"
-                                    fallback={
+                                    {/* === Tombol Export: digate pakai fitur === */}
+                                    <FeatureGate
+                                        code="export.excel"
+                                        fallback={
+                                            <Button
+                                                disabled
+                                                className="opacity-60 cursor-not-allowed"
+                                            >
+                                                <Download className="h-4 w-4 mr-2" />
+                                                Export Excel (Tidak termasuk
+                                                paket)
+                                            </Button>
+                                        }
+                                    >
                                         <Button
-                                            disabled
-                                            className="opacity-60 cursor-not-allowed"
+                                            onClick={() => {
+                                                if (!rows.length) {
+                                                    toast.info(
+                                                        "Tidak ada data untuk diekspor"
+                                                    );
+                                                    return;
+                                                }
+                                                exportToExcel();
+                                                toast.success(
+                                                    "Data berhasil diekspor ke Excel"
+                                                );
+                                            }}
+                                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
                                         >
                                             <Download className="h-4 w-4 mr-2" />
-                                            Export Excel (Tidak termasuk paket)
+                                            Export Excel
                                         </Button>
-                                    }
-                                >
-                                    <Button
-                                        onClick={() => {
-                                            if (!rows.length) {
-                                                toast.info(
-                                                    "Tidak ada data untuk diekspor"
-                                                );
-                                                return;
-                                            }
-                                            exportToExcel();
-                                            toast.success(
-                                                "Data berhasil diekspor ke Excel"
-                                            );
-                                        }}
-                                        className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                                    >
-                                        <Download className="h-4 w-4 mr-2" />
-                                        Export Excel
-                                    </Button>
-                                </FeatureGate>
+                                    </FeatureGate>
+                                </div>
                             </div>
-                        </div>
-                    </GlassCard>
+                        </GlassCard>
 
-                    {/* ======== MOBILE CARDS (sm) ======== */}
-                    <div className="grid gap-3 md:hidden">
-                        {loading && (
-                            <GlassCard className="p-4 text-center">
-                                <Loader2 className="w-4 h-4 mr-2 inline animate-spin" />
-                                Memuat data...
-                            </GlassCard>
-                        )}
+                        {/* ======== MOBILE CARDS (sm) ======== */}
+                        <div className="grid gap-3 md:hidden">
+                            {loading && (
+                                <GlassCard className="p-4 text-center">
+                                    <Loader2 className="w-4 h-4 mr-2 inline animate-spin" />
+                                    Memuat data...
+                                </GlassCard>
+                            )}
 
-                        {!loading && rows.length === 0 && (
-                            <GlassCard className="p-6 text-center text-muted-foreground">
-                                Tidak ada data piutang untuk filter saat ini.
-                            </GlassCard>
-                        )}
+                            {!loading && rows.length === 0 && (
+                                <GlassCard className="p-6 text-center text-muted-foreground">
+                                    Tidak ada data piutang untuk filter saat
+                                    ini.
+                                </GlassCard>
+                            )}
 
-                        {!loading &&
-                            rows.map((r, idx) => {
-                                const no = (page - 1) * pageSize + idx + 1;
-                                return (
-                                    <GlassCard key={r.id} className="p-4">
-                                        <div className="flex items-start justify-between">
-                                            <div>
-                                                <div className="text-xs text-muted-foreground">
-                                                    #{no}
+                            {!loading &&
+                                rows.map((r, idx) => {
+                                    const no = (page - 1) * pageSize + idx + 1;
+                                    return (
+                                        <GlassCard key={r.id} className="p-4">
+                                            <div className="flex items-start justify-between">
+                                                <div>
+                                                    <div className="text-xs text-muted-foreground">
+                                                        #{no}
+                                                    </div>
+                                                    <div className="text-base font-semibold">
+                                                        {r.pelangganNama}
+                                                    </div>
+                                                    <div className="text-xs text-muted-foreground">
+                                                        {r.pelangganKode}
+                                                    </div>
                                                 </div>
-                                                <div className="text-base font-semibold">
-                                                    {r.pelangganNama}
-                                                </div>
-                                                <div className="text-xs text-muted-foreground">
-                                                    {r.pelangganKode}
-                                                </div>
-                                            </div>
-                                            <div className="text-right">
-                                                <Badge
-                                                    variant="outline"
-                                                    className="font-semibold"
-                                                >
-                                                    {formatRp(r.piutang)}
-                                                </Badge>
-                                                <div className="mt-1">
-                                                    <StatusBadge s={r.status} />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
-                                            <div className="text-muted-foreground">
-                                                Periode
-                                            </div>
-                                            <div className="font-medium">
-                                                {formatPeriodeLabel(r.periode)}
-                                            </div>
-
-                                            <div className="text-muted-foreground">
-                                                Blok
-                                            </div>
-                                            <div className="flex items-center gap-1">
-                                                <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
-                                                <span className="font-medium">
-                                                    {r.zonaNama || "-"}
-                                                </span>
-                                            </div>
-
-                                            <div className="text-muted-foreground">
-                                                Tagihan Bulan Ini
-                                            </div>
-                                            <div className="font-medium">
-                                                {formatRp(
-                                                    r.totalTagihanBulanIni
-                                                )}
-                                            </div>
-
-                                            <div className="text-muted-foreground">
-                                                Tagihan Lalu
-                                            </div>
-                                            <div className="font-medium">
-                                                {formatSaldoLalu(r.tagihanLalu)}
-                                            </div>
-
-                                            <div className="text-muted-foreground">
-                                                Total Tagihan
-                                            </div>
-                                            <div className="font-medium">
-                                                {formatRp(r.totalTagihanNett)}
-                                            </div>
-
-                                            <div className="text-muted-foreground">
-                                                Terbayar
-                                            </div>
-                                            <div className="font-medium">
-                                                {formatRp(r.totalBayar)}
-                                            </div>
-
-                                            <div className="text-muted-foreground">
-                                                Jatuh Tempo
-                                            </div>
-                                            <div className="font-medium">
-                                                {formatDateISO(r.tglJatuhTempo)}
-                                            </div>
-
-                                            <div className="text-muted-foreground">
-                                                Umur
-                                            </div>
-                                            <div>
-                                                <UmurBadge d={r.overdueDays} />
-                                            </div>
-                                        </div>
-                                    </GlassCard>
-                                );
-                            })}
-                    </div>
-
-                    {/* ======== MOBILE PAGINATION ======== */}
-                    <div className="md:hidden">
-                        <div className="mt-2 p-3 flex items-center justify-between border rounded-lg">
-                            <div className="text-xs text-muted-foreground">
-                                Menampilkan{" "}
-                                <span className="font-semibold">
-                                    {rows.length} item
-                                </span>{" "}
-                                dari{" "}
-                                <span className="font-semibold">
-                                    {summary?.totalCount ?? 0} total
-                                </span>
-                            </div>
-                            <div className="flex gap-2">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() =>
-                                        setPage((p) => Math.max(1, p - 1))
-                                    }
-                                    disabled={page <= 1 || loading}
-                                >
-                                    Sebelumnya
-                                </Button>
-                                <div className="px-2 py-1 text-sm">{page}</div>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setPage((p) => p + 1)}
-                                    disabled={rows.length < pageSize || loading}
-                                >
-                                    Selanjutnya
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* ======== DESKTOP TABLE (md+) ======== */}
-                    <GlassCard className="p-3 overflow-hidden hidden md:block">
-                        <div className="overflow-auto">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead className="w-12 text-center">
-                                            No
-                                        </TableHead>
-                                        <TableHead>Pelanggan</TableHead>
-                                        <TableHead className="w-28">
-                                            Periode
-                                        </TableHead>
-                                        <TableHead className="min-w-[120px]">
-                                            Blok
-                                        </TableHead>
-                                        <TableHead className="text-center w-28">
-                                            Tagihan Bulan Ini
-                                        </TableHead>
-                                        <TableHead className="text-center w-28">
-                                            Tagihan Lalu
-                                        </TableHead>
-                                        <TableHead className="text-center w-32">
-                                            Total Tagihan
-                                        </TableHead>
-                                        <TableHead className="text-center w-28">
-                                            Terbayar
-                                        </TableHead>
-                                        <TableHead className="text-center w-40">
-                                            Piutang
-                                        </TableHead>
-                                        <TableHead className="min-w-[140px]">
-                                            Jatuh Tempo
-                                        </TableHead>
-                                        <TableHead className="w-28 text-center">
-                                            Umur
-                                        </TableHead>
-                                        <TableHead className="w-32 text-center">
-                                            Status
-                                        </TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {loading && (
-                                        <TableRow>
-                                            <TableCell
-                                                colSpan={12}
-                                                className="text-center py-8"
-                                            >
-                                                <Loader2 className="w-4 h-4 mr-2 inline animate-spin" />
-                                                Memuat data...
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
-
-                                    {!loading && rows.length === 0 && (
-                                        <TableRow>
-                                            <TableCell
-                                                colSpan={12}
-                                                className="text-center py-10 text-muted-foreground"
-                                            >
-                                                Tidak ada data piutang untuk
-                                                filter saat ini.
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
-
-                                    {!loading &&
-                                        rows.map((r, idx) => {
-                                            const rowNumber =
-                                                (page - 1) * pageSize + idx + 1;
-
-                                            return (
-                                                <TableRow key={r.id}>
-                                                    <TableCell className="text-center">
-                                                        {rowNumber}
-                                                    </TableCell>
-
-                                                    <TableCell>
-                                                        <div className="font-medium">
-                                                            {r.pelangganNama}
-                                                        </div>
-                                                        <div className="text-xs text-muted-foreground">
-                                                            {r.pelangganKode}
-                                                        </div>
-                                                    </TableCell>
-
-                                                    <TableCell>
-                                                        {formatPeriodeLabel(
-                                                            r.periode
-                                                        )}
-                                                    </TableCell>
-
-                                                    <TableCell>
-                                                        <div className="flex items-center gap-2">
-                                                            <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
-                                                            <span className="text-sm">
-                                                                {r.zonaNama ||
-                                                                    "-"}
-                                                            </span>
-                                                        </div>
-                                                    </TableCell>
-
-                                                    <TableCell className="text-right">
-                                                        {formatRp(
-                                                            r.totalTagihanBulanIni
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell className="text-right">
-                                                        <div
-                                                            title={String(
-                                                                r.tagihanLalu
-                                                            )}
-                                                        >
-                                                            {formatSaldoLalu(
-                                                                r.tagihanLalu
-                                                            )}
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell className="text-right font-medium">
-                                                        {formatRp(
-                                                            r.totalTagihanNett
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell className="text-right">
-                                                        {formatRp(r.totalBayar)}
-                                                    </TableCell>
-
-                                                    <TableCell className="text-right">
-                                                        <Badge
-                                                            variant="outline"
-                                                            className="font-semibold"
-                                                        >
-                                                            {formatRp(
-                                                                r.piutang
-                                                            )}
-                                                        </Badge>
-                                                    </TableCell>
-
-                                                    <TableCell>
-                                                        <div className="text-sm">
-                                                            {formatDateISO(
-                                                                r.tglJatuhTempo
-                                                            )}
-                                                        </div>
-                                                    </TableCell>
-
-                                                    <TableCell className="text-center">
-                                                        <UmurBadge
-                                                            d={r.overdueDays}
-                                                        />
-                                                    </TableCell>
-
-                                                    <TableCell className="text-center">
+                                                <div className="text-right">
+                                                    <Badge
+                                                        variant="outline"
+                                                        className="font-semibold"
+                                                    >
+                                                        {formatRp(r.piutang)}
+                                                    </Badge>
+                                                    <div className="mt-1">
                                                         <StatusBadge
                                                             s={r.status}
                                                         />
-                                                    </TableCell>
-                                                </TableRow>
-                                            );
-                                        })}
-                                </TableBody>
-                            </Table>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
+                                                <div className="text-muted-foreground">
+                                                    Periode
+                                                </div>
+                                                <div className="font-medium">
+                                                    {formatPeriodeLabel(
+                                                        r.periode
+                                                    )}
+                                                </div>
+
+                                                <div className="text-muted-foreground">
+                                                    Blok
+                                                </div>
+                                                <div className="flex items-center gap-1">
+                                                    <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
+                                                    <span className="font-medium">
+                                                        {r.zonaNama || "-"}
+                                                    </span>
+                                                </div>
+
+                                                <div className="text-muted-foreground">
+                                                    Tagihan Bulan Ini
+                                                </div>
+                                                <div className="font-medium">
+                                                    {formatRp(
+                                                        r.totalTagihanBulanIni
+                                                    )}
+                                                </div>
+
+                                                <div className="text-muted-foreground">
+                                                    Tagihan Lalu
+                                                </div>
+                                                <div className="font-medium">
+                                                    {formatSaldoLalu(
+                                                        r.tagihanLalu
+                                                    )}
+                                                </div>
+
+                                                <div className="text-muted-foreground">
+                                                    Total Tagihan
+                                                </div>
+                                                <div className="font-medium">
+                                                    {formatRp(
+                                                        r.totalTagihanNett
+                                                    )}
+                                                </div>
+
+                                                <div className="text-muted-foreground">
+                                                    Terbayar
+                                                </div>
+                                                <div className="font-medium">
+                                                    {formatRp(r.totalBayar)}
+                                                </div>
+
+                                                <div className="text-muted-foreground">
+                                                    Jatuh Tempo
+                                                </div>
+                                                <div className="font-medium">
+                                                    {formatDateISO(
+                                                        r.tglJatuhTempo
+                                                    )}
+                                                </div>
+
+                                                <div className="text-muted-foreground">
+                                                    Umur
+                                                </div>
+                                                <div>
+                                                    <UmurBadge
+                                                        d={r.overdueDays}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </GlassCard>
+                                    );
+                                })}
                         </div>
 
-                        {/* Pagination */}
-                        <div className="p-3 flex items-center justify-between border-t">
-                            <div className="text-xs text-muted-foreground">
-                                Menampilkan{" "}
-                                <span className="font-semibold">
-                                    {rows.length} item
-                                </span>{" "}
-                                dari{" "}
-                                <span className="font-semibold">
-                                    {summary?.totalCount ?? 0} total
-                                </span>
-                            </div>
-                            <div className="flex gap-2">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() =>
-                                        setPage((p) => Math.max(1, p - 1))
-                                    }
-                                    disabled={page <= 1 || loading}
-                                >
-                                    Sebelumnya
-                                </Button>
-                                <div className="px-2 py-1 text-sm">{page}</div>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setPage((p) => p + 1)}
-                                    disabled={rows.length < pageSize || loading}
-                                >
-                                    Selanjutnya
-                                </Button>
+                        {/* ======== MOBILE PAGINATION ======== */}
+                        <div className="md:hidden">
+                            <div className="mt-2 p-3 flex items-center justify-between border rounded-lg">
+                                <div className="text-xs text-muted-foreground">
+                                    Menampilkan{" "}
+                                    <span className="font-semibold">
+                                        {rows.length} item
+                                    </span>{" "}
+                                    dari{" "}
+                                    <span className="font-semibold">
+                                        {summary?.totalCount ?? 0} total
+                                    </span>
+                                </div>
+                                <div className="flex gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() =>
+                                            setPage((p) => Math.max(1, p - 1))
+                                        }
+                                        disabled={page <= 1 || loading}
+                                    >
+                                        Sebelumnya
+                                    </Button>
+                                    <div className="px-2 py-1 text-sm">
+                                        {page}
+                                    </div>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setPage((p) => p + 1)}
+                                        disabled={
+                                            rows.length < pageSize || loading
+                                        }
+                                    >
+                                        Selanjutnya
+                                    </Button>
+                                </div>
                             </div>
                         </div>
-                    </GlassCard>
-                </div>
-            </AppShell>
+
+                        {/* ======== DESKTOP TABLE (md+) ======== */}
+                        <GlassCard className="p-3 overflow-hidden hidden md:block">
+                            <div className="overflow-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="w-12 text-center">
+                                                No
+                                            </TableHead>
+                                            <TableHead>Pelanggan</TableHead>
+                                            <TableHead className="w-28">
+                                                Periode
+                                            </TableHead>
+                                            <TableHead className="min-w-[120px]">
+                                                Blok
+                                            </TableHead>
+                                            <TableHead className="text-center w-28">
+                                                Tagihan Bulan Ini
+                                            </TableHead>
+                                            <TableHead className="text-center w-28">
+                                                Tagihan Lalu
+                                            </TableHead>
+                                            <TableHead className="text-center w-32">
+                                                Total Tagihan
+                                            </TableHead>
+                                            <TableHead className="text-center w-28">
+                                                Terbayar
+                                            </TableHead>
+                                            <TableHead className="text-center w-40">
+                                                Piutang
+                                            </TableHead>
+                                            <TableHead className="min-w-[140px]">
+                                                Jatuh Tempo
+                                            </TableHead>
+                                            <TableHead className="w-28 text-center">
+                                                Umur
+                                            </TableHead>
+                                            <TableHead className="w-32 text-center">
+                                                Status
+                                            </TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {loading && (
+                                            <TableRow>
+                                                <TableCell
+                                                    colSpan={12}
+                                                    className="text-center py-8"
+                                                >
+                                                    <Loader2 className="w-4 h-4 mr-2 inline animate-spin" />
+                                                    Memuat data...
+                                                </TableCell>
+                                            </TableRow>
+                                        )}
+
+                                        {!loading && rows.length === 0 && (
+                                            <TableRow>
+                                                <TableCell
+                                                    colSpan={12}
+                                                    className="text-center py-10 text-muted-foreground"
+                                                >
+                                                    Tidak ada data piutang untuk
+                                                    filter saat ini.
+                                                </TableCell>
+                                            </TableRow>
+                                        )}
+
+                                        {!loading &&
+                                            rows.map((r, idx) => {
+                                                const rowNumber =
+                                                    (page - 1) * pageSize +
+                                                    idx +
+                                                    1;
+
+                                                return (
+                                                    <TableRow key={r.id}>
+                                                        <TableCell className="text-center">
+                                                            {rowNumber}
+                                                        </TableCell>
+
+                                                        <TableCell>
+                                                            <div className="font-medium">
+                                                                {
+                                                                    r.pelangganNama
+                                                                }
+                                                            </div>
+                                                            <div className="text-xs text-muted-foreground">
+                                                                {
+                                                                    r.pelangganKode
+                                                                }
+                                                            </div>
+                                                        </TableCell>
+
+                                                        <TableCell>
+                                                            {formatPeriodeLabel(
+                                                                r.periode
+                                                            )}
+                                                        </TableCell>
+
+                                                        <TableCell>
+                                                            <div className="flex items-center gap-2">
+                                                                <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
+                                                                <span className="text-sm">
+                                                                    {r.zonaNama ||
+                                                                        "-"}
+                                                                </span>
+                                                            </div>
+                                                        </TableCell>
+
+                                                        <TableCell className="text-right">
+                                                            {formatRp(
+                                                                r.totalTagihanBulanIni
+                                                            )}
+                                                        </TableCell>
+                                                        <TableCell className="text-right">
+                                                            <div
+                                                                title={String(
+                                                                    r.tagihanLalu
+                                                                )}
+                                                            >
+                                                                {formatSaldoLalu(
+                                                                    r.tagihanLalu
+                                                                )}
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell className="text-right font-medium">
+                                                            {formatRp(
+                                                                r.totalTagihanNett
+                                                            )}
+                                                        </TableCell>
+                                                        <TableCell className="text-right">
+                                                            {formatRp(
+                                                                r.totalBayar
+                                                            )}
+                                                        </TableCell>
+
+                                                        <TableCell className="text-right">
+                                                            <Badge
+                                                                variant="outline"
+                                                                className="font-semibold"
+                                                            >
+                                                                {formatRp(
+                                                                    r.piutang
+                                                                )}
+                                                            </Badge>
+                                                        </TableCell>
+
+                                                        <TableCell>
+                                                            <div className="text-sm">
+                                                                {formatDateISO(
+                                                                    r.tglJatuhTempo
+                                                                )}
+                                                            </div>
+                                                        </TableCell>
+
+                                                        <TableCell className="text-center">
+                                                            <UmurBadge
+                                                                d={
+                                                                    r.overdueDays
+                                                                }
+                                                            />
+                                                        </TableCell>
+
+                                                        <TableCell className="text-center">
+                                                            <StatusBadge
+                                                                s={r.status}
+                                                            />
+                                                        </TableCell>
+                                                    </TableRow>
+                                                );
+                                            })}
+                                    </TableBody>
+                                </Table>
+                            </div>
+
+                            {/* Pagination */}
+                            <div className="p-3 flex items-center justify-between border-t">
+                                <div className="text-xs text-muted-foreground">
+                                    Menampilkan{" "}
+                                    <span className="font-semibold">
+                                        {rows.length} item
+                                    </span>{" "}
+                                    dari{" "}
+                                    <span className="font-semibold">
+                                        {summary?.totalCount ?? 0} total
+                                    </span>
+                                </div>
+                                <div className="flex gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() =>
+                                            setPage((p) => Math.max(1, p - 1))
+                                        }
+                                        disabled={page <= 1 || loading}
+                                    >
+                                        Sebelumnya
+                                    </Button>
+                                    <div className="px-2 py-1 text-sm">
+                                        {page}
+                                    </div>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setPage((p) => p + 1)}
+                                        disabled={
+                                            rows.length < pageSize || loading
+                                        }
+                                    >
+                                        Selanjutnya
+                                    </Button>
+                                </div>
+                            </div>
+                        </GlassCard>
+                    </div>
+                </AppShell>
+            </PermissionGate>
         </AuthGuard>
     );
 }

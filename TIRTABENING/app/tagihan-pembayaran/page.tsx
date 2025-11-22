@@ -17,6 +17,8 @@ import { BillingTable } from "@/components/billing-table";
 import { BillingFilters } from "@/components/billing-filters";
 import { useBillingStore } from "@/lib/billing-store";
 import { useToast } from "@/hooks/use-toast";
+import { AclDeniedAlert } from "@/components/acl-denied-alert";
+import { PermissionGate } from "@/components/permission-gate";
 export default function TagihanPembayaranPage() {
     const { fetch, isLoading } = useBillingStore();
     const { toast } = useToast();
@@ -58,29 +60,42 @@ export default function TagihanPembayaranPage() {
         <div className="space-y-6">
             {/* Halaman ini boleh diakses semua role, jadi tanpa requiredRole */}
             <AuthGuard>
-                <AppShell className="space-y-6">
-                    <AppHeader title="Tagihan & Pembayaran" />
-
-                    {/* Header Section */}
-                    <GlassCard className="p-6">
-                        <div className="flex items-start justify-between">
-                            <div className="flex items-start gap-4">
-                                <div className="p-3 bg-primary/10 rounded-lg">
-                                    <FileText className="h-6 w-6 text-primary" />
-                                </div>
-                                <div>
-                                    <h1 className="text-2xl font-bold text-foreground">
-                                        Tagihan & Pembayaran
-                                    </h1>
-                                    <p className="text-sm text-muted-foreground mt-1">
-                                        Kelola tagihan air, upload bukti
-                                        transfer, dan verifikasi pembayaran.
-                                    </p>
-                                </div>
+                <PermissionGate
+                    path="/tagihan-pembayaran"
+                    action="view"
+                    fallback={<AclDeniedAlert fullPage />}
+                    loadingFallback={
+                        <div className="min-h-screen flex items-center justify-center">
+                            <div className="flex items-center gap-2 text-primary">
+                                <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                                <span className="text-lg">Memuat…</span>
                             </div>
+                        </div>
+                    }
+                >
+                    <AppShell className="space-y-6">
+                        <AppHeader title="Tagihan & Pembayaran" />
 
-                            <div className="flex gap-2">
-                                {/* <Button
+                        {/* Header Section */}
+                        <GlassCard className="p-6">
+                            <div className="flex items-start justify-between">
+                                <div className="flex items-start gap-4">
+                                    <div className="p-3 bg-primary/10 rounded-lg">
+                                        <FileText className="h-6 w-6 text-primary" />
+                                    </div>
+                                    <div>
+                                        <h1 className="text-2xl font-bold text-foreground">
+                                            Tagihan & Pembayaran
+                                        </h1>
+                                        <p className="text-sm text-muted-foreground mt-1">
+                                            Kelola tagihan air, upload bukti
+                                            transfer, dan verifikasi pembayaran.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-2">
+                                    {/* <Button
                   variant="outline"
                   size="sm"
                   onClick={handleRefresh}
@@ -93,7 +108,7 @@ export default function TagihanPembayaranPage() {
                   Refresh
                 </Button> */}
 
-                                {/* <DropdownMenu>
+                                    {/* <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
                       className="bg-primary hover:bg-primary/90 text-primary-foreground"
@@ -123,16 +138,17 @@ export default function TagihanPembayaranPage() {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu> */}
+                                </div>
                             </div>
-                        </div>
-                    </GlassCard>
+                        </GlassCard>
 
-                    {/* Filters */}
-                    {/* <BillingFilters /> */}
+                        {/* Filters */}
+                        {/* <BillingFilters /> */}
 
-                    {/* Billing Table (sudah role-aware & tanpa tombol Approve) */}
-                    <BillingTable />
-                </AppShell>
+                        {/* Billing Table (sudah role-aware & tanpa tombol Approve) */}
+                        <BillingTable />
+                    </AppShell>
+                </PermissionGate>
             </AuthGuard>
         </div>
     );

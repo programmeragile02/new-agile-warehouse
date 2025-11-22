@@ -1,6 +1,6 @@
 import { AppShell } from "@/components/app-shell";
 import { GlassCard } from "@/components/glass-card";
-import { TirtaLogo } from "@/components/tirta-logo";
+import { NataLogo } from "@/components/nata-logo";
 import SingleLoginForm from "@/components/SingleLoginForm";
 
 export default function LoginPage() {
@@ -8,7 +8,7 @@ export default function LoginPage() {
         <AppShell>
             <div className="max-w-md mx-auto space-y-6 pt-8">
                 <div className="text-center py-8">
-                    <TirtaLogo size="lg" className="mx-auto mb-4" />
+                    <NataLogo size="lg" className="mx-auto mb-4" />
                     <h1 className="text-4xl font-bold text-primary mb-2 text-balance">
                         Nata Banyu
                     </h1>

@@ -26,6 +26,8 @@ import {
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { FeatureGate } from "@/components/feature-gate";
+import { PermissionGate } from "@/components/permission-gate";
+import { AclDeniedAlert } from "@/components/acl-denied-alert";
 
 type Row = {
     no: number;
@@ -344,59 +346,76 @@ export default function LaporanStatusPembayaranPage() {
 
     return (
         <AuthGuard>
-            <AppShell>
-                <div className="max-w-7xl mx-auto space-y-6">
-                    <AppHeader title="Laporan Status Pembayaran" />
+            <PermissionGate
+                path="/laporan-status-pembayaran"
+                action="view"
+                loadingFallback={
+                    <div className="min-h-screen flex items-center justify-center">
+                        <div className="flex items-center gap-2 text-primary">
+                            <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                            <span className="text-lg">Memuat…</span>
+                        </div>
+                    </div>
+                }
+                fallback={
+                    <AclDeniedAlert fullPage />
+                }
+            >
+                <AppShell>
+                    <div className="max-w-7xl mx-auto space-y-6">
+                        <AppHeader title="Laporan Status Pembayaran" />
 
-                    {/* Filter */}
-                    <GlassCard className="p-4">
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                            <div className="flex flex-wrap items-center gap-3">
-                                <label className="text-sm font-medium">
-                                    Periode Tagihan
-                                </label>
-                                <Select
-                                    value={selectedPeriod}
-                                    onValueChange={(v) => {
-                                        setSelectedPeriod(v);
-                                        fetchData(v); // auto refresh saat ganti periode
-                                    }}
-                                >
-                                    <SelectTrigger className="w-44">
-                                        <SelectValue placeholder="Pilih periode" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {months.map((m) => (
-                                            <SelectItem key={m} value={m}>
-                                                {formatPeriode(m)}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                        {/* Filter */}
+                        <GlassCard className="p-4">
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <label className="text-sm font-medium">
+                                        Periode Tagihan
+                                    </label>
+                                    <Select
+                                        value={selectedPeriod}
+                                        onValueChange={(v) => {
+                                            setSelectedPeriod(v);
+                                            fetchData(v); // auto refresh saat ganti periode
+                                        }}
+                                    >
+                                        <SelectTrigger className="w-44">
+                                            <SelectValue placeholder="Pilih periode" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {months.map((m) => (
+                                                <SelectItem key={m} value={m}>
+                                                    {formatPeriode(m)}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
 
-                                {/* NEW: Search bar (client-side filter) */}
-                                <div className="relative">
-                                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                    <Input
-                                        value={q}
-                                        onChange={(e) => setQ(e.target.value)}
-                                        placeholder="Cari nama"
-                                        className="pl-8 w-56"
-                                    />
+                                    {/* NEW: Search bar (client-side filter) */}
+                                    <div className="relative">
+                                        <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                        <Input
+                                            value={q}
+                                            onChange={(e) =>
+                                                setQ(e.target.value)
+                                            }
+                                            placeholder="Cari nama"
+                                            className="pl-8 w-56"
+                                        />
+                                    </div>
+
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => fetchData()}
+                                        disabled={!selectedPeriod || loading}
+                                        className="bg-transparent"
+                                    >
+                                        {loading ? "Memuat..." : "Tampilkan"}
+                                    </Button>
                                 </div>
 
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => fetchData()}
-                                    disabled={!selectedPeriod || loading}
-                                    className="bg-transparent"
-                                >
-                                    {loading ? "Memuat..." : "Tampilkan"}
-                                </Button>
-                            </div>
-
-                            {/* <Button
+                                {/* <Button
                 onClick={() => {
                   exportToExcel();
                   toast.success("Data berhasil diekspor ke Excel");
@@ -406,539 +425,573 @@ export default function LaporanStatusPembayaranPage() {
                 <Download className="h-4 w-4 mr-2" />
                 Export Excel
               </Button> */}
-                            {/* === Tombol Export: digate pakai fitur === */}
-                            <FeatureGate
-                                code="export.excel"
-                                fallback={
+                                {/* === Tombol Export: digate pakai fitur === */}
+                                <FeatureGate
+                                    code="export.excel"
+                                    fallback={
+                                        <Button
+                                            disabled
+                                            className="opacity-60 cursor-not-allowed"
+                                        >
+                                            <Download className="h-4 w-4 mr-2" />
+                                            Export Excel (Tidak termasuk paket)
+                                        </Button>
+                                    }
+                                >
                                     <Button
-                                        disabled
-                                        className="opacity-60 cursor-not-allowed"
+                                        onClick={() => {
+                                            if (!rows.length) {
+                                                toast.info(
+                                                    "Tidak ada data untuk diekspor"
+                                                );
+                                                return;
+                                            }
+                                            exportToExcel();
+                                            toast.success(
+                                                "Data berhasil diekspor ke Excel"
+                                            );
+                                        }}
+                                        className="bg-emerald-600 hover:bg-emerald-700 text-white"
                                     >
                                         <Download className="h-4 w-4 mr-2" />
-                                        Export Excel (Tidak termasuk paket)
+                                        Export Excel
                                     </Button>
-                                }
-                            >
-                                <Button
-                                    onClick={() => {
-                                        if (!rows.length) {
-                                            toast.info(
-                                                "Tidak ada data untuk diekspor"
-                                            );
-                                            return;
-                                        }
-                                        exportToExcel();
-                                        toast.success(
-                                            "Data berhasil diekspor ke Excel"
-                                        );
-                                    }}
-                                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                                >
-                                    <Download className="h-4 w-4 mr-2" />
-                                    Export Excel
-                                </Button>
-                            </FeatureGate>
-                        </div>
-
-                        {/* Info jumlah hasil filter */}
-                        <div className="mt-2 text-xs text-muted-foreground">
-                            Menampilkan <b>{filteredRows.length}</b> dari{" "}
-                            <b>{rows.length}</b> data
-                            {q ? <> (filter: “{q}”)</> : null}
-                        </div>
-                    </GlassCard>
-
-                    {/* Desktop Table */}
-                    <GlassCard className="p-6 hidden md:block">
-                        <div className="overflow-x-auto">
-                            <table className="w-full">
-                                <thead>
-                                    <tr className="border-b border-border/50 text-sm text-muted-foreground">
-                                        <th className="text-left py-3 px-2">
-                                            No
-                                        </th>
-                                        <th className="text-left py-3 px-2">
-                                            Nama
-                                        </th>
-                                        <th className="text-left py-3 px-2">
-                                            Pemakaian (m³)
-                                        </th>
-                                        <th className="text-left py-3 px-2">
-                                            <p>Tagihan Bulan Ini</p>
-                                            <p>(Pemakaian × Tarif/m³)</p>
-                                        </th>
-                                        <th className="text-center py-3 px-2">
-                                            Tagihan Lalu
-                                        </th>
-                                        <th className="text-left py-3 px-2">
-                                            Total Tagihan
-                                        </th>
-                                        <th className="text-left py-3 px-2">
-                                            Dibayar
-                                        </th>
-                                        <th className="text-left py-3 px-2">
-                                            Sisa/Kurang
-                                        </th>
-                                        <th className="text-left py-3 px-2">
-                                            Aksi
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filteredRows.map((r) => (
-                                        <tr
-                                            key={r.no}
-                                            className="border-b border-border/30 hover:bg-muted/20 text-sm"
-                                        >
-                                            <td className="py-3 px-2">
-                                                {r.no}
-                                            </td>
-                                            <td className="py-3 px-2 font-medium">
-                                                {r.nama}
-                                            </td>
-                                            <td className="py-3 px-2 text-center">
-                                                {r.pemakaianM3}
-                                            </td>
-                                            <td className="py-3 px-2 text-center">
-                                                Rp {fmtRp(r.tagihanAwal)}
-                                            </td>
-                                            <td className="text-center">
-                                                {renderSisaKurang(
-                                                    r.tagihanLalu
-                                                )}
-                                                {(() => {
-                                                    if (r.tagihanLalu <= 0)
-                                                        return null;
-                                                    const paidAt =
-                                                        parsePaidAt(r.info) ||
-                                                        (r.tglBayar
-                                                            ? new Date(
-                                                                  r.tglBayar
-                                                              )
-                                                            : null);
-                                                    if (!paidAt) return null;
-                                                    return (
-                                                        <div className="mt-1 text-[11px] text-green-600">
-                                                            Dibayar tanggal{" "}
-                                                            {formatTanggalID(
-                                                                paidAt
-                                                            )}
-                                                        </div>
-                                                    );
-                                                })()}
-                                            </td>
-                                            <td className="py-3 px-2 font-semibold text-center">
-                                                Rp {fmtRp(r.totalTagihan)}
-                                            </td>
-                                            <td className="py-3 px-2 text-center">
-                                                Rp {fmtRp(r.sudahBayar)}
-                                            </td>
-                                            <td className="text-center">
-                                                {renderSisaKurang(r.sisaKurang)}
-                                                {(() => {
-                                                    if (r.sisaKurang <= 0)
-                                                        return null;
-                                                    const paidAt =
-                                                        parsePaidAt(r.info) ||
-                                                        (r.tglBayar
-                                                            ? new Date(
-                                                                  r.tglBayar
-                                                              )
-                                                            : null);
-                                                    if (!paidAt) return null;
-                                                    return (
-                                                        <div className="mt-1 text-[11px] text-green-600">
-                                                            Dibayar tanggal{" "}
-                                                            {formatTanggalID(
-                                                                paidAt
-                                                            )}
-                                                        </div>
-                                                    );
-                                                })()}
-                                            </td>
-                                            <td className="py-3 px-2">
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    className="bg-transparent"
-                                                    onClick={() =>
-                                                        openDetail(r)
-                                                    }
-                                                >
-                                                    Detail
-                                                </Button>
-                                            </td>
-                                        </tr>
-                                    ))}
-
-                                    {!!filteredRows.length && (
-                                        <tr className="border-t-2 border-primary/20 bg-muted/10 font-semibold text-sm">
-                                            <td className="py-3 px-2">Total</td>
-                                            <td colSpan={2} />
-                                            <td className="py-3 px-2 text-center">
-                                                Rp{" "}
-                                                {fmtRp(viewSummary.tagihanAwal)}
-                                            </td>
-                                            <td></td>
-                                            <td className="py-3 px-2 text-center">
-                                                Rp{" "}
-                                                {fmtRp(
-                                                    viewSummary.totalTagihan
-                                                )}
-                                            </td>
-                                            <td className="py-3 px-2 text-center">
-                                                Rp{" "}
-                                                {fmtRp(viewSummary.sudahBayar)}
-                                            </td>
-                                            <td className="py-3 px-2 text-center">
-                                                {renderTotalSisaKurang(
-                                                    viewSummary.sisaKurang
-                                                )}
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </GlassCard>
-
-                    {/* Mobile Cards */}
-                    <div className="md:hidden space-y-4">
-                        {filteredRows.map((r) => (
-                            <GlassCard key={r.no} className="p-4 space-y-3">
-                                <div className="flex items-start justify-between">
-                                    <div>
-                                        <h4 className="font-medium">
-                                            {r.nama}
-                                        </h4>
-                                        <p className="text-xs text-muted-foreground">
-                                            {formatPeriode(selectedPeriod)}
-                                        </p>
-                                    </div>
-                                    <Button
-                                        size="sm"
-                                        variant="outline"
-                                        className="bg-transparent"
-                                        onClick={() => openDetail(r)}
-                                    >
-                                        Detail
-                                    </Button>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-y-1 text-sm">
-                                    <span className="text-muted-foreground">
-                                        Pemakaian (m³)
-                                    </span>
-                                    <span>{r.pemakaianM3}</span>
-
-                                    <span className="text-muted-foreground">
-                                        Tagihan Bulan Ini
-                                    </span>
-                                    <span>Rp {fmtRp(r.tagihanAwal)}</span>
-
-                                    <span className="text-muted-foreground">
-                                        Tagihan Lalu
-                                    </span>
-                                    <span>
-                                        {renderSisaKurang(r.tagihanLalu)}
-                                        {(() => {
-                                            if (r.tagihanLalu <= 0) return null;
-                                            const paidAt =
-                                                parsePaidAt(r.info) ||
-                                                (r.tglBayar
-                                                    ? new Date(r.tglBayar)
-                                                    : null);
-                                            if (!paidAt) return null;
-                                            return (
-                                                <div className="mt-1 text-[11px] text-green-500">
-                                                    Dibayar tanggal{" "}
-                                                    {formatTanggalID(paidAt)}
-                                                </div>
-                                            );
-                                        })()}
-                                    </span>
-
-                                    <span className="text-muted-foreground">
-                                        Total Tagihan
-                                    </span>
-                                    <span className="font-semibold">
-                                        Rp {fmtRp(r.totalTagihan)}
-                                    </span>
-
-                                    <span className="text-muted-foreground">
-                                        Dibayar
-                                    </span>
-                                    <span>Rp {fmtRp(r.sudahBayar)}</span>
-
-                                    <span className="text-muted-foreground">
-                                        Sisa/Kurang
-                                    </span>
-                                    <span
-                                        className={
-                                            r.sisaKurang < 0
-                                                ? "text-green-600"
-                                                : r.sisaKurang > 0
-                                                ? "text-red-600"
-                                                : ""
-                                        }
-                                    >
-                                        {renderSisaKurang(r.sisaKurang)}
-                                        {(() => {
-                                            if (r.sisaKurang <= 0) return null;
-                                            const paidAt =
-                                                parsePaidAt(r.info) ||
-                                                (r.tglBayar
-                                                    ? new Date(r.tglBayar)
-                                                    : null);
-                                            if (!paidAt) return null;
-                                            return (
-                                                <div className="mt-1 text-[11px] text-green-500">
-                                                    Dibayar tanggal{" "}
-                                                    {formatTanggalID(paidAt)}
-                                                </div>
-                                            );
-                                        })()}
-                                    </span>
-                                </div>
-                            </GlassCard>
-                        ))}
-
-                        {!!filteredRows.length && (
-                            <GlassCard className="p-4">
-                                <div className="text-sm space-y-1">
-                                    <div className="flex justify-between">
-                                        <span>Total Tagihan</span>
-                                        <b>Rp {footerTotals.totalTagihan}</b>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span>Total Dibayar</span>
-                                        <b>Rp {footerTotals.sudahBayar}</b>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span>Total Sisa/Kurang</span>
-                                        <b className="">
-                                            {footerTotals.sisaKurang}
-                                        </b>
-                                    </div>
-                                </div>
-                            </GlassCard>
-                        )}
-                    </div>
-                </div>
-
-                {/* Modal Detail */}
-                <Dialog open={open} onOpenChange={setOpen}>
-                    <DialogContent className="sm:max-w-2xl overflow-y-auto backdrop-blur-xl bg-background/70">
-                        <DialogHeader>
-                            <DialogTitle className="text-emerald-700">
-                                Detail Tagihan
-                            </DialogTitle>
-                            <DialogDescription>
-                                {formatPeriode(selectedPeriod)} • Jatuh tempo:{" "}
-                                {detail?.tglJatuhTempo
-                                    ? new Date(
-                                          detail?.tglJatuhTempo
-                                      ).toLocaleDateString("id-ID")
-                                    : "-"}
-                            </DialogDescription>
-                        </DialogHeader>
-
-                        {!detail || loadingDetail ? (
-                            <div className="py-8 text-center text-sm text-muted-foreground">
-                                Memuat rincian…
+                                </FeatureGate>
                             </div>
-                        ) : (
-                            <div className="space-y-4">
-                                <div className="flex items-start justify-between">
-                                    <div>
-                                        <div className="text-base font-semibold">
-                                            {detail.nama}
-                                        </div>
-                                        {detail.alamat && (
-                                            <div className="text-xs text-muted-foreground">
-                                                {detail.alamat}
-                                            </div>
+
+                            {/* Info jumlah hasil filter */}
+                            <div className="mt-2 text-xs text-muted-foreground">
+                                Menampilkan <b>{filteredRows.length}</b> dari{" "}
+                                <b>{rows.length}</b> data
+                                {q ? <> (filter: “{q}”)</> : null}
+                            </div>
+                        </GlassCard>
+
+                        {/* Desktop Table */}
+                        <GlassCard className="p-6 hidden md:block">
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead>
+                                        <tr className="border-b border-border/50 text-sm text-muted-foreground">
+                                            <th className="text-left py-3 px-2">
+                                                No
+                                            </th>
+                                            <th className="text-left py-3 px-2">
+                                                Nama
+                                            </th>
+                                            <th className="text-left py-3 px-2">
+                                                Pemakaian (m³)
+                                            </th>
+                                            <th className="text-left py-3 px-2">
+                                                <p>Tagihan Bulan Ini</p>
+                                                <p>(Pemakaian × Tarif/m³)</p>
+                                            </th>
+                                            <th className="text-center py-3 px-2">
+                                                Tagihan Lalu
+                                            </th>
+                                            <th className="text-left py-3 px-2">
+                                                Total Tagihan
+                                            </th>
+                                            <th className="text-left py-3 px-2">
+                                                Dibayar
+                                            </th>
+                                            <th className="text-left py-3 px-2">
+                                                Sisa/Kurang
+                                            </th>
+                                            <th className="text-left py-3 px-2">
+                                                Aksi
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {filteredRows.map((r) => (
+                                            <tr
+                                                key={r.no}
+                                                className="border-b border-border/30 hover:bg-muted/20 text-sm"
+                                            >
+                                                <td className="py-3 px-2">
+                                                    {r.no}
+                                                </td>
+                                                <td className="py-3 px-2 font-medium">
+                                                    {r.nama}
+                                                </td>
+                                                <td className="py-3 px-2 text-center">
+                                                    {r.pemakaianM3}
+                                                </td>
+                                                <td className="py-3 px-2 text-center">
+                                                    Rp {fmtRp(r.tagihanAwal)}
+                                                </td>
+                                                <td className="text-center">
+                                                    {renderSisaKurang(
+                                                        r.tagihanLalu
+                                                    )}
+                                                    {(() => {
+                                                        if (r.tagihanLalu <= 0)
+                                                            return null;
+                                                        const paidAt =
+                                                            parsePaidAt(
+                                                                r.info
+                                                            ) ||
+                                                            (r.tglBayar
+                                                                ? new Date(
+                                                                      r.tglBayar
+                                                                  )
+                                                                : null);
+                                                        if (!paidAt)
+                                                            return null;
+                                                        return (
+                                                            <div className="mt-1 text-[11px] text-green-600">
+                                                                Dibayar tanggal{" "}
+                                                                {formatTanggalID(
+                                                                    paidAt
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })()}
+                                                </td>
+                                                <td className="py-3 px-2 font-semibold text-center">
+                                                    Rp {fmtRp(r.totalTagihan)}
+                                                </td>
+                                                <td className="py-3 px-2 text-center">
+                                                    Rp {fmtRp(r.sudahBayar)}
+                                                </td>
+                                                <td className="text-center">
+                                                    {renderSisaKurang(
+                                                        r.sisaKurang
+                                                    )}
+                                                    {(() => {
+                                                        if (r.sisaKurang <= 0)
+                                                            return null;
+                                                        const paidAt =
+                                                            parsePaidAt(
+                                                                r.info
+                                                            ) ||
+                                                            (r.tglBayar
+                                                                ? new Date(
+                                                                      r.tglBayar
+                                                                  )
+                                                                : null);
+                                                        if (!paidAt)
+                                                            return null;
+                                                        return (
+                                                            <div className="mt-1 text-[11px] text-green-600">
+                                                                Dibayar tanggal{" "}
+                                                                {formatTanggalID(
+                                                                    paidAt
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })()}
+                                                </td>
+                                                <td className="py-3 px-2">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="bg-transparent"
+                                                        onClick={() =>
+                                                            openDetail(r)
+                                                        }
+                                                    >
+                                                        Detail
+                                                    </Button>
+                                                </td>
+                                            </tr>
+                                        ))}
+
+                                        {!!filteredRows.length && (
+                                            <tr className="border-t-2 border-primary/20 bg-muted/10 font-semibold text-sm">
+                                                <td className="py-3 px-2">
+                                                    Total
+                                                </td>
+                                                <td colSpan={2} />
+                                                <td className="py-3 px-2 text-center">
+                                                    Rp{" "}
+                                                    {fmtRp(
+                                                        viewSummary.tagihanAwal
+                                                    )}
+                                                </td>
+                                                <td></td>
+                                                <td className="py-3 px-2 text-center">
+                                                    Rp{" "}
+                                                    {fmtRp(
+                                                        viewSummary.totalTagihan
+                                                    )}
+                                                </td>
+                                                <td className="py-3 px-2 text-center">
+                                                    Rp{" "}
+                                                    {fmtRp(
+                                                        viewSummary.sudahBayar
+                                                    )}
+                                                </td>
+                                                <td className="py-3 px-2 text-center">
+                                                    {renderTotalSisaKurang(
+                                                        viewSummary.sisaKurang
+                                                    )}
+                                                </td>
+                                            </tr>
                                         )}
-                                        {(() => {
-                                            const paidAt =
-                                                parsePaidAt(detail?.info) ||
-                                                (detail?.tglBayar
-                                                    ? new Date(detail.tglBayar)
-                                                    : null);
-                                            if (!paidAt) return null;
-                                            return (
-                                                <div className="mt-1 text-[11px] text-green-500 bg-green-100 py-0.5 px-1 rounded-full">
-                                                    Dibayar tanggal{" "}
-                                                    {formatTanggalID(paidAt)}
-                                                </div>
-                                            );
-                                        })()}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </GlassCard>
+
+                        {/* Mobile Cards */}
+                        <div className="md:hidden space-y-4">
+                            {filteredRows.map((r) => (
+                                <GlassCard key={r.no} className="p-4 space-y-3">
+                                    <div className="flex items-start justify-between">
+                                        <div>
+                                            <h4 className="font-medium">
+                                                {r.nama}
+                                            </h4>
+                                            <p className="text-xs text-muted-foreground">
+                                                {formatPeriode(selectedPeriod)}
+                                            </p>
+                                        </div>
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="bg-transparent"
+                                            onClick={() => openDetail(r)}
+                                        >
+                                            Detail
+                                        </Button>
                                     </div>
-                                    <div className="text-right text-sm">
-                                        <div>Total Ditagih</div>
-                                        <div className="text-lg font-semibold">
-                                            Rp {fmtRp(detail.totalTagihanDue)}
+
+                                    <div className="grid grid-cols-2 gap-y-1 text-sm">
+                                        <span className="text-muted-foreground">
+                                            Pemakaian (m³)
+                                        </span>
+                                        <span>{r.pemakaianM3}</span>
+
+                                        <span className="text-muted-foreground">
+                                            Tagihan Bulan Ini
+                                        </span>
+                                        <span>Rp {fmtRp(r.tagihanAwal)}</span>
+
+                                        <span className="text-muted-foreground">
+                                            Tagihan Lalu
+                                        </span>
+                                        <span>
+                                            {renderSisaKurang(r.tagihanLalu)}
+                                            {(() => {
+                                                if (r.tagihanLalu <= 0)
+                                                    return null;
+                                                const paidAt =
+                                                    parsePaidAt(r.info) ||
+                                                    (r.tglBayar
+                                                        ? new Date(r.tglBayar)
+                                                        : null);
+                                                if (!paidAt) return null;
+                                                return (
+                                                    <div className="mt-1 text-[11px] text-green-500">
+                                                        Dibayar tanggal{" "}
+                                                        {formatTanggalID(
+                                                            paidAt
+                                                        )}
+                                                    </div>
+                                                );
+                                            })()}
+                                        </span>
+
+                                        <span className="text-muted-foreground">
+                                            Total Tagihan
+                                        </span>
+                                        <span className="font-semibold">
+                                            Rp {fmtRp(r.totalTagihan)}
+                                        </span>
+
+                                        <span className="text-muted-foreground">
+                                            Dibayar
+                                        </span>
+                                        <span>Rp {fmtRp(r.sudahBayar)}</span>
+
+                                        <span className="text-muted-foreground">
+                                            Sisa/Kurang
+                                        </span>
+                                        <span
+                                            className={
+                                                r.sisaKurang < 0
+                                                    ? "text-green-600"
+                                                    : r.sisaKurang > 0
+                                                    ? "text-red-600"
+                                                    : ""
+                                            }
+                                        >
+                                            {renderSisaKurang(r.sisaKurang)}
+                                            {(() => {
+                                                if (r.sisaKurang <= 0)
+                                                    return null;
+                                                const paidAt =
+                                                    parsePaidAt(r.info) ||
+                                                    (r.tglBayar
+                                                        ? new Date(r.tglBayar)
+                                                        : null);
+                                                if (!paidAt) return null;
+                                                return (
+                                                    <div className="mt-1 text-[11px] text-green-500">
+                                                        Dibayar tanggal{" "}
+                                                        {formatTanggalID(
+                                                            paidAt
+                                                        )}
+                                                    </div>
+                                                );
+                                            })()}
+                                        </span>
+                                    </div>
+                                </GlassCard>
+                            ))}
+
+                            {!!filteredRows.length && (
+                                <GlassCard className="p-4">
+                                    <div className="text-sm space-y-1">
+                                        <div className="flex justify-between">
+                                            <span>Total Tagihan</span>
+                                            <b>
+                                                Rp {footerTotals.totalTagihan}
+                                            </b>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span>Total Dibayar</span>
+                                            <b>Rp {footerTotals.sudahBayar}</b>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span>Total Sisa/Kurang</span>
+                                            <b className="">
+                                                {footerTotals.sisaKurang}
+                                            </b>
                                         </div>
                                     </div>
+                                </GlassCard>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Modal Detail */}
+                    <Dialog open={open} onOpenChange={setOpen}>
+                        <DialogContent className="sm:max-w-2xl overflow-y-auto backdrop-blur-xl bg-background/70">
+                            <DialogHeader>
+                                <DialogTitle className="text-emerald-700">
+                                    Detail Tagihan
+                                </DialogTitle>
+                                <DialogDescription>
+                                    {formatPeriode(selectedPeriod)} • Jatuh
+                                    tempo:{" "}
+                                    {detail?.tglJatuhTempo
+                                        ? new Date(
+                                              detail?.tglJatuhTempo
+                                          ).toLocaleDateString("id-ID")
+                                        : "-"}
+                                </DialogDescription>
+                            </DialogHeader>
+
+                            {!detail || loadingDetail ? (
+                                <div className="py-8 text-center text-sm text-muted-foreground">
+                                    Memuat rincian…
                                 </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    <div className="flex items-start justify-between">
+                                        <div>
+                                            <div className="text-base font-semibold">
+                                                {detail.nama}
+                                            </div>
+                                            {detail.alamat && (
+                                                <div className="text-xs text-muted-foreground">
+                                                    {detail.alamat}
+                                                </div>
+                                            )}
+                                            {(() => {
+                                                const paidAt =
+                                                    parsePaidAt(detail?.info) ||
+                                                    (detail?.tglBayar
+                                                        ? new Date(
+                                                              detail.tglBayar
+                                                          )
+                                                        : null);
+                                                if (!paidAt) return null;
+                                                return (
+                                                    <div className="mt-1 text-[11px] text-green-500 bg-green-100 py-0.5 px-1 rounded-full">
+                                                        Dibayar tanggal{" "}
+                                                        {formatTanggalID(
+                                                            paidAt
+                                                        )}
+                                                    </div>
+                                                );
+                                            })()}
+                                        </div>
+                                        <div className="text-right text-sm">
+                                            <div>Total Ditagih</div>
+                                            <div className="text-lg font-semibold">
+                                                Rp{" "}
+                                                {fmtRp(detail.totalTagihanDue)}
+                                            </div>
+                                        </div>
+                                    </div>
 
-                                <Separator />
+                                    <Separator />
 
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
-                                    <div className="p-3 rounded-lg bg-muted/40">
-                                        <div className="text-muted-foreground">
-                                            Meter Awal
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+                                        <div className="p-3 rounded-lg bg-muted/40">
+                                            <div className="text-muted-foreground">
+                                                Meter Awal
+                                            </div>
+                                            <div className="font-medium">
+                                                {detail.meterAwal}
+                                            </div>
                                         </div>
-                                        <div className="font-medium">
-                                            {detail.meterAwal}
+                                        <div className="p-3 rounded-lg bg-muted/40">
+                                            <div className="text-muted-foreground">
+                                                Meter Akhir
+                                            </div>
+                                            <div className="font-medium">
+                                                {detail.meterAkhir}
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="p-3 rounded-lg bg-muted/40">
-                                        <div className="text-muted-foreground">
-                                            Meter Akhir
+                                        <div className="p-3 rounded-lg bg-muted/40">
+                                            <div className="text-muted-foreground">
+                                                Pemakaian
+                                            </div>
+                                            <div className="font-medium">
+                                                {detail.pemakaianM3} m³
+                                            </div>
                                         </div>
-                                        <div className="font-medium">
-                                            {detail.meterAkhir}
+                                        <div className="p-3 rounded-lg bg-muted/40">
+                                            <div className="text-muted-foreground">
+                                                Tarif/m³
+                                            </div>
+                                            <div className="font-medium">
+                                                Rp {fmtRp(detail.tarifPerM3)}
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="p-3 rounded-lg bg-muted/40">
-                                        <div className="text-muted-foreground">
-                                            Pemakaian
+                                        <div className="p-3 rounded-lg bg-muted/40">
+                                            <div className="text-muted-foreground">
+                                                Abonemen
+                                            </div>
+                                            <div className="font-medium">
+                                                Rp {fmtRp(detail.abonemen)}
+                                            </div>
                                         </div>
-                                        <div className="font-medium">
-                                            {detail.pemakaianM3} m³
-                                        </div>
-                                    </div>
-                                    <div className="p-3 rounded-lg bg-muted/40">
-                                        <div className="text-muted-foreground">
-                                            Tarif/m³
-                                        </div>
-                                        <div className="font-medium">
-                                            Rp {fmtRp(detail.tarifPerM3)}
-                                        </div>
-                                    </div>
-                                    <div className="p-3 rounded-lg bg-muted/40">
-                                        <div className="text-muted-foreground">
-                                            Abonemen
-                                        </div>
-                                        <div className="font-medium">
-                                            Rp {fmtRp(detail.abonemen)}
-                                        </div>
-                                    </div>
-                                    {/* <div className="p-3 rounded-lg bg-muted/40">
+                                        {/* <div className="p-3 rounded-lg bg-muted/40">
                     <div className="text-muted-foreground">Denda</div>
                     <div className="font-medium">Rp {fmtRp(detail.denda)}</div>
                   </div> */}
-                                    <div className="p-3 rounded-lg bg-muted/40">
-                                        <div className="text-muted-foreground">
-                                            Tagihan Lalu (+/−)
+                                        <div className="p-3 rounded-lg bg-muted/40">
+                                            <div className="text-muted-foreground">
+                                                Tagihan Lalu (+/−)
+                                            </div>
+                                            <div className="font-medium">
+                                                {renderSisaKurang(
+                                                    detail.tagihanLalu
+                                                )}
+                                            </div>
                                         </div>
-                                        <div className="font-medium">
-                                            {renderSisaKurang(
-                                                detail.tagihanLalu
-                                            )}
+                                        <div className="p-3 rounded-lg bg-muted/40">
+                                            <div className="text-muted-foreground">
+                                                Tagihan Bulan Ini
+                                            </div>
+                                            <div className="font-medium">
+                                                Rp {fmtRp(detail.totalBulanIni)}
+                                            </div>
+                                        </div>
+                                        <div className="p-3 rounded-lg bg-muted/40">
+                                            <div className="text-muted-foreground">
+                                                Sisa/Kurang (+/−)
+                                            </div>
+                                            <div>
+                                                {renderSisaKurang(
+                                                    detail.sisaKurang
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="p-3 rounded-lg bg-muted/40">
-                                        <div className="text-muted-foreground">
-                                            Tagihan Bulan Ini
-                                        </div>
-                                        <div className="font-medium">
-                                            Rp {fmtRp(detail.totalBulanIni)}
-                                        </div>
-                                    </div>
-                                    <div className="p-3 rounded-lg bg-muted/40">
-                                        <div className="text-muted-foreground">
-                                            Sisa/Kurang (+/−)
-                                        </div>
-                                        <div>
-                                            {renderSisaKurang(
-                                                detail.sisaKurang
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
 
-                                <div className="rounded-lg border">
-                                    <div className="px-4 py-2 text-sm font-medium bg-muted/40">
-                                        Pembayaran
-                                    </div>
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full text-sm">
-                                            <thead>
-                                                <tr className="border-b text-muted-foreground">
-                                                    <th className="text-left py-2 px-3">
-                                                        Tanggal
-                                                    </th>
-                                                    <th className="text-left py-2 px-3">
-                                                        Metode
-                                                    </th>
-                                                    <th className="text-right py-2 px-3">
-                                                        Jumlah
-                                                    </th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {detail.pembayaran.length ===
-                                                0 ? (
-                                                    <tr>
+                                    <div className="rounded-lg border">
+                                        <div className="px-4 py-2 text-sm font-medium bg-muted/40">
+                                            Pembayaran
+                                        </div>
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-sm">
+                                                <thead>
+                                                    <tr className="border-b text-muted-foreground">
+                                                        <th className="text-left py-2 px-3">
+                                                            Tanggal
+                                                        </th>
+                                                        <th className="text-left py-2 px-3">
+                                                            Metode
+                                                        </th>
+                                                        <th className="text-right py-2 px-3">
+                                                            Jumlah
+                                                        </th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {detail.pembayaran
+                                                        .length === 0 ? (
+                                                        <tr>
+                                                            <td
+                                                                colSpan={4}
+                                                                className="py-3 px-3 text-center text-muted-foreground"
+                                                            >
+                                                                Belum ada
+                                                                pembayaran
+                                                            </td>
+                                                        </tr>
+                                                    ) : (
+                                                        detail.pembayaran.map(
+                                                            (p: any) => (
+                                                                <tr
+                                                                    key={p.id}
+                                                                    className="border-b"
+                                                                >
+                                                                    <td className="py-2 px-3">
+                                                                        {p.tanggalBayar
+                                                                            ? new Date(
+                                                                                  p.tanggalBayar
+                                                                              ).toLocaleDateString(
+                                                                                  "id-ID"
+                                                                              )
+                                                                            : "-"}
+                                                                    </td>
+                                                                    <td className="py-2 px-3">
+                                                                        {
+                                                                            p.metode
+                                                                        }
+                                                                    </td>
+                                                                    <td className="py-2 px-3 text-right">
+                                                                        Rp{" "}
+                                                                        {fmtRp(
+                                                                            p.jumlahBayar
+                                                                        )}
+                                                                    </td>
+                                                                </tr>
+                                                            )
+                                                        )
+                                                    )}
+                                                    <tr className="font-semibold">
                                                         <td
-                                                            colSpan={4}
-                                                            className="py-3 px-3 text-center text-muted-foreground"
+                                                            className="py-2 px-3"
+                                                            colSpan={2}
                                                         >
-                                                            Belum ada pembayaran
+                                                            Total Dibayar
+                                                        </td>
+                                                        <td className="py-2 px-3 text-right">
+                                                            Rp{" "}
+                                                            {fmtRp(
+                                                                detail.dibayar
+                                                            )}
                                                         </td>
                                                     </tr>
-                                                ) : (
-                                                    detail.pembayaran.map(
-                                                        (p: any) => (
-                                                            <tr
-                                                                key={p.id}
-                                                                className="border-b"
-                                                            >
-                                                                <td className="py-2 px-3">
-                                                                    {p.tanggalBayar
-                                                                        ? new Date(
-                                                                              p.tanggalBayar
-                                                                          ).toLocaleDateString(
-                                                                              "id-ID"
-                                                                          )
-                                                                        : "-"}
-                                                                </td>
-                                                                <td className="py-2 px-3">
-                                                                    {p.metode}
-                                                                </td>
-                                                                <td className="py-2 px-3 text-right">
-                                                                    Rp{" "}
-                                                                    {fmtRp(
-                                                                        p.jumlahBayar
-                                                                    )}
-                                                                </td>
-                                                            </tr>
-                                                        )
-                                                    )
-                                                )}
-                                                <tr className="font-semibold">
-                                                    <td
-                                                        className="py-2 px-3"
-                                                        colSpan={2}
-                                                    >
-                                                        Total Dibayar
-                                                    </td>
-                                                    <td className="py-2 px-3 text-right">
-                                                        Rp{" "}
-                                                        {fmtRp(detail.dibayar)}
-                                                    </td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        )}
-                    </DialogContent>
-                </Dialog>
-            </AppShell>
+                            )}
+                        </DialogContent>
+                    </Dialog>
+                </AppShell>
+            </PermissionGate>
         </AuthGuard>
     );
 }

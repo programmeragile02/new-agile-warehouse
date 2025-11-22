@@ -553,7 +553,7 @@ export function MeterGrid() {
                   ))}
                 </SelectContent>
               </Select>
-              <Button
+              {/* <Button
                 onClick={handleDownloadCustomerPDF}
                 variant="outline"
                 size="sm"
@@ -562,7 +562,7 @@ export function MeterGrid() {
               >
                 <Download className="w-4 h-4 mr-2" />
                 Download PDF
-              </Button>
+              </Button> */}
             </div>
           </div>
         </div>

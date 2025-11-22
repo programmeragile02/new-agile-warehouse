@@ -24,6 +24,8 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Pencil, Trash2, CheckCircle2 } from "lucide-react"; // ⬅️ TAMBAH ikon posting
+import { AclDeniedAlert } from "@/components/acl-denied-alert";
+import { PermissionGate } from "@/components/permission-gate";
 
 /* ====== Types ====== */
 type Item = {
@@ -471,475 +473,296 @@ export default function InventarisPage() {
     /* ====== UI ====== */
     return (
         <AuthGuard requiredRole="PETUGAS">
-            <AppShell>
-                <div className="max-w-7xl mx-auto space-y-6">
-                    <AppHeader title="Inventaris" />
-
-                    {/* Summary */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <GlassCard className="p-4">
-                            <div className="text-sm text-muted-foreground">
-                                Total Item
-                            </div>
-                            <div className="text-2xl font-semibold">
-                                {summary?.totalItems ?? 0}
-                            </div>
-                        </GlassCard>
-                        <GlassCard className="p-4">
-                            <div className="text-sm text-muted-foreground">
-                                Total Stok
-                            </div>
-                            <div className="text-2xl font-semibold">
-                                {summary?.totalStok ?? 0}
-                            </div>
-                        </GlassCard>
-                        <GlassCard className="p-4">
-                            <div className="text-sm text-muted-foreground">
-                                Nilai Persediaan
-                            </div>
-                            <div className="text-2xl font-semibold">
-                                {fmtRp(summary?.nilaiPersediaan ?? 0)}
-                            </div>
-                        </GlassCard>
-                        <GlassCard className="p-4">
-                            <div className="text-sm text-muted-foreground">
-                                Pembelian Bulan Ini
-                            </div>
-                            <div className="text-2xl font-semibold">
-                                {fmtRp(summary?.pembelianBulanIni ?? 0)}
-                            </div>
-                        </GlassCard>
+            <PermissionGate
+                path="/inventaris"
+                action="view"
+                fallback={<AclDeniedAlert fullPage />}
+                loadingFallback={
+                    <div className="min-h-screen flex items-center justify-center">
+                        <div className="flex items-center gap-2 text-primary">
+                            <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                            <span className="text-lg">Memuat…</span>
+                        </div>
                     </div>
+                }
+            >
+                <AppShell>
+                    <div className="max-w-7xl mx-auto space-y-6">
+                        <AppHeader title="Inventaris" />
 
-                    {/* Forms */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {/* Form Item */}
-                        <GlassCard className="p-6 space-y-4">
-                            <div className="text-lg font-semibold">
-                                Buat Item
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <div className="space-y-1">
-                                    <label className="text-xs text-muted-foreground">
-                                        Kode otomatis
-                                    </label>
-                                    <div className="flex gap-2">
-                                        <Input
-                                            value={
-                                                kodePreview || "Kode otomatis"
-                                            }
-                                            readOnly
-                                        />
-                                        <Button
-                                            variant="outline"
-                                            onClick={refreshPreviewKode}
-                                        >
-                                            Ambil Kode
-                                        </Button>
-                                    </div>
+                        {/* Summary */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <GlassCard className="p-4">
+                                <div className="text-sm text-muted-foreground">
+                                    Total Item
                                 </div>
-                                <div className="space-y-1">
-                                    <label className="text-xs text-muted-foreground">
-                                        Nama *
-                                    </label>
-                                    <Input
-                                        value={newItem.nama}
-                                        onChange={(e) =>
-                                            setNewItem((s) => ({
-                                                ...s,
-                                                nama: e.target.value,
-                                            }))
-                                        }
-                                        placeholder="Masukkan nama barang"
-                                    />
+                                <div className="text-2xl font-semibold">
+                                    {summary?.totalItems ?? 0}
                                 </div>
-                                <div className="space-y-1">
-                                    <label className="text-xs text-muted-foreground">
-                                        Kategori
-                                    </label>
-                                    <Input
-                                        value={newItem.kategori}
-                                        onChange={(e) =>
-                                            setNewItem((s) => ({
-                                                ...s,
-                                                kategori: e.target.value,
-                                            }))
-                                        }
-                                        placeholder="Masukkan kategori inventaris (mis. Material )"
-                                    />
+                            </GlassCard>
+                            <GlassCard className="p-4">
+                                <div className="text-sm text-muted-foreground">
+                                    Total Stok
                                 </div>
-                                <div className="space-y-1">
-                                    <label className="text-xs text-muted-foreground">
-                                        Satuan
-                                    </label>
-                                    <Input
-                                        value={newItem.satuan}
-                                        onChange={(e) =>
-                                            setNewItem((s) => ({
-                                                ...s,
-                                                satuan: e.target.value,
-                                            }))
-                                        }
-                                        placeholder="Masukkan satuan (mis. Kg)"
-                                    />
+                                <div className="text-2xl font-semibold">
+                                    {summary?.totalStok ?? 0}
                                 </div>
-                            </div>
-                            <Button
-                                onClick={onCreateItem}
-                                disabled={loading}
-                                className="bg-emerald-600 text-white"
-                            >
-                                {loading ? "Menyimpan..." : "Simpan Item"}
-                            </Button>
-                            <p className="text-xs text-muted-foreground">
-                                * Kode final ditentukan server saat disimpan.
-                                Preview bisa berubah jika ada penyimpanan
-                                bersamaan.
-                            </p>
-                        </GlassCard>
+                            </GlassCard>
+                            <GlassCard className="p-4">
+                                <div className="text-sm text-muted-foreground">
+                                    Nilai Persediaan
+                                </div>
+                                <div className="text-2xl font-semibold">
+                                    {fmtRp(summary?.nilaiPersediaan ?? 0)}
+                                </div>
+                            </GlassCard>
+                            <GlassCard className="p-4">
+                                <div className="text-sm text-muted-foreground">
+                                    Pembelian Bulan Ini
+                                </div>
+                                <div className="text-2xl font-semibold">
+                                    {fmtRp(summary?.pembelianBulanIni ?? 0)}
+                                </div>
+                            </GlassCard>
+                        </div>
 
-                        {/* Form Purchase */}
-                        <GlassCard className="p-6 space-y-4">
-                            <div className="text-lg font-semibold">
-                                Pembelian
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <div className="space-y-1">
-                                    <label className="text-xs text-muted-foreground">
-                                        Tanggal *
-                                    </label>
-                                    <Input
-                                        type="date"
-                                        value={purchase.tanggal}
-                                        onChange={(e) =>
-                                            setPurchase((s) => ({
-                                                ...s,
-                                                tanggal: e.target.value,
-                                            }))
-                                        }
-                                        placeholder="Masukkan tanggal pembelian"
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-xs text-muted-foreground">
-                                        Supplier *
-                                    </label>
-                                    <Input
-                                        value={purchase.supplier}
-                                        onChange={(e) =>
-                                            setPurchase((s) => ({
-                                                ...s,
-                                                supplier: e.target.value,
-                                            }))
-                                        }
-                                        placeholder="Masukkan nama supplier"
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-xs text-muted-foreground">
-                                        Item *
-                                    </label>
-                                    <Select
-                                        value={purchase.itemId}
-                                        onValueChange={(v) =>
-                                            setPurchase((s) => ({
-                                                ...s,
-                                                itemId: v,
-                                            }))
-                                        }
-                                    >
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Pilih item" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {items.map((it) => (
-                                                <SelectItem
-                                                    key={it.id}
-                                                    value={it.id}
-                                                >
-                                                    {it.kode} — {it.nama}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-xs text-muted-foreground">
-                                        Qty *
-                                    </label>
-                                    <Input
-                                        type="number"
-                                        value={purchase.qty || ""}
-                                        onChange={(e) =>
-                                            setPurchase((s) => ({
-                                                ...s,
-                                                qty: Number(
-                                                    e.target.value || 0
-                                                ),
-                                            }))
-                                        }
-                                        placeholder="masukkan jumlah barang"
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-xs text-muted-foreground">
-                                        Harga *
-                                    </label>
-                                    <Input
-                                        type="number"
-                                        value={purchase.harga || ""}
-                                        onChange={(e) =>
-                                            setPurchase((s) => ({
-                                                ...s,
-                                                harga: Number(
-                                                    e.target.value || 0
-                                                ),
-                                            }))
-                                        }
-                                        placeholder="Masukkan harga barang"
-                                    />
-                                </div>
-                                <div className="rounded-lg bg-muted/40 px-3 py-2">
-                                    <div className="text-xs text-muted-foreground">
-                                        Subtotal
-                                    </div>
-                                    <div className="font-semibold">
-                                        {fmtRp(subtotal)}
-                                    </div>
-                                </div>
-                            </div>
-                            <Button
-                                onClick={onCreatePurchase}
-                                disabled={loading}
-                                className="bg-emerald-600 text-white"
-                            >
-                                {loading ? "Menyimpan..." : "Simpan Pembelian"}
-                            </Button>
-                        </GlassCard>
-                    </div>
-
-                    {/* LISTS: 2 kolom desktop; Card mobile, Table desktop */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {/* ITEM LIST */}
-                        <GlassCard className="p-6">
-                            <div className="text-lg font-semibold mb-4">
-                                Daftar Item
-                            </div>
-
-                            {/* Mobile: cards */}
-                            <div className="space-y-3 lg:hidden">
-                                {items.map((it) => (
-                                    <div
-                                        key={it.id}
-                                        className="rounded-xl border border-border/60 p-4 bg-background/60"
-                                    >
-                                        <div className="flex items-center justify-between">
-                                            <div className="font-semibold">
-                                                {it.kode}
-                                            </div>
-                                            <div className="flex gap-1">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    onClick={() =>
-                                                        openItemModal(it)
-                                                    }
-                                                    title="Edit"
-                                                    aria-label="Edit"
-                                                >
-                                                    <Pencil className="h-4 w-4" />
-                                                </Button>
-                                                <Button
-                                                    variant="destructive"
-                                                    size="icon"
-                                                    onClick={() =>
-                                                        requestDeleteItem(it)
-                                                    }
-                                                    title="Hapus"
-                                                    aria-label="Hapus"
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        </div>
-                                        <Separator className="my-3" />
-                                        <div className="grid grid-cols-2 gap-y-1 text-sm">
-                                            <span className="text-muted-foreground">
-                                                Nama
-                                            </span>
-                                            <span>{it.nama}</span>
-                                            <span className="text-muted-foreground">
-                                                Kategori
-                                            </span>
-                                            <span>{it.kategori || "-"}</span>
-                                            <span className="text-muted-foreground">
-                                                Satuan
-                                            </span>
-                                            <span>{it.satuan || "-"}</span>
-                                            <span className="text-muted-foreground">
-                                                Stok
-                                            </span>
-                                            <span className="font-medium">
-                                                {it.stok}
-                                            </span>
-                                        </div>
-                                    </div>
-                                ))}
-                                {!items.length && (
-                                    <div className="text-sm text-muted-foreground text-center py-6">
-                                        Belum ada item.
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Desktop: table */}
-                            <div className="hidden lg:block overflow-x-auto">
-                                <table className="w-full">
-                                    <thead>
-                                        <tr className="border-b border-border/50 text-sm text-muted-foreground">
-                                            <th className="text-left py-2">
-                                                Kode
-                                            </th>
-                                            <th className="text-left py-2">
-                                                Nama
-                                            </th>
-                                            <th className="text-left py-2">
-                                                Kategori
-                                            </th>
-                                            <th className="text-left py-2">
-                                                Satuan
-                                            </th>
-                                            <th className="text-right py-2">
-                                                Stok
-                                            </th>
-                                            <th className="text-right py-2">
-                                                Aksi
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {items.map((it) => (
-                                            <tr
-                                                key={it.id}
-                                                className="border-b border-border/30 text-sm"
-                                            >
-                                                <td className="py-2">
-                                                    {it.kode}
-                                                </td>
-                                                <td className="py-2">
-                                                    {it.nama}
-                                                </td>
-                                                <td className="py-2">
-                                                    {it.kategori || "-"}
-                                                </td>
-                                                <td className="py-2">
-                                                    {it.satuan || "-"}
-                                                </td>
-                                                <td className="py-2 text-right">
-                                                    {it.stok}
-                                                </td>
-                                                <td className="py-2">
-                                                    <div className="flex justify-end gap-1">
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            onClick={() =>
-                                                                openItemModal(
-                                                                    it
-                                                                )
-                                                            }
-                                                            title="Edit"
-                                                            aria-label="Edit"
-                                                        >
-                                                            <Pencil className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button
-                                                            variant="destructive"
-                                                            size="icon"
-                                                            onClick={() =>
-                                                                requestDeleteItem(
-                                                                    it
-                                                                )
-                                                            }
-                                                            title="Hapus"
-                                                            aria-label="Hapus"
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                        {!items.length && (
-                                            <tr>
-                                                <td
-                                                    colSpan={6}
-                                                    className="py-6 text-center text-sm text-muted-foreground"
-                                                >
-                                                    Belum ada item.
-                                                </td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </GlassCard>
-
-                        {/* PURCHASE LIST */}
-                        <GlassCard className="p-6">
-                            <div className="flex items-center justify-between mb-4">
+                        {/* Forms */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            {/* Form Item */}
+                            <GlassCard className="p-6 space-y-4">
                                 <div className="text-lg font-semibold">
-                                    Daftar Pembelian
+                                    Buat Item
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div className="space-y-1">
+                                        <label className="text-xs text-muted-foreground">
+                                            Kode otomatis
+                                        </label>
+                                        <div className="flex gap-2">
+                                            <Input
+                                                value={
+                                                    kodePreview ||
+                                                    "Kode otomatis"
+                                                }
+                                                readOnly
+                                            />
+                                            <Button
+                                                variant="outline"
+                                                onClick={refreshPreviewKode}
+                                            >
+                                                Ambil Kode
+                                            </Button>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs text-muted-foreground">
+                                            Nama *
+                                        </label>
+                                        <Input
+                                            value={newItem.nama}
+                                            onChange={(e) =>
+                                                setNewItem((s) => ({
+                                                    ...s,
+                                                    nama: e.target.value,
+                                                }))
+                                            }
+                                            placeholder="Masukkan nama barang"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs text-muted-foreground">
+                                            Kategori
+                                        </label>
+                                        <Input
+                                            value={newItem.kategori}
+                                            onChange={(e) =>
+                                                setNewItem((s) => ({
+                                                    ...s,
+                                                    kategori: e.target.value,
+                                                }))
+                                            }
+                                            placeholder="Masukkan kategori inventaris (mis. Material )"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs text-muted-foreground">
+                                            Satuan
+                                        </label>
+                                        <Input
+                                            value={newItem.satuan}
+                                            onChange={(e) =>
+                                                setNewItem((s) => ({
+                                                    ...s,
+                                                    satuan: e.target.value,
+                                                }))
+                                            }
+                                            placeholder="Masukkan satuan (mis. Kg)"
+                                        />
+                                    </div>
                                 </div>
                                 <Button
-                                    onClick={() => postingAllDraft()}
+                                    onClick={onCreateItem}
+                                    disabled={loading}
                                     className="bg-emerald-600 text-white"
                                 >
-                                    Posting
+                                    {loading ? "Menyimpan..." : "Simpan Item"}
                                 </Button>
-                            </div>
+                                <p className="text-xs text-muted-foreground">
+                                    * Kode final ditentukan server saat
+                                    disimpan. Preview bisa berubah jika ada
+                                    penyimpanan bersamaan.
+                                </p>
+                            </GlassCard>
 
-                            {/* Mobile: cards */}
-                            <div className="space-y-3 lg:hidden">
-                                {purchases.map((p) => {
-                                    const isClosed = p.status === "CLOSE";
-                                    return (
+                            {/* Form Purchase */}
+                            <GlassCard className="p-6 space-y-4">
+                                <div className="text-lg font-semibold">
+                                    Pembelian
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div className="space-y-1">
+                                        <label className="text-xs text-muted-foreground">
+                                            Tanggal *
+                                        </label>
+                                        <Input
+                                            type="date"
+                                            value={purchase.tanggal}
+                                            onChange={(e) =>
+                                                setPurchase((s) => ({
+                                                    ...s,
+                                                    tanggal: e.target.value,
+                                                }))
+                                            }
+                                            placeholder="Masukkan tanggal pembelian"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs text-muted-foreground">
+                                            Supplier *
+                                        </label>
+                                        <Input
+                                            value={purchase.supplier}
+                                            onChange={(e) =>
+                                                setPurchase((s) => ({
+                                                    ...s,
+                                                    supplier: e.target.value,
+                                                }))
+                                            }
+                                            placeholder="Masukkan nama supplier"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs text-muted-foreground">
+                                            Item *
+                                        </label>
+                                        <Select
+                                            value={purchase.itemId}
+                                            onValueChange={(v) =>
+                                                setPurchase((s) => ({
+                                                    ...s,
+                                                    itemId: v,
+                                                }))
+                                            }
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Pilih item" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {items.map((it) => (
+                                                    <SelectItem
+                                                        key={it.id}
+                                                        value={it.id}
+                                                    >
+                                                        {it.kode} — {it.nama}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs text-muted-foreground">
+                                            Qty *
+                                        </label>
+                                        <Input
+                                            type="number"
+                                            value={purchase.qty || ""}
+                                            onChange={(e) =>
+                                                setPurchase((s) => ({
+                                                    ...s,
+                                                    qty: Number(
+                                                        e.target.value || 0
+                                                    ),
+                                                }))
+                                            }
+                                            placeholder="masukkan jumlah barang"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs text-muted-foreground">
+                                            Harga *
+                                        </label>
+                                        <Input
+                                            type="number"
+                                            value={purchase.harga || ""}
+                                            onChange={(e) =>
+                                                setPurchase((s) => ({
+                                                    ...s,
+                                                    harga: Number(
+                                                        e.target.value || 0
+                                                    ),
+                                                }))
+                                            }
+                                            placeholder="Masukkan harga barang"
+                                        />
+                                    </div>
+                                    <div className="rounded-lg bg-muted/40 px-3 py-2">
+                                        <div className="text-xs text-muted-foreground">
+                                            Subtotal
+                                        </div>
+                                        <div className="font-semibold">
+                                            {fmtRp(subtotal)}
+                                        </div>
+                                    </div>
+                                </div>
+                                <Button
+                                    onClick={onCreatePurchase}
+                                    disabled={loading}
+                                    className="bg-emerald-600 text-white"
+                                >
+                                    {loading
+                                        ? "Menyimpan..."
+                                        : "Simpan Pembelian"}
+                                </Button>
+                            </GlassCard>
+                        </div>
+
+                        {/* LISTS: 2 kolom desktop; Card mobile, Table desktop */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            {/* ITEM LIST */}
+                            <GlassCard className="p-6">
+                                <div className="text-lg font-semibold mb-4">
+                                    Daftar Item
+                                </div>
+
+                                {/* Mobile: cards */}
+                                <div className="space-y-3 lg:hidden">
+                                    {items.map((it) => (
                                         <div
-                                            key={p.id}
+                                            key={it.id}
                                             className="rounded-xl border border-border/60 p-4 bg-background/60"
                                         >
                                             <div className="flex items-center justify-between">
                                                 <div className="font-semibold">
-                                                    {fmtDate(p.tanggal)}
+                                                    {it.kode}
                                                 </div>
                                                 <div className="flex gap-1">
-                                                    {!isClosed && (
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            onClick={() =>
-                                                                postingById(
-                                                                    p.id
-                                                                )
-                                                            }
-                                                            title="Posting"
-                                                            aria-label="Posting"
-                                                        >
-                                                            <CheckCircle2 className="h-4 w-4" />
-                                                        </Button>
-                                                    )}
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
                                                         onClick={() =>
-                                                            openPurchaseModal(p)
+                                                            openItemModal(it)
                                                         }
-                                                        disabled={isClosed}
-                                                        title={
-                                                            isClosed
-                                                                ? "Sudah CLOSE"
-                                                                : "Edit"
-                                                        }
+                                                        title="Edit"
                                                         aria-label="Edit"
                                                     >
                                                         <Pencil className="h-4 w-4" />
@@ -948,16 +771,11 @@ export default function InventarisPage() {
                                                         variant="destructive"
                                                         size="icon"
                                                         onClick={() =>
-                                                            requestDeletePurchase(
-                                                                p
+                                                            requestDeleteItem(
+                                                                it
                                                             )
                                                         }
-                                                        disabled={isClosed}
-                                                        title={
-                                                            isClosed
-                                                                ? "Sudah CLOSE"
-                                                                : "Hapus"
-                                                        }
+                                                        title="Hapus"
                                                         aria-label="Hapus"
                                                     >
                                                         <Trash2 className="h-4 w-4" />
@@ -967,153 +785,92 @@ export default function InventarisPage() {
                                             <Separator className="my-3" />
                                             <div className="grid grid-cols-2 gap-y-1 text-sm">
                                                 <span className="text-muted-foreground">
-                                                    Supplier
+                                                    Nama
                                                 </span>
-                                                <span>{p.supplier}</span>
+                                                <span>{it.nama}</span>
                                                 <span className="text-muted-foreground">
-                                                    Item
+                                                    Kategori
                                                 </span>
-                                                <span>{p.itemNama}</span>
-                                                <span className="text-muted-foreground">
-                                                    Qty
+                                                <span>
+                                                    {it.kategori || "-"}
                                                 </span>
-                                                <span>{p.qty}</span>
                                                 <span className="text-muted-foreground">
-                                                    Harga
+                                                    Satuan
                                                 </span>
-                                                <span>{fmtRp(p.harga)}</span>
+                                                <span>{it.satuan || "-"}</span>
                                                 <span className="text-muted-foreground">
-                                                    Total
+                                                    Stok
                                                 </span>
                                                 <span className="font-medium">
-                                                    {fmtRp(p.total)}
-                                                </span>
-                                                <span className="text-muted-foreground">
-                                                    Status
-                                                </span>
-                                                <span
-                                                    className={
-                                                        isClosed
-                                                            ? "text-red-600 font-medium"
-                                                            : "text-emerald-600 font-medium"
-                                                    }
-                                                >
-                                                    {p.status}
+                                                    {it.stok}
                                                 </span>
                                             </div>
                                         </div>
-                                    );
-                                })}
-                                {!purchases.length && (
-                                    <div className="text-sm text-muted-foreground text-center py-6">
-                                        Belum ada data pembelian.
-                                    </div>
-                                )}
-                            </div>
+                                    ))}
+                                    {!items.length && (
+                                        <div className="text-sm text-muted-foreground text-center py-6">
+                                            Belum ada item.
+                                        </div>
+                                    )}
+                                </div>
 
-                            {/* Desktop: table */}
-                            <div className="hidden lg:block overflow-x-auto">
-                                <table className="w-full">
-                                    <thead>
-                                        <tr className="border-b border-border/50 text-sm text-muted-foreground">
-                                            <th className="text-left px-4 py-2">
-                                                Tanggal
-                                            </th>
-                                            <th className="text-left px-4 py-2">
-                                                Supplier
-                                            </th>
-                                            <th className="text-left px-4 py-2">
-                                                Item
-                                            </th>
-                                            <th className="text-right px-4 py-2">
-                                                Qty
-                                            </th>
-                                            <th className="text-right px-4 py-2">
-                                                Harga
-                                            </th>
-                                            <th className="text-right px-4 py-2">
-                                                Total
-                                            </th>
-                                            <th className="text-left px-4 py-2">
-                                                Status
-                                            </th>
-                                            <th className="text-right px-4 py-2">
-                                                Aksi
-                                            </th>
-                                        </tr>
-                                    </thead>
-
-                                    <tbody>
-                                        {purchases.map((p) => {
-                                            const isClosed =
-                                                p.status === "CLOSE";
-                                            return (
+                                {/* Desktop: table */}
+                                <div className="hidden lg:block overflow-x-auto">
+                                    <table className="w-full">
+                                        <thead>
+                                            <tr className="border-b border-border/50 text-sm text-muted-foreground">
+                                                <th className="text-left py-2">
+                                                    Kode
+                                                </th>
+                                                <th className="text-left py-2">
+                                                    Nama
+                                                </th>
+                                                <th className="text-left py-2">
+                                                    Kategori
+                                                </th>
+                                                <th className="text-left py-2">
+                                                    Satuan
+                                                </th>
+                                                <th className="text-right py-2">
+                                                    Stok
+                                                </th>
+                                                <th className="text-right py-2">
+                                                    Aksi
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {items.map((it) => (
                                                 <tr
-                                                    key={p.id}
-                                                    className="border-b border-border/30 text-sm align-middle"
+                                                    key={it.id}
+                                                    className="border-b border-border/30 text-sm"
                                                 >
-                                                    <td className="px-4 py-2 whitespace-nowrap">
-                                                        {fmtDate(p.tanggal)}
+                                                    <td className="py-2">
+                                                        {it.kode}
                                                     </td>
-                                                    <td className="px-4 py-2">
-                                                        {p.supplier}
+                                                    <td className="py-2">
+                                                        {it.nama}
                                                     </td>
-                                                    <td className="px-4 py-2">
-                                                        {p.itemNama}
+                                                    <td className="py-2">
+                                                        {it.kategori || "-"}
                                                     </td>
-                                                    <td className="px-4 py-2 text-right tabular-nums">
-                                                        {p.qty}
+                                                    <td className="py-2">
+                                                        {it.satuan || "-"}
                                                     </td>
-                                                    <td className="px-4 py-2 text-right tabular-nums">
-                                                        {fmtRp(p.harga)}
-                                                    </td>
-                                                    <td className="px-4 py-2 text-right tabular-nums">
-                                                        {fmtRp(p.total)}
-                                                    </td>
-                                                    <td className="px-4 py-2">
-                                                        <span
-                                                            className={
-                                                                isClosed
-                                                                    ? "text-red-600 font-medium"
-                                                                    : "text-emerald-600 font-medium"
-                                                            }
-                                                        >
-                                                            {p.status}
-                                                        </span>
+                                                    <td className="py-2 text-right">
+                                                        {it.stok}
                                                     </td>
                                                     <td className="py-2">
                                                         <div className="flex justify-end gap-1">
-                                                            {!isClosed && (
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    onClick={() =>
-                                                                        postingById(
-                                                                            p.id
-                                                                        )
-                                                                    }
-                                                                    title="Posting"
-                                                                    aria-label="Posting"
-                                                                >
-                                                                    <CheckCircle2 className="h-4 w-4" />
-                                                                </Button>
-                                                            )}
                                                             <Button
                                                                 variant="ghost"
                                                                 size="icon"
                                                                 onClick={() =>
-                                                                    openPurchaseModal(
-                                                                        p
+                                                                    openItemModal(
+                                                                        it
                                                                     )
                                                                 }
-                                                                disabled={
-                                                                    isClosed
-                                                                }
-                                                                title={
-                                                                    isClosed
-                                                                        ? "Sudah CLOSE"
-                                                                        : "Edit"
-                                                                }
+                                                                title="Edit"
                                                                 aria-label="Edit"
                                                             >
                                                                 <Pencil className="h-4 w-4" />
@@ -1122,18 +879,11 @@ export default function InventarisPage() {
                                                                 variant="destructive"
                                                                 size="icon"
                                                                 onClick={() =>
-                                                                    requestDeletePurchase(
-                                                                        p
+                                                                    requestDeleteItem(
+                                                                        it
                                                                     )
                                                                 }
-                                                                disabled={
-                                                                    isClosed
-                                                                }
-                                                                title={
-                                                                    isClosed
-                                                                        ? "Sudah CLOSE"
-                                                                        : "Hapus"
-                                                                }
+                                                                title="Hapus"
                                                                 aria-label="Hapus"
                                                             >
                                                                 <Trash2 className="h-4 w-4" />
@@ -1141,259 +891,546 @@ export default function InventarisPage() {
                                                         </div>
                                                     </td>
                                                 </tr>
-                                            );
-                                        })}
-                                        {!purchases.length && (
-                                            <tr>
-                                                <td
-                                                    colSpan={8}
-                                                    className="py-6 text-center text-sm text-muted-foreground"
-                                                >
-                                                    Belum ada data pembelian.
-                                                </td>
+                                            ))}
+                                            {!items.length && (
+                                                <tr>
+                                                    <td
+                                                        colSpan={6}
+                                                        className="py-6 text-center text-sm text-muted-foreground"
+                                                    >
+                                                        Belum ada item.
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </GlassCard>
+
+                            {/* PURCHASE LIST */}
+                            <GlassCard className="p-6">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="text-lg font-semibold">
+                                        Daftar Pembelian
+                                    </div>
+                                    <Button
+                                        onClick={() => postingAllDraft()}
+                                        className="bg-emerald-600 text-white"
+                                    >
+                                        Posting
+                                    </Button>
+                                </div>
+
+                                {/* Mobile: cards */}
+                                <div className="space-y-3 lg:hidden">
+                                    {purchases.map((p) => {
+                                        const isClosed = p.status === "CLOSE";
+                                        return (
+                                            <div
+                                                key={p.id}
+                                                className="rounded-xl border border-border/60 p-4 bg-background/60"
+                                            >
+                                                <div className="flex items-center justify-between">
+                                                    <div className="font-semibold">
+                                                        {fmtDate(p.tanggal)}
+                                                    </div>
+                                                    <div className="flex gap-1">
+                                                        {!isClosed && (
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                onClick={() =>
+                                                                    postingById(
+                                                                        p.id
+                                                                    )
+                                                                }
+                                                                title="Posting"
+                                                                aria-label="Posting"
+                                                            >
+                                                                <CheckCircle2 className="h-4 w-4" />
+                                                            </Button>
+                                                        )}
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={() =>
+                                                                openPurchaseModal(
+                                                                    p
+                                                                )
+                                                            }
+                                                            disabled={isClosed}
+                                                            title={
+                                                                isClosed
+                                                                    ? "Sudah CLOSE"
+                                                                    : "Edit"
+                                                            }
+                                                            aria-label="Edit"
+                                                        >
+                                                            <Pencil className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="destructive"
+                                                            size="icon"
+                                                            onClick={() =>
+                                                                requestDeletePurchase(
+                                                                    p
+                                                                )
+                                                            }
+                                                            disabled={isClosed}
+                                                            title={
+                                                                isClosed
+                                                                    ? "Sudah CLOSE"
+                                                                    : "Hapus"
+                                                            }
+                                                            aria-label="Hapus"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                                <Separator className="my-3" />
+                                                <div className="grid grid-cols-2 gap-y-1 text-sm">
+                                                    <span className="text-muted-foreground">
+                                                        Supplier
+                                                    </span>
+                                                    <span>{p.supplier}</span>
+                                                    <span className="text-muted-foreground">
+                                                        Item
+                                                    </span>
+                                                    <span>{p.itemNama}</span>
+                                                    <span className="text-muted-foreground">
+                                                        Qty
+                                                    </span>
+                                                    <span>{p.qty}</span>
+                                                    <span className="text-muted-foreground">
+                                                        Harga
+                                                    </span>
+                                                    <span>
+                                                        {fmtRp(p.harga)}
+                                                    </span>
+                                                    <span className="text-muted-foreground">
+                                                        Total
+                                                    </span>
+                                                    <span className="font-medium">
+                                                        {fmtRp(p.total)}
+                                                    </span>
+                                                    <span className="text-muted-foreground">
+                                                        Status
+                                                    </span>
+                                                    <span
+                                                        className={
+                                                            isClosed
+                                                                ? "text-red-600 font-medium"
+                                                                : "text-emerald-600 font-medium"
+                                                        }
+                                                    >
+                                                        {p.status}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                    {!purchases.length && (
+                                        <div className="text-sm text-muted-foreground text-center py-6">
+                                            Belum ada data pembelian.
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Desktop: table */}
+                                <div className="hidden lg:block overflow-x-auto">
+                                    <table className="w-full">
+                                        <thead>
+                                            <tr className="border-b border-border/50 text-sm text-muted-foreground">
+                                                <th className="text-left px-4 py-2">
+                                                    Tanggal
+                                                </th>
+                                                <th className="text-left px-4 py-2">
+                                                    Supplier
+                                                </th>
+                                                <th className="text-left px-4 py-2">
+                                                    Item
+                                                </th>
+                                                <th className="text-right px-4 py-2">
+                                                    Qty
+                                                </th>
+                                                <th className="text-right px-4 py-2">
+                                                    Harga
+                                                </th>
+                                                <th className="text-right px-4 py-2">
+                                                    Total
+                                                </th>
+                                                <th className="text-left px-4 py-2">
+                                                    Status
+                                                </th>
+                                                <th className="text-right px-4 py-2">
+                                                    Aksi
+                                                </th>
                                             </tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </GlassCard>
+                                        </thead>
+
+                                        <tbody>
+                                            {purchases.map((p) => {
+                                                const isClosed =
+                                                    p.status === "CLOSE";
+                                                return (
+                                                    <tr
+                                                        key={p.id}
+                                                        className="border-b border-border/30 text-sm align-middle"
+                                                    >
+                                                        <td className="px-4 py-2 whitespace-nowrap">
+                                                            {fmtDate(p.tanggal)}
+                                                        </td>
+                                                        <td className="px-4 py-2">
+                                                            {p.supplier}
+                                                        </td>
+                                                        <td className="px-4 py-2">
+                                                            {p.itemNama}
+                                                        </td>
+                                                        <td className="px-4 py-2 text-right tabular-nums">
+                                                            {p.qty}
+                                                        </td>
+                                                        <td className="px-4 py-2 text-right tabular-nums">
+                                                            {fmtRp(p.harga)}
+                                                        </td>
+                                                        <td className="px-4 py-2 text-right tabular-nums">
+                                                            {fmtRp(p.total)}
+                                                        </td>
+                                                        <td className="px-4 py-2">
+                                                            <span
+                                                                className={
+                                                                    isClosed
+                                                                        ? "text-red-600 font-medium"
+                                                                        : "text-emerald-600 font-medium"
+                                                                }
+                                                            >
+                                                                {p.status}
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-2">
+                                                            <div className="flex justify-end gap-1">
+                                                                {!isClosed && (
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        onClick={() =>
+                                                                            postingById(
+                                                                                p.id
+                                                                            )
+                                                                        }
+                                                                        title="Posting"
+                                                                        aria-label="Posting"
+                                                                    >
+                                                                        <CheckCircle2 className="h-4 w-4" />
+                                                                    </Button>
+                                                                )}
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    onClick={() =>
+                                                                        openPurchaseModal(
+                                                                            p
+                                                                        )
+                                                                    }
+                                                                    disabled={
+                                                                        isClosed
+                                                                    }
+                                                                    title={
+                                                                        isClosed
+                                                                            ? "Sudah CLOSE"
+                                                                            : "Edit"
+                                                                    }
+                                                                    aria-label="Edit"
+                                                                >
+                                                                    <Pencil className="h-4 w-4" />
+                                                                </Button>
+                                                                <Button
+                                                                    variant="destructive"
+                                                                    size="icon"
+                                                                    onClick={() =>
+                                                                        requestDeletePurchase(
+                                                                            p
+                                                                        )
+                                                                    }
+                                                                    disabled={
+                                                                        isClosed
+                                                                    }
+                                                                    title={
+                                                                        isClosed
+                                                                            ? "Sudah CLOSE"
+                                                                            : "Hapus"
+                                                                    }
+                                                                    aria-label="Hapus"
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                            {!purchases.length && (
+                                                <tr>
+                                                    <td
+                                                        colSpan={8}
+                                                        className="py-6 text-center text-sm text-muted-foreground"
+                                                    >
+                                                        Belum ada data
+                                                        pembelian.
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </GlassCard>
+                        </div>
+
+                        <Separator className="my-2" />
                     </div>
 
-                    <Separator className="my-2" />
-                </div>
+                    {/* ====== Edit Item Modal ====== */}
+                    <Dialog open={openEditItem} onOpenChange={setOpenEditItem}>
+                        <DialogContent className="sm:max-w-lg">
+                            <DialogHeader>
+                                <DialogTitle>Edit Item</DialogTitle>
+                                <DialogDescription>
+                                    Perbarui data item. Kode tidak bisa diubah.
+                                </DialogDescription>
+                            </DialogHeader>
+                            {editingItem && (
+                                <div className="space-y-3">
+                                    <div className="space-y-1">
+                                        <label className="text-xs text-muted-foreground">
+                                            Kode
+                                        </label>
+                                        <Input
+                                            value={editingItem.kode}
+                                            readOnly
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs text-muted-foreground">
+                                            Nama *
+                                        </label>
+                                        <Input
+                                            value={editItemForm.nama}
+                                            onChange={(e) =>
+                                                setEditItemForm((s) => ({
+                                                    ...s,
+                                                    nama: e.target.value,
+                                                }))
+                                            }
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs text-muted-foreground">
+                                            Kategori
+                                        </label>
+                                        <Input
+                                            value={editItemForm.kategori}
+                                            onChange={(e) =>
+                                                setEditItemForm((s) => ({
+                                                    ...s,
+                                                    kategori: e.target.value,
+                                                }))
+                                            }
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs text-muted-foreground">
+                                            Satuan
+                                        </label>
+                                        <Input
+                                            value={editItemForm.satuan}
+                                            onChange={(e) =>
+                                                setEditItemForm((s) => ({
+                                                    ...s,
+                                                    satuan: e.target.value,
+                                                }))
+                                            }
+                                        />
+                                    </div>
+                                    <div className="flex justify-end gap-2 pt-2">
+                                        <Button
+                                            variant="outline"
+                                            onClick={() =>
+                                                setOpenEditItem(false)
+                                            }
+                                        >
+                                            Batal
+                                        </Button>
+                                        <Button
+                                            onClick={submitEditItem}
+                                            className="bg-emerald-600 text-white"
+                                        >
+                                            Simpan
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
+                        </DialogContent>
+                    </Dialog>
 
-                {/* ====== Edit Item Modal ====== */}
-                <Dialog open={openEditItem} onOpenChange={setOpenEditItem}>
-                    <DialogContent className="sm:max-w-lg">
-                        <DialogHeader>
-                            <DialogTitle>Edit Item</DialogTitle>
-                            <DialogDescription>
-                                Perbarui data item. Kode tidak bisa diubah.
-                            </DialogDescription>
-                        </DialogHeader>
-                        {editingItem && (
-                            <div className="space-y-3">
-                                <div className="space-y-1">
-                                    <label className="text-xs text-muted-foreground">
-                                        Kode
-                                    </label>
-                                    <Input value={editingItem.kode} readOnly />
+                    {/* ====== Edit Purchase Modal ====== */}
+                    <Dialog open={openEditPur} onOpenChange={setOpenEditPur}>
+                        <DialogContent className="sm:max-w-lg">
+                            <DialogHeader>
+                                <DialogTitle>Edit Pembelian</DialogTitle>
+                                <DialogDescription>
+                                    Perbarui data pembelian. Stok & ledger akan
+                                    disesuaikan.
+                                </DialogDescription>
+                            </DialogHeader>
+                            {editingPur && (
+                                <div className="space-y-3">
+                                    <div className="space-y-1">
+                                        <label className="text-xs text-muted-foreground">
+                                            Tanggal *
+                                        </label>
+                                        <Input
+                                            type="date"
+                                            value={editPurForm.tanggal}
+                                            onChange={(e) =>
+                                                setEditPurForm((s) => ({
+                                                    ...s,
+                                                    tanggal: e.target.value,
+                                                }))
+                                            }
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs text-muted-foreground">
+                                            Supplier *
+                                        </label>
+                                        <Input
+                                            value={editPurForm.supplier}
+                                            onChange={(e) =>
+                                                setEditPurForm((s) => ({
+                                                    ...s,
+                                                    supplier: e.target.value,
+                                                }))
+                                            }
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs text-muted-foreground">
+                                            Item *
+                                        </label>
+                                        <Select
+                                            value={editPurForm.itemId}
+                                            onValueChange={(v) =>
+                                                setEditPurForm((s) => ({
+                                                    ...s,
+                                                    itemId: v,
+                                                }))
+                                            }
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Pilih item" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {items.map((it) => (
+                                                    <SelectItem
+                                                        key={it.id}
+                                                        value={it.id}
+                                                    >
+                                                        {it.kode} — {it.nama}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs text-muted-foreground">
+                                            Qty *
+                                        </label>
+                                        <Input
+                                            type="number"
+                                            value={editPurForm.qty || ""}
+                                            onChange={(e) =>
+                                                setEditPurForm((s) => ({
+                                                    ...s,
+                                                    qty: Number(
+                                                        e.target.value || 0
+                                                    ),
+                                                }))
+                                            }
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs text-muted-foreground">
+                                            Harga *
+                                        </label>
+                                        <Input
+                                            type="number"
+                                            value={editPurForm.harga || ""}
+                                            onChange={(e) =>
+                                                setEditPurForm((s) => ({
+                                                    ...s,
+                                                    harga: Number(
+                                                        e.target.value || 0
+                                                    ),
+                                                }))
+                                            }
+                                        />
+                                    </div>
+                                    <div className="flex justify-end gap-2 pt-2">
+                                        <Button
+                                            variant="outline"
+                                            onClick={() =>
+                                                setOpenEditPur(false)
+                                            }
+                                        >
+                                            Batal
+                                        </Button>
+                                        <Button
+                                            onClick={submitEditPurchase}
+                                            className="bg-emerald-600 text-white"
+                                        >
+                                            Simpan
+                                        </Button>
+                                    </div>
                                 </div>
-                                <div className="space-y-1">
-                                    <label className="text-xs text-muted-foreground">
-                                        Nama *
-                                    </label>
-                                    <Input
-                                        value={editItemForm.nama}
-                                        onChange={(e) =>
-                                            setEditItemForm((s) => ({
-                                                ...s,
-                                                nama: e.target.value,
-                                            }))
-                                        }
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-xs text-muted-foreground">
-                                        Kategori
-                                    </label>
-                                    <Input
-                                        value={editItemForm.kategori}
-                                        onChange={(e) =>
-                                            setEditItemForm((s) => ({
-                                                ...s,
-                                                kategori: e.target.value,
-                                            }))
-                                        }
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-xs text-muted-foreground">
-                                        Satuan
-                                    </label>
-                                    <Input
-                                        value={editItemForm.satuan}
-                                        onChange={(e) =>
-                                            setEditItemForm((s) => ({
-                                                ...s,
-                                                satuan: e.target.value,
-                                            }))
-                                        }
-                                    />
-                                </div>
-                                <div className="flex justify-end gap-2 pt-2">
-                                    <Button
-                                        variant="outline"
-                                        onClick={() => setOpenEditItem(false)}
-                                    >
-                                        Batal
-                                    </Button>
-                                    <Button
-                                        onClick={submitEditItem}
-                                        className="bg-emerald-600 text-white"
-                                    >
-                                        Simpan
-                                    </Button>
-                                </div>
+                            )}
+                        </DialogContent>
+                    </Dialog>
+
+                    {/* ====== Confirm Delete (frontend) ====== */}
+                    <Dialog
+                        open={confirmOpen}
+                        onOpenChange={(o) => !confirmBusy && setConfirmOpen(o)}
+                    >
+                        <DialogContent className="sm:max-w-md">
+                            <DialogHeader>
+                                <DialogTitle>Konfirmasi</DialogTitle>
+                                <DialogDescription>
+                                    {confirmText}
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="flex justify-end gap-2 pt-2">
+                                <Button
+                                    variant="outline"
+                                    disabled={confirmBusy}
+                                    onClick={() => setConfirmOpen(false)}
+                                >
+                                    Batal
+                                </Button>
+                                <Button
+                                    variant="destructive"
+                                    disabled={confirmBusy}
+                                    onClick={async () => {
+                                        if (!confirmAction) return;
+                                        await confirmAction();
+                                    }}
+                                >
+                                    {confirmBusy ? "Memproses..." : "Lanjut"}
+                                </Button>
                             </div>
-                        )}
-                    </DialogContent>
-                </Dialog>
-
-                {/* ====== Edit Purchase Modal ====== */}
-                <Dialog open={openEditPur} onOpenChange={setOpenEditPur}>
-                    <DialogContent className="sm:max-w-lg">
-                        <DialogHeader>
-                            <DialogTitle>Edit Pembelian</DialogTitle>
-                            <DialogDescription>
-                                Perbarui data pembelian. Stok & ledger akan
-                                disesuaikan.
-                            </DialogDescription>
-                        </DialogHeader>
-                        {editingPur && (
-                            <div className="space-y-3">
-                                <div className="space-y-1">
-                                    <label className="text-xs text-muted-foreground">
-                                        Tanggal *
-                                    </label>
-                                    <Input
-                                        type="date"
-                                        value={editPurForm.tanggal}
-                                        onChange={(e) =>
-                                            setEditPurForm((s) => ({
-                                                ...s,
-                                                tanggal: e.target.value,
-                                            }))
-                                        }
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-xs text-muted-foreground">
-                                        Supplier *
-                                    </label>
-                                    <Input
-                                        value={editPurForm.supplier}
-                                        onChange={(e) =>
-                                            setEditPurForm((s) => ({
-                                                ...s,
-                                                supplier: e.target.value,
-                                            }))
-                                        }
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-xs text-muted-foreground">
-                                        Item *
-                                    </label>
-                                    <Select
-                                        value={editPurForm.itemId}
-                                        onValueChange={(v) =>
-                                            setEditPurForm((s) => ({
-                                                ...s,
-                                                itemId: v,
-                                            }))
-                                        }
-                                    >
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Pilih item" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {items.map((it) => (
-                                                <SelectItem
-                                                    key={it.id}
-                                                    value={it.id}
-                                                >
-                                                    {it.kode} — {it.nama}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-xs text-muted-foreground">
-                                        Qty *
-                                    </label>
-                                    <Input
-                                        type="number"
-                                        value={editPurForm.qty || ""}
-                                        onChange={(e) =>
-                                            setEditPurForm((s) => ({
-                                                ...s,
-                                                qty: Number(
-                                                    e.target.value || 0
-                                                ),
-                                            }))
-                                        }
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-xs text-muted-foreground">
-                                        Harga *
-                                    </label>
-                                    <Input
-                                        type="number"
-                                        value={editPurForm.harga || ""}
-                                        onChange={(e) =>
-                                            setEditPurForm((s) => ({
-                                                ...s,
-                                                harga: Number(
-                                                    e.target.value || 0
-                                                ),
-                                            }))
-                                        }
-                                    />
-                                </div>
-                                <div className="flex justify-end gap-2 pt-2">
-                                    <Button
-                                        variant="outline"
-                                        onClick={() => setOpenEditPur(false)}
-                                    >
-                                        Batal
-                                    </Button>
-                                    <Button
-                                        onClick={submitEditPurchase}
-                                        className="bg-emerald-600 text-white"
-                                    >
-                                        Simpan
-                                    </Button>
-                                </div>
-                            </div>
-                        )}
-                    </DialogContent>
-                </Dialog>
-
-                {/* ====== Confirm Delete (frontend) ====== */}
-                <Dialog
-                    open={confirmOpen}
-                    onOpenChange={(o) => !confirmBusy && setConfirmOpen(o)}
-                >
-                    <DialogContent className="sm:max-w-md">
-                        <DialogHeader>
-                            <DialogTitle>Konfirmasi</DialogTitle>
-                            <DialogDescription>{confirmText}</DialogDescription>
-                        </DialogHeader>
-                        <div className="flex justify-end gap-2 pt-2">
-                            <Button
-                                variant="outline"
-                                disabled={confirmBusy}
-                                onClick={() => setConfirmOpen(false)}
-                            >
-                                Batal
-                            </Button>
-                            <Button
-                                variant="destructive"
-                                disabled={confirmBusy}
-                                onClick={async () => {
-                                    if (!confirmAction) return;
-                                    await confirmAction();
-                                }}
-                            >
-                                {confirmBusy ? "Memproses..." : "Lanjut"}
-                            </Button>
-                        </div>
-                    </DialogContent>
-                </Dialog>
-            </AppShell>
+                        </DialogContent>
+                    </Dialog>
+                </AppShell>
+            </PermissionGate>
         </AuthGuard>
     );
 }

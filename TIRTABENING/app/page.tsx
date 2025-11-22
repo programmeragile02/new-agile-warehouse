@@ -3,13 +3,14 @@ import { GlassCard } from "@/components/glass-card";
 import { Button } from "@/components/ui/button";
 import { TirtaLogo } from "@/components/tirta-logo";
 import Link from "next/link";
+import { NataLogo } from "@/components/nata-logo";
 export default function HomePage() {
     return (
         <AppShell>
             <div className="max-w-md mx-auto space-y-6">
                 {/* Header */}
                 <div className="text-center py-8">
-                    <TirtaLogo size="lg" className="mx-auto mb-4" />
+                    <NataLogo size="lg" className="mx-auto mb-4" />
                     <h1 className="text-4xl font-bold text-primary mb-2 text-balance">
                         Nata Banyu
                     </h1>
@@ -21,7 +22,6 @@ export default function HomePage() {
                 {/* Welcome Card */}
                 <GlassCard className="p-6">
                     <div className="text-center space-y-4">
-                        <TirtaLogo size="md" className="mx-auto" />
                         <h2 className="text-xl font-semibold text-foreground">
                             Selamat Datang
                         </h2>

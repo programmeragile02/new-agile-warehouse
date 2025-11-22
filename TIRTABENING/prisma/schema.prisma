@@ -105,6 +105,7 @@ model Pelanggan {
   tagihans       Tagihan[]
   resets         ResetMeter[]   @relation("PelangganReset")
   catatMeterBlok CatatMeterBlok[] @relation("PelangganToCatatMeterBlok")
+  detailPembayaran DetailPembayaran[]
 
   @@unique([zonaId, noUrutRumah])
   @@index([zonaId])
@@ -246,6 +247,9 @@ model Tagihan {
   // Tambahan untuk carry-over tagihan lalu dan sisa/kurang
   tagihanLalu   Int      @default(0) // saldo bulan lalu (boleh + atau −)
   sisaKurang    Int      @default(0) // saldo akhir bulan ini (boleh + atau −)
+
+  sudahBayar    Int      @default(0)
+  belumBayar    Int      @default(0)
   
   statusBayar   String   @default("UNPAID")
   statusVerif   String   @default("UNVERIFIED")
@@ -261,6 +265,8 @@ model Tagihan {
 
   // 1 tagihan punya banyak pembayaran
   pembayarans Pembayaran[]
+
+  detailPembayaran DetailPembayaran[]
 
   catatMeterId String?            @unique   // <-- agar benar2 1:1
   catatMeter   CatatMeter? @relation("TagihanToCatat", fields: [catatMeterId], references: [id])
@@ -306,6 +312,12 @@ model Pembayaran {
   // Catatan/keterangan pelunasan
   keterangan   String?  @db.Text
 
+  // detail alokasi
+  detailPembayaran DetailPembayaran[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime? @updatedAt
+
   // Soft delete pembayaran
   deletedAt     DateTime? @db.DateTime(3)
   deletedBy     String?
@@ -316,6 +328,30 @@ model Pembayaran {
   @@index([tagihanId], map: "Pembayaran_tagihanId_fkey")
   @@index([deletedAt])
   @@index([deletedBy])
+}
+
+model DetailPembayaran {
+  id             String    @id @default(cuid())
+
+  pembayaranId   String
+  pembayaran     Pembayaran @relation(fields: [pembayaranId], references: [id], onDelete: Cascade)
+
+  tagihanId      String
+  tagihan        Tagihan    @relation(fields: [tagihanId], references: [id], onDelete: Cascade)
+
+  pelangganId    String
+  pelanggan      Pelanggan  @relation(fields: [pelangganId], references: [id])
+
+  periode        String     // snapshot periode string (mis. "2025-10")
+  jumlahTerbayar Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([pembayaranId])
+  @@index([tagihanId])
+  @@index([pelangganId])
+  @@index([periode])
 }
 
 model Setting {
@@ -1011,4 +1047,52 @@ model Pajak {
   // constraint / index
   @@unique([periodeId]) // pastikan hanya 1 entri Pajak per periode
   @@index([periodeId])
+}
+
+model AppRole {
+  id          String   @id @default(cuid())
+  name        String   @db.VarChar(120)
+  description String?  @db.VarChar(255)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  permissions RolePermission[]
+
+  @@unique([name])                 // unik di DB tenant ini
+  @@index([isActive])
+  @@map("app_roles")
+}
+
+model AppPermission {
+  id          String   @id @default(cuid())
+  menuId      BigInt   @unique                         // refer ke MstMenu.id
+  menuTitle   String   @db.VarChar(255)
+  category    String?  @db.VarChar(160)                // judul parent (kalau ada) untuk grouping
+  productCode String?  @db.VarChar(84)
+  isActive    Boolean  @default(true)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  roleLinks   RolePermission[]
+
+  @@index([productCode])
+  @@map("app_permissions")
+}
+
+model RolePermission {
+  id            String  @id @default(cuid())
+  roleId        String
+  permissionId  String
+  canView       Boolean @default(false)
+  canAdd        Boolean @default(false)
+  canEdit       Boolean @default(false)
+  canDelete     Boolean @default(false)
+
+  role       AppRole       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission AppPermission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@map("app_role_permissions")
 }

@@ -21,6 +21,8 @@ import {
 import { Download, Search, Wallet, Calendar } from "lucide-react";
 import { FeatureGate } from "@/components/feature-gate";
 import * as XLSX from "xlsx";
+import { AclDeniedAlert } from "@/components/acl-denied-alert";
+import { PermissionGate } from "@/components/permission-gate";
 
 type HutangStatus = "UNPAID" | "PARTIAL" | "PAID";
 type Row = {
@@ -218,16 +220,29 @@ export default function LaporanHutangPage() {
 
     return (
         <AuthGuard requiredRole="ADMIN">
-            <AppShell>
-                <div className="max-w-6xl mx-auto space-y-6">
-                    <AppHeader title="Laporan Hutang Pengelola" />
+            <PermissionGate
+                path="/laporan/hutang"
+                action="view"
+                loadingFallback={
+                    <div className="min-h-screen flex items-center justify-center">
+                        <div className="flex items-center gap-2 text-primary">
+                            <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                            <span className="text-lg">Memuat…</span>
+                        </div>
+                    </div>
+                }
+                fallback={<AclDeniedAlert fullPage />}
+            >
+                <AppShell>
+                    <div className="max-w-6xl mx-auto space-y-6">
+                        <AppHeader title="Laporan Hutang Pengelola" />
 
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                        <p className="text-muted-foreground">
-                            Laporan ringkasan hutang
-                        </p>
-                        <div className="flex items-center gap-2">
-                            {/* <Button
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                            <p className="text-muted-foreground">
+                                Laporan ringkasan hutang
+                            </p>
+                            <div className="flex items-center gap-2">
+                                {/* <Button
                                 onClick={exportExcel}
                                 className="bg-emerald-600 hover:bg-emerald-700 text-white"
                                 disabled={!filtered.length}
@@ -235,345 +250,363 @@ export default function LaporanHutangPage() {
                                 <Download className="w-4 h-4 mr-2" />
                                 Export Excel
                             </Button> */}
-                            {/* === Tombol Export: digate pakai fitur === */}
-                            <FeatureGate
-                                code="export.excel"
-                                fallback={
+                                {/* === Tombol Export: digate pakai fitur === */}
+                                <FeatureGate
+                                    code="export.excel"
+                                    fallback={
+                                        <Button
+                                            disabled
+                                            className="opacity-60 cursor-not-allowed"
+                                        >
+                                            <Download className="h-4 w-4 mr-2" />
+                                            Export Excel (Tidak termasuk paket)
+                                        </Button>
+                                    }
+                                >
                                     <Button
-                                        disabled
-                                        className="opacity-60 cursor-not-allowed"
+                                        onClick={() => {
+                                            if (!rows.length) {
+                                                toast.info(
+                                                    "Tidak ada data untuk diekspor"
+                                                );
+                                                return;
+                                            }
+                                            exportExcel();
+                                            toast.success(
+                                                "Data berhasil diekspor ke Excel"
+                                            );
+                                        }}
+                                        className="bg-emerald-600 hover:bg-emerald-700 text-white"
                                     >
                                         <Download className="h-4 w-4 mr-2" />
-                                        Export Excel (Tidak termasuk paket)
+                                        Export Excel
                                     </Button>
-                                }
-                            >
-                                <Button
-                                    onClick={() => {
-                                        if (!rows.length) {
-                                            toast.info(
-                                                "Tidak ada data untuk diekspor"
-                                            );
-                                            return;
+                                </FeatureGate>
+                            </div>
+                        </div>
+
+                        {/* Filter Card */}
+                        <GlassCard className="p-6">
+                            <h2 className="text-xl font-semibold text-foreground mb-4">
+                                Filter
+                            </h2>
+
+                            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-y-3 gap-x-2">
+                                {/* Search */}
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                    <Input
+                                        className="pl-10 bg-card/50"
+                                        placeholder="Cari deskripsi/ref/pihak/kategori…"
+                                        value={search}
+                                        onChange={(e) =>
+                                            setSearch(e.target.value)
                                         }
-                                        exportExcel();
-                                        toast.success(
-                                            "Data berhasil diekspor ke Excel"
-                                        );
-                                    }}
-                                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                                >
-                                    <Download className="h-4 w-4 mr-2" />
-                                    Export Excel
-                                </Button>
-                            </FeatureGate>
-                        </div>
-                    </div>
+                                    />
+                                </div>
 
-                    {/* Filter Card */}
-                    <GlassCard className="p-6">
-                        <h2 className="text-xl font-semibold text-foreground mb-4">
-                            Filter
-                        </h2>
+                                {/* Status */}
+                                <div className="w-[180px]">
+                                    <Select
+                                        value={status === "" ? ALL : status}
+                                        onValueChange={(v) =>
+                                            setStatus(
+                                                v === ALL
+                                                    ? ""
+                                                    : (v as HutangStatus)
+                                            )
+                                        }
+                                    >
+                                        <SelectTrigger className="bg-card/50 w-full">
+                                            <SelectValue placeholder="Semua Status" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value={ALL}>
+                                                Semua Status
+                                            </SelectItem>
+                                            <SelectItem value="UNPAID">
+                                                Belum Bayar
+                                            </SelectItem>
+                                            <SelectItem value="PARTIAL">
+                                                Cicil
+                                            </SelectItem>
+                                            <SelectItem value="PAID">
+                                                Lunas
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-y-3 gap-x-2">
-                            {/* Search */}
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                <Input
-                                    className="pl-10 bg-card/50"
-                                    placeholder="Cari deskripsi/ref/pihak/kategori…"
-                                    value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
-                                />
+                                {/* Dari */}
+                                <div className="relative w-[170px]">
+                                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                    <Input
+                                        type="date"
+                                        className="pl-10 bg-card/50 w-full"
+                                        value={dateFrom}
+                                        onChange={(e) =>
+                                            setDateFrom(e.target.value)
+                                        }
+                                    />
+                                </div>
+
+                                {/* Sampai */}
+                                <div className="relative w-[170px]">
+                                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                    <Input
+                                        type="date"
+                                        className="pl-10 bg-card/50 w-full"
+                                        value={dateTo}
+                                        onChange={(e) =>
+                                            setDateTo(e.target.value)
+                                        }
+                                    />
+                                </div>
                             </div>
+                        </GlassCard>
 
-                            {/* Status */}
-                            <div className="w-[180px]">
-                                <Select
-                                    value={status === "" ? ALL : status}
-                                    onValueChange={(v) =>
-                                        setStatus(
-                                            v === ALL ? "" : (v as HutangStatus)
-                                        )
-                                    }
-                                >
-                                    <SelectTrigger className="bg-card/50 w-full">
-                                        <SelectValue placeholder="Semua Status" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value={ALL}>
-                                            Semua Status
-                                        </SelectItem>
-                                        <SelectItem value="UNPAID">
-                                            Belum Bayar
-                                        </SelectItem>
-                                        <SelectItem value="PARTIAL">
-                                            Cicil
-                                        </SelectItem>
-                                        <SelectItem value="PAID">
-                                            Lunas
-                                        </SelectItem>
-                                    </SelectContent>
-                                </Select>
+                        {/* KPI */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="text-center p-4 bg-white rounded-lg">
+                                <p className="text-2xl font-bold text-primary">
+                                    {toIDR(data?.summary?.totalHutang ?? 0)}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                    Total Hutang
+                                </p>
                             </div>
-
-                            {/* Dari */}
-                            <div className="relative w-[170px]">
-                                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                <Input
-                                    type="date"
-                                    className="pl-10 bg-card/50 w-full"
-                                    value={dateFrom}
-                                    onChange={(e) =>
-                                        setDateFrom(e.target.value)
-                                    }
-                                />
+                            <div className="text-center p-4 bg-white rounded-lg">
+                                <p className="text-2xl font-bold text-green-600">
+                                    {toIDR(data?.summary?.totalTerbayar ?? 0)}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                    Terbayar
+                                </p>
                             </div>
-
-                            {/* Sampai */}
-                            <div className="relative w-[170px]">
-                                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                <Input
-                                    type="date"
-                                    className="pl-10 bg-card/50 w-full"
-                                    value={dateTo}
-                                    onChange={(e) => setDateTo(e.target.value)}
-                                />
+                            <div className="text-center p-4 bg-white rounded-lg">
+                                <p className="text-2xl font-bold text-yellow-600">
+                                    {toIDR(
+                                        (data?.summary?.totalHutang ?? 0) -
+                                            (data?.summary?.totalTerbayar ?? 0)
+                                    )}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                    Sisa
+                                </p>
                             </div>
-                        </div>
-                    </GlassCard>
-
-                    {/* KPI */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="text-center p-4 bg-white rounded-lg">
-                            <p className="text-2xl font-bold text-primary">
-                                {toIDR(data?.summary?.totalHutang ?? 0)}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                                Total Hutang
-                            </p>
-                        </div>
-                        <div className="text-center p-4 bg-white rounded-lg">
-                            <p className="text-2xl font-bold text-green-600">
-                                {toIDR(data?.summary?.totalTerbayar ?? 0)}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                                Terbayar
-                            </p>
-                        </div>
-                        <div className="text-center p-4 bg-white rounded-lg">
-                            <p className="text-2xl font-bold text-yellow-600">
-                                {toIDR(
-                                    (data?.summary?.totalHutang ?? 0) -
-                                        (data?.summary?.totalTerbayar ?? 0)
-                                )}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                                Sisa
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Data */}
-                    <GlassCard className="p-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-xl font-semibold text-foreground flex items-center gap-2">
-                                <Wallet className="w-5 h-5" /> Daftar Hutang
-                                Pengelola
-                            </h3>
-                            <p className="text-sm text-muted-foreground">
-                                {data?.summary?.count ?? 0} entri
-                            </p>
                         </div>
 
-                        {!data && isLoading && (
-                            <div className="p-4 text-sm text-muted-foreground">
-                                Memuat data…
+                        {/* Data */}
+                        <GlassCard className="p-6">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-xl font-semibold text-foreground flex items-center gap-2">
+                                    <Wallet className="w-5 h-5" /> Daftar Hutang
+                                    Pengelola
+                                </h3>
+                                <p className="text-sm text-muted-foreground">
+                                    {data?.summary?.count ?? 0} entri
+                                </p>
                             </div>
-                        )}
-                        {error && (
-                            <div className="p-4 text-sm text-destructive">
-                                Gagal memuat data.
-                            </div>
-                        )}
 
-                        {data?.ok && (
-                            <>
-                                {/* Desktop table */}
-                                <div className="hidden lg:block overflow-x-auto">
-                                    <table className="w-full">
-                                        <thead>
-                                            <tr className="border-b border-border/20">
-                                                <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
-                                                    Tanggal
-                                                </th>
-                                                <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
-                                                    Deskripsi
-                                                </th>
-                                                <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
-                                                    Pemberi
-                                                </th>
-                                                {/* <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
+                            {!data && isLoading && (
+                                <div className="p-4 text-sm text-muted-foreground">
+                                    Memuat data…
+                                </div>
+                            )}
+                            {error && (
+                                <div className="p-4 text-sm text-destructive">
+                                    Gagal memuat data.
+                                </div>
+                            )}
+
+                            {data?.ok && (
+                                <>
+                                    {/* Desktop table */}
+                                    <div className="hidden lg:block overflow-x-auto">
+                                        <table className="w-full">
+                                            <thead>
+                                                <tr className="border-b border-border/20">
+                                                    <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
+                                                        Tanggal
+                                                    </th>
+                                                    <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
+                                                        Deskripsi
+                                                    </th>
+                                                    <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
+                                                        Pemberi
+                                                    </th>
+                                                    {/* <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
                           Kategori
                         </th> */}
-                                                <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
-                                                    Ref
-                                                </th>
-                                                <th className="text-right py-3 px-2 text-sm font-medium text-muted-foreground">
-                                                    Nominal
-                                                </th>
-                                                <th className="text-right py-3 px-2 text-sm font-medium text-muted-foreground">
-                                                    Terbayar
-                                                </th>
-                                                <th className="text-right py-3 px-2 text-sm font-medium text-muted-foreground">
-                                                    Sisa
-                                                </th>
-                                                <th className="text-center py-3 px-2 text-sm font-medium text-muted-foreground">
-                                                    Status
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {filtered.map((r) => {
-                                                const { tgl } = fmt(r.tanggal);
-                                                const sisa = Math.max(
-                                                    0,
-                                                    (r.nominal || 0) -
-                                                        (r.terbayar || 0)
-                                                );
-                                                return (
-                                                    <tr
-                                                        key={r.id}
-                                                        className="border-b border-border/10 hover:bg-muted/20"
-                                                    >
-                                                        <td className="py-3 px-2 text-sm">
-                                                            {tgl}
-                                                        </td>
-                                                        <td className="py-3 px-2 text-sm font-medium text-foreground">
-                                                            {r.deskripsi}
-                                                        </td>
-                                                        <td className="py-3 px-2 text-sm">
-                                                            {r.pihak || "-"}
-                                                        </td>
-                                                        {/* <td className="py-3 px-2 text-sm">
+                                                    <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
+                                                        Ref
+                                                    </th>
+                                                    <th className="text-right py-3 px-2 text-sm font-medium text-muted-foreground">
+                                                        Nominal
+                                                    </th>
+                                                    <th className="text-right py-3 px-2 text-sm font-medium text-muted-foreground">
+                                                        Terbayar
+                                                    </th>
+                                                    <th className="text-right py-3 px-2 text-sm font-medium text-muted-foreground">
+                                                        Sisa
+                                                    </th>
+                                                    <th className="text-center py-3 px-2 text-sm font-medium text-muted-foreground">
+                                                        Status
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {filtered.map((r) => {
+                                                    const { tgl } = fmt(
+                                                        r.tanggal
+                                                    );
+                                                    const sisa = Math.max(
+                                                        0,
+                                                        (r.nominal || 0) -
+                                                            (r.terbayar || 0)
+                                                    );
+                                                    return (
+                                                        <tr
+                                                            key={r.id}
+                                                            className="border-b border-border/10 hover:bg-muted/20"
+                                                        >
+                                                            <td className="py-3 px-2 text-sm">
+                                                                {tgl}
+                                                            </td>
+                                                            <td className="py-3 px-2 text-sm font-medium text-foreground">
+                                                                {r.deskripsi}
+                                                            </td>
+                                                            <td className="py-3 px-2 text-sm">
+                                                                {r.pihak || "-"}
+                                                            </td>
+                                                            {/* <td className="py-3 px-2 text-sm">
                               {r.kategori || "-"}
                             </td> */}
-                                                        <td className="py-3 px-2 text-sm">
-                                                            {r.refNo || "-"}
-                                                        </td>
-                                                        <td className="py-3 px-2 text-sm text-right">
-                                                            {toIDR(r.nominal)}
-                                                        </td>
-                                                        <td className="py-3 px-2 text-sm text-right">
-                                                            {toIDR(r.terbayar)}
-                                                        </td>
-                                                        <td className="py-3 px-2 text-sm text-right font-bold">
-                                                            {toIDR(sisa)}
-                                                        </td>
-                                                        <td className="py-3 px-2 text-center">
-                                                            {statusBadge(
-                                                                r.status
-                                                            )}
+                                                            <td className="py-3 px-2 text-sm">
+                                                                {r.refNo || "-"}
+                                                            </td>
+                                                            <td className="py-3 px-2 text-sm text-right">
+                                                                {toIDR(
+                                                                    r.nominal
+                                                                )}
+                                                            </td>
+                                                            <td className="py-3 px-2 text-sm text-right">
+                                                                {toIDR(
+                                                                    r.terbayar
+                                                                )}
+                                                            </td>
+                                                            <td className="py-3 px-2 text-sm text-right font-bold">
+                                                                {toIDR(sisa)}
+                                                            </td>
+                                                            <td className="py-3 px-2 text-center">
+                                                                {statusBadge(
+                                                                    r.status
+                                                                )}
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                                {filtered.length === 0 && (
+                                                    <tr>
+                                                        <td
+                                                            colSpan={9}
+                                                            className="py-6 text-center text-sm text-muted-foreground"
+                                                        >
+                                                            Tidak ada data.
                                                         </td>
                                                     </tr>
-                                                );
-                                            })}
-                                            {filtered.length === 0 && (
-                                                <tr>
-                                                    <td
-                                                        colSpan={9}
-                                                        className="py-6 text-center text-sm text-muted-foreground"
-                                                    >
-                                                        Tidak ada data.
-                                                    </td>
-                                                </tr>
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
 
-                                {/* Mobile cards */}
-                                <div className="lg:hidden space-y-4">
-                                    {filtered.map((r) => {
-                                        const { tgl, jam } = fmt(r.tanggal);
-                                        const sisa = Math.max(
-                                            0,
-                                            (r.nominal || 0) - (r.terbayar || 0)
-                                        );
-                                        return (
-                                            <div
-                                                key={r.id}
-                                                className="p-4 bg-muted/20 rounded-lg space-y-4"
-                                            >
-                                                <div className="flex items-start justify-between">
-                                                    <div>
-                                                        <p className="font-medium text-foreground">
-                                                            {r.deskripsi}
-                                                        </p>
-                                                        <p className="text-xs text-muted-foreground">
-                                                            {/* {r.pihak || "-"} • {r.kategori || "-"} • Ref:{" "} */}
-                                                            {r.refNo || "-"}
-                                                        </p>
+                                    {/* Mobile cards */}
+                                    <div className="lg:hidden space-y-4">
+                                        {filtered.map((r) => {
+                                            const { tgl, jam } = fmt(r.tanggal);
+                                            const sisa = Math.max(
+                                                0,
+                                                (r.nominal || 0) -
+                                                    (r.terbayar || 0)
+                                            );
+                                            return (
+                                                <div
+                                                    key={r.id}
+                                                    className="p-4 bg-muted/20 rounded-lg space-y-4"
+                                                >
+                                                    <div className="flex items-start justify-between">
+                                                        <div>
+                                                            <p className="font-medium text-foreground">
+                                                                {r.deskripsi}
+                                                            </p>
+                                                            <p className="text-xs text-muted-foreground">
+                                                                {/* {r.pihak || "-"} • {r.kategori || "-"} • Ref:{" "} */}
+                                                                {r.refNo || "-"}
+                                                            </p>
+                                                        </div>
+                                                        {statusBadge(r.status)}
                                                     </div>
-                                                    {statusBadge(r.status)}
+                                                    <div className="bg-card/50 p-3 rounded-lg grid grid-cols-2 gap-3 text-sm">
+                                                        <div>
+                                                            <p className="text-muted-foreground">
+                                                                Tanggal
+                                                            </p>
+                                                            <p className="font-medium">
+                                                                {tgl}
+                                                            </p>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-muted-foreground">
+                                                                Jam
+                                                            </p>
+                                                            <p className="font-medium">
+                                                                {jam}
+                                                            </p>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-muted-foreground">
+                                                                Nominal
+                                                            </p>
+                                                            <p className="font-bold">
+                                                                {toIDR(
+                                                                    r.nominal
+                                                                )}
+                                                            </p>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-muted-foreground">
+                                                                Terbayar
+                                                            </p>
+                                                            <p className="font-medium">
+                                                                {toIDR(
+                                                                    r.terbayar
+                                                                )}
+                                                            </p>
+                                                        </div>
+                                                        <div className="col-span-2">
+                                                            <p className="text-muted-foreground">
+                                                                Sisa
+                                                            </p>
+                                                            <p className="font-bold text-primary">
+                                                                {toIDR(sisa)}
+                                                            </p>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <div className="bg-card/50 p-3 rounded-lg grid grid-cols-2 gap-3 text-sm">
-                                                    <div>
-                                                        <p className="text-muted-foreground">
-                                                            Tanggal
-                                                        </p>
-                                                        <p className="font-medium">
-                                                            {tgl}
-                                                        </p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-muted-foreground">
-                                                            Jam
-                                                        </p>
-                                                        <p className="font-medium">
-                                                            {jam}
-                                                        </p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-muted-foreground">
-                                                            Nominal
-                                                        </p>
-                                                        <p className="font-bold">
-                                                            {toIDR(r.nominal)}
-                                                        </p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-muted-foreground">
-                                                            Terbayar
-                                                        </p>
-                                                        <p className="font-medium">
-                                                            {toIDR(r.terbayar)}
-                                                        </p>
-                                                    </div>
-                                                    <div className="col-span-2">
-                                                        <p className="text-muted-foreground">
-                                                            Sisa
-                                                        </p>
-                                                        <p className="font-bold text-primary">
-                                                            {toIDR(sisa)}
-                                                        </p>
-                                                    </div>
-                                                </div>
+                                            );
+                                        })}
+                                        {filtered.length === 0 && (
+                                            <div className="p-4 text-sm text-muted-foreground bg-muted/20 rounded">
+                                                Tidak ada data.
                                             </div>
-                                        );
-                                    })}
-                                    {filtered.length === 0 && (
-                                        <div className="p-4 text-sm text-muted-foreground bg-muted/20 rounded">
-                                            Tidak ada data.
-                                        </div>
-                                    )}
-                                </div>
-                            </>
-                        )}
-                    </GlassCard>
-                </div>
-            </AppShell>
+                                        )}
+                                    </div>
+                                </>
+                            )}
+                        </GlassCard>
+                    </div>
+                </AppShell>
+            </PermissionGate>
         </AuthGuard>
     );
 }

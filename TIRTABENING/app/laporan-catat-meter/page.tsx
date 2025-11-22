@@ -21,6 +21,8 @@ import * as XLSX from "xlsx";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { FeatureGate } from "@/components/feature-gate";
+import { PermissionGate } from "@/components/permission-gate";
+import { AclDeniedAlert } from "@/components/acl-denied-alert";
 
 type Row = {
     id: string;
@@ -237,59 +239,94 @@ export default function LaporanCatatMeterPage() {
 
     return (
         <AuthGuard requiredRole={["ADMIN", "PETUGAS"]}>
-            <AppShell>
-                <div className="max-w-7xl mx-auto space-y-6">
-                    <AppHeader title="Laporan Catat Meter" />
+            <PermissionGate
+                path="/laporan-catat-meter"
+                action="view"
+                fallback={
+                    <AclDeniedAlert fullPage />
+                }
+                loadingFallback={
+                    <div className="min-h-screen flex items-center justify-center">
+                        <div className="flex items-center gap-2 text-primary">
+                            <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                            <span className="text-lg">Memuat…</span>
+                        </div>
+                    </div>
+                }
+            >
+                <AppShell>
+                    <div className="max-w-7xl mx-auto space-y-6">
+                        <AppHeader title="Laporan Catat Meter" />
 
-                    {/* FILTER BAR */}
-                    <GlassCard className="p-4">
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                            <div className="flex flex-wrap items-center gap-3">
-                                {/* Periode = dropdown dari DB */}
-                                <div className="flex items-center gap-2">
-                                    <label className="text-sm font-medium">
-                                        Periode Catat
-                                    </label>
-                                    <Select
-                                        value={month}
-                                        onValueChange={onChangeMonth}
-                                    >
-                                        <SelectTrigger className="w-56">
-                                            <SelectValue placeholder="Pilih periode" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {periods.map((p) => (
-                                                <SelectItem key={p} value={p}>
-                                                    {formatYmId(p)}
+                        {/* FILTER BAR */}
+                        <GlassCard className="p-4">
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                <div className="flex flex-wrap items-center gap-3">
+                                    {/* Periode = dropdown dari DB */}
+                                    <div className="flex items-center gap-2">
+                                        <label className="text-sm font-medium">
+                                            Periode Catat
+                                        </label>
+                                        <Select
+                                            value={month}
+                                            onValueChange={onChangeMonth}
+                                        >
+                                            <SelectTrigger className="w-56">
+                                                <SelectValue placeholder="Pilih periode" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {periods.map((p) => (
+                                                    <SelectItem
+                                                        key={p}
+                                                        value={p}
+                                                    >
+                                                        {formatYmId(p)}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    {/* Zona */}
+                                    <div className="flex items-center gap-2">
+                                        <label className="text-sm font-medium">
+                                            Blok
+                                        </label>
+                                        <Select
+                                            value={zonaId}
+                                            onValueChange={onChangeZona}
+                                        >
+                                            <SelectTrigger className="w-56">
+                                                <SelectValue placeholder="Semua blok" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value={ALL_ZONA}>
+                                                    Semua blok
                                                 </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
 
-                                {/* Zona */}
-                                <div className="flex items-center gap-2">
-                                    <label className="text-sm font-medium">
-                                        Blok
-                                    </label>
-                                    <Select
-                                        value={zonaId}
-                                        onValueChange={onChangeZona}
-                                    >
-                                        <SelectTrigger className="w-56">
-                                            <SelectValue placeholder="Semua blok" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value={ALL_ZONA}>
-                                                Semua blok
-                                            </SelectItem>
+                                                {zonesAssigned.length > 0 && (
+                                                    <SelectGroup>
+                                                        <SelectLabel>
+                                                            Blok Ditugaskan
+                                                        </SelectLabel>
+                                                        {zonesAssigned.map(
+                                                            (z) => (
+                                                                <SelectItem
+                                                                    key={z.id}
+                                                                    value={z.id}
+                                                                >
+                                                                    {z.nama}
+                                                                </SelectItem>
+                                                            )
+                                                        )}
+                                                    </SelectGroup>
+                                                )}
 
-                                            {zonesAssigned.length > 0 && (
                                                 <SelectGroup>
                                                     <SelectLabel>
-                                                        Blok Ditugaskan
+                                                        Semua Blok
                                                     </SelectLabel>
-                                                    {zonesAssigned.map((z) => (
+                                                    {zonesAll.map((z) => (
                                                         <SelectItem
                                                             key={z.id}
                                                             value={z.id}
@@ -298,49 +335,37 @@ export default function LaporanCatatMeterPage() {
                                                         </SelectItem>
                                                     ))}
                                                 </SelectGroup>
-                                            )}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
 
-                                            <SelectGroup>
-                                                <SelectLabel>
-                                                    Semua Blok
-                                                </SelectLabel>
-                                                {zonesAll.map((z) => (
+                                    {/* Page size */}
+                                    <div className="flex items-center gap-2">
+                                        <label className="text-sm font-medium whitespace-nowrap">
+                                            Baris
+                                        </label>
+                                        <Select
+                                            value={String(limit)}
+                                            onValueChange={onChangePageSize}
+                                        >
+                                            <SelectTrigger className="w-28">
+                                                <SelectValue placeholder="50" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {PAGE_SIZES.map((s) => (
                                                     <SelectItem
-                                                        key={z.id}
-                                                        value={z.id}
+                                                        key={s}
+                                                        value={s}
                                                     >
-                                                        {z.nama}
+                                                        {s}
                                                     </SelectItem>
                                                 ))}
-                                            </SelectGroup>
-                                        </SelectContent>
-                                    </Select>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                 </div>
 
-                                {/* Page size */}
-                                <div className="flex items-center gap-2">
-                                    <label className="text-sm font-medium whitespace-nowrap">
-                                        Baris
-                                    </label>
-                                    <Select
-                                        value={String(limit)}
-                                        onValueChange={onChangePageSize}
-                                    >
-                                        <SelectTrigger className="w-28">
-                                            <SelectValue placeholder="50" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {PAGE_SIZES.map((s) => (
-                                                <SelectItem key={s} value={s}>
-                                                    {s}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-
-                            {/* <Button
+                                {/* <Button
                                 onClick={() => {
                                     exportToExcel();
                                     toast.success(
@@ -354,439 +379,454 @@ export default function LaporanCatatMeterPage() {
                             </Button>
                         </div>
                     </GlassCard> */}
-                            {/* === Tombol Export: digate pakai fitur === */}
-                            <FeatureGate
-                                code="export.excel"
-                                fallback={
+                                {/* === Tombol Export: digate pakai fitur === */}
+                                <FeatureGate
+                                    code="export.excel"
+                                    fallback={
+                                        <Button
+                                            disabled
+                                            className="opacity-60 cursor-not-allowed"
+                                        >
+                                            <Download className="h-4 w-4 mr-2" />
+                                            Export Excel (Tidak termasuk paket)
+                                        </Button>
+                                    }
+                                >
                                     <Button
-                                        disabled
-                                        className="opacity-60 cursor-not-allowed"
+                                        onClick={() => {
+                                            if (!rows.length) {
+                                                toast.info(
+                                                    "Tidak ada data untuk diekspor"
+                                                );
+                                                return;
+                                            }
+                                            exportToExcel();
+                                            toast.success(
+                                                "Data berhasil diekspor ke Excel"
+                                            );
+                                        }}
+                                        className="bg-emerald-600 hover:bg-emerald-700 text-white"
                                     >
                                         <Download className="h-4 w-4 mr-2" />
-                                        Export Excel (Tidak termasuk paket)
+                                        Export Excel
                                     </Button>
-                                }
-                            >
-                                <Button
-                                    onClick={() => {
-                                        if (!rows.length) {
-                                            toast.info(
-                                                "Tidak ada data untuk diekspor"
-                                            );
-                                            return;
-                                        }
-                                        exportToExcel();
-                                        toast.success(
-                                            "Data berhasil diekspor ke Excel"
-                                        );
-                                    }}
-                                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                                >
-                                    <Download className="h-4 w-4 mr-2" />
-                                    Export Excel
-                                </Button>
-                            </FeatureGate>
-                        </div>
-                    </GlassCard>
+                                </FeatureGate>
+                            </div>
+                        </GlassCard>
 
-                    {/* DESKTOP TABLE */}
-                    <GlassCard className="p-6 hidden md:block">
-                        <div className="overflow-x-auto">
-                            <table className="w-full">
-                                <thead>
-                                    <tr className="border-b border-border/50 text-sm text-muted-foreground">
-                                        <th className="text-left py-3 px-2">
-                                            No
-                                        </th>
-                                        <th className="text-left py-3 px-2">
-                                            Nama Pelanggan
-                                        </th>
-                                        <th className="text-left py-3 px-2">
-                                            Nama Petugas
-                                        </th>
-                                        <th className="text-center py-3 px-2">
-                                            Meter Awal
-                                        </th>
-                                        <th className="text-center py-3 px-2">
-                                            Meter Akhir
-                                        </th>
-                                        <th className="text-center py-3 px-2">
-                                            Pemakaian (m³)
-                                        </th>
-                                        <th className="text-center py-3 px-2 w-36">
-                                            Blok
-                                        </th>
-                                        <th className="text-center py-3 px-2 w-28">
-                                            Status Simpan
-                                        </th>
-                                        <th className="text-center py-3 px-2 w-28">
-                                            Status Finalisasi
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {loading ? (
-                                        <>
-                                            {Array.from({ length: 8 }).map(
-                                                (_, i) => (
-                                                    <tr
-                                                        key={`sk-${i}`}
-                                                        className="border-b border-border/30"
-                                                    >
-                                                        <td className="py-3 px-2">
-                                                            <Skeleton className="h-4 w-8" />
-                                                        </td>
-                                                        <td className="py-3 px-2">
-                                                            <Skeleton className="h-4 w-64" />
-                                                        </td>
-                                                        <td className="py-3 px-2">
-                                                            <Skeleton className="h-4 w-40" />
-                                                        </td>
-                                                        {/* Nama Petugas */}
-                                                        <td className="py-3 px-2">
-                                                            <div className="flex justify-end">
-                                                                <Skeleton className="h-4 w-16" />
-                                                            </div>
-                                                        </td>
-                                                        <td className="py-3 px-2">
-                                                            <div className="flex justify-end">
-                                                                <Skeleton className="h-4 w-16" />
-                                                            </div>
-                                                        </td>
-                                                        <td className="py-3 px-2">
-                                                            <div className="flex justify-end">
-                                                                <Skeleton className="h-4 w-20" />
-                                                            </div>
-                                                        </td>
-                                                        <td className="py-3 px-2">
-                                                            <Skeleton className="h-4 w-24" />
-                                                        </td>
-                                                        <td className="py-3 px-2">
-                                                            <div className="flex justify-center">
-                                                                <Skeleton className="h-5 w-16 rounded-full" />
-                                                            </div>
-                                                        </td>
-                                                        <td className="py-3 px-2">
-                                                            <div className="flex justify-center">
-                                                                <Skeleton className="h-5 w-16 rounded-full" />
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                )
-                                            )}
-                                        </>
-                                    ) : error ? (
-                                        <tr>
-                                            <td
-                                                className="py-4 px-2 text-sm text-red-600"
-                                                colSpan={7}
-                                            >
-                                                {error}
-                                            </td>
+                        {/* DESKTOP TABLE */}
+                        <GlassCard className="p-6 hidden md:block">
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead>
+                                        <tr className="border-b border-border/50 text-sm text-muted-foreground">
+                                            <th className="text-left py-3 px-2">
+                                                No
+                                            </th>
+                                            <th className="text-left py-3 px-2">
+                                                Nama Pelanggan
+                                            </th>
+                                            <th className="text-left py-3 px-2">
+                                                Nama Petugas
+                                            </th>
+                                            <th className="text-center py-3 px-2">
+                                                Meter Awal
+                                            </th>
+                                            <th className="text-center py-3 px-2">
+                                                Meter Akhir
+                                            </th>
+                                            <th className="text-center py-3 px-2">
+                                                Pemakaian (m³)
+                                            </th>
+                                            <th className="text-center py-3 px-2 w-36">
+                                                Blok
+                                            </th>
+                                            <th className="text-center py-3 px-2 w-28">
+                                                Status Simpan
+                                            </th>
+                                            <th className="text-center py-3 px-2 w-28">
+                                                Status Finalisasi
+                                            </th>
                                         </tr>
-                                    ) : rows.length === 0 ? (
-                                        <tr>
-                                            <td
-                                                className="py-4 px-2 text-sm text-muted-foreground"
-                                                colSpan={7}
-                                            >
-                                                Tidak ada data.
-                                            </td>
-                                        </tr>
-                                    ) : (
-                                        rows.map((r, idx) => (
-                                            <tr
-                                                key={r.id}
-                                                className="border-b border-border/30 hover:bg-muted/20 text-sm"
-                                            >
-                                                <td className="py-3 px-2">
-                                                    {(page - 1) * limit +
-                                                        idx +
-                                                        1}
-                                                </td>
-                                                <td className="py-3 px-2 font-medium">
-                                                    {r.namaPelanggan}
-                                                </td>
-                                                <td className="py-3 px-2">
-                                                    {r.namaPetugas || "-"}
-                                                </td>
-                                                <td className="py-3 px-2 text-center tabular-nums">
-                                                    {fmt(r.meterAwal)}
-                                                </td>
-                                                <td className="py-3 px-2 text-center tabular-nums">
-                                                    {fmt(r.meterAkhir)}
-                                                </td>
-                                                <td className="py-3 px-2 text-center font-semibold tabular-nums">
-                                                    {fmt(r.pemakaian)} m³
-                                                </td>
-                                                <td className="py-3 px-2 text-center">
-                                                    {r.zona || "-"}
-                                                </td>
-                                                <td className="py-3 px-2 text-center">
-                                                    <Badge
-                                                        variant={
-                                                            r.isSaved
-                                                                ? "default"
-                                                                : "secondary"
-                                                        }
-                                                    >
-                                                        {r.isSaved
-                                                            ? "Disimpan"
-                                                            : "Belum Disimpan"}
-                                                    </Badge>
-                                                </td>
-
-                                                <td className="py-3 px-2 text-center">
-                                                    <Badge
-                                                        variant={
-                                                            r.isLocked
-                                                                ? "default"
-                                                                : "secondary"
-                                                        }
-                                                    >
-                                                        {r.isLocked
-                                                            ? "Terkunci"
-                                                            : "Belum Terkunci"}
-                                                    </Badge>
+                                    </thead>
+                                    <tbody>
+                                        {loading ? (
+                                            <>
+                                                {Array.from({ length: 8 }).map(
+                                                    (_, i) => (
+                                                        <tr
+                                                            key={`sk-${i}`}
+                                                            className="border-b border-border/30"
+                                                        >
+                                                            <td className="py-3 px-2">
+                                                                <Skeleton className="h-4 w-8" />
+                                                            </td>
+                                                            <td className="py-3 px-2">
+                                                                <Skeleton className="h-4 w-64" />
+                                                            </td>
+                                                            <td className="py-3 px-2">
+                                                                <Skeleton className="h-4 w-40" />
+                                                            </td>
+                                                            {/* Nama Petugas */}
+                                                            <td className="py-3 px-2">
+                                                                <div className="flex justify-end">
+                                                                    <Skeleton className="h-4 w-16" />
+                                                                </div>
+                                                            </td>
+                                                            <td className="py-3 px-2">
+                                                                <div className="flex justify-end">
+                                                                    <Skeleton className="h-4 w-16" />
+                                                                </div>
+                                                            </td>
+                                                            <td className="py-3 px-2">
+                                                                <div className="flex justify-end">
+                                                                    <Skeleton className="h-4 w-20" />
+                                                                </div>
+                                                            </td>
+                                                            <td className="py-3 px-2">
+                                                                <Skeleton className="h-4 w-24" />
+                                                            </td>
+                                                            <td className="py-3 px-2">
+                                                                <div className="flex justify-center">
+                                                                    <Skeleton className="h-5 w-16 rounded-full" />
+                                                                </div>
+                                                            </td>
+                                                            <td className="py-3 px-2">
+                                                                <div className="flex justify-center">
+                                                                    <Skeleton className="h-5 w-16 rounded-full" />
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    )
+                                                )}
+                                            </>
+                                        ) : error ? (
+                                            <tr>
+                                                <td
+                                                    className="py-4 px-2 text-sm text-red-600"
+                                                    colSpan={7}
+                                                >
+                                                    {error}
                                                 </td>
                                             </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
+                                        ) : rows.length === 0 ? (
+                                            <tr>
+                                                <td
+                                                    className="py-4 px-2 text-sm text-muted-foreground"
+                                                    colSpan={7}
+                                                >
+                                                    Tidak ada data.
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            rows.map((r, idx) => (
+                                                <tr
+                                                    key={r.id}
+                                                    className="border-b border-border/30 hover:bg-muted/20 text-sm"
+                                                >
+                                                    <td className="py-3 px-2">
+                                                        {(page - 1) * limit +
+                                                            idx +
+                                                            1}
+                                                    </td>
+                                                    <td className="py-3 px-2 font-medium">
+                                                        {r.namaPelanggan}
+                                                    </td>
+                                                    <td className="py-3 px-2">
+                                                        {r.namaPetugas || "-"}
+                                                    </td>
+                                                    <td className="py-3 px-2 text-center tabular-nums">
+                                                        {fmt(r.meterAwal)}
+                                                    </td>
+                                                    <td className="py-3 px-2 text-center tabular-nums">
+                                                        {fmt(r.meterAkhir)}
+                                                    </td>
+                                                    <td className="py-3 px-2 text-center font-semibold tabular-nums">
+                                                        {fmt(r.pemakaian)} m³
+                                                    </td>
+                                                    <td className="py-3 px-2 text-center">
+                                                        {r.zona || "-"}
+                                                    </td>
+                                                    <td className="py-3 px-2 text-center">
+                                                        <Badge
+                                                            variant={
+                                                                r.isSaved
+                                                                    ? "default"
+                                                                    : "secondary"
+                                                            }
+                                                        >
+                                                            {r.isSaved
+                                                                ? "Disimpan"
+                                                                : "Belum Disimpan"}
+                                                        </Badge>
+                                                    </td>
 
-                        {/* footer pagination + size */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-4 border-t">
-                            <div className="text-sm">
-                                Halaman <b>{page}</b> dari <b>{totalPages}</b> •
-                                Total <b>{total}</b> baris
+                                                    <td className="py-3 px-2 text-center">
+                                                        <Badge
+                                                            variant={
+                                                                r.isLocked
+                                                                    ? "default"
+                                                                    : "secondary"
+                                                            }
+                                                        >
+                                                            {r.isLocked
+                                                                ? "Terkunci"
+                                                                : "Belum Terkunci"}
+                                                        </Badge>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
                             </div>
-                            <div className="flex items-center gap-3">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-sm text-muted-foreground">
-                                        Baris
-                                    </span>
-                                    <Select
-                                        value={String(limit)}
-                                        onValueChange={onChangePageSize}
-                                    >
-                                        <SelectTrigger className="h-8 w-24">
-                                            <SelectValue placeholder="50" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {PAGE_SIZES.map((s) => (
-                                                <SelectItem key={s} value={s}>
-                                                    {s}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="flex gap-2">
-                                    <Button
-                                        size="sm"
-                                        variant="outline"
-                                        disabled={page <= 1 || loading}
-                                        onClick={() =>
-                                            loadData(
-                                                page - 1,
-                                                month,
-                                                zonaId,
-                                                limit
-                                            )
-                                        }
-                                        className="bg-transparent"
-                                    >
-                                        ‹ Sebelumnya
-                                    </Button>
-                                    <Button
-                                        size="sm"
-                                        variant="outline"
-                                        disabled={page >= totalPages || loading}
-                                        onClick={() =>
-                                            loadData(
-                                                page + 1,
-                                                month,
-                                                zonaId,
-                                                limit
-                                            )
-                                        }
-                                        className="bg-transparent"
-                                    >
-                                        Selanjutnya ›
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-                    </GlassCard>
 
-                    {/* MOBILE CARDS */}
-                    <div className="md:hidden space-y-4">
-                        {loading ? (
-                            <>
-                                {Array.from({ length: 3 }).map((_, i) => (
+                            {/* footer pagination + size */}
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-4 border-t">
+                                <div className="text-sm">
+                                    Halaman <b>{page}</b> dari{" "}
+                                    <b>{totalPages}</b> • Total <b>{total}</b>{" "}
+                                    baris
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm text-muted-foreground">
+                                            Baris
+                                        </span>
+                                        <Select
+                                            value={String(limit)}
+                                            onValueChange={onChangePageSize}
+                                        >
+                                            <SelectTrigger className="h-8 w-24">
+                                                <SelectValue placeholder="50" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {PAGE_SIZES.map((s) => (
+                                                    <SelectItem
+                                                        key={s}
+                                                        value={s}
+                                                    >
+                                                        {s}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            disabled={page <= 1 || loading}
+                                            onClick={() =>
+                                                loadData(
+                                                    page - 1,
+                                                    month,
+                                                    zonaId,
+                                                    limit
+                                                )
+                                            }
+                                            className="bg-transparent"
+                                        >
+                                            ‹ Sebelumnya
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            disabled={
+                                                page >= totalPages || loading
+                                            }
+                                            onClick={() =>
+                                                loadData(
+                                                    page + 1,
+                                                    month,
+                                                    zonaId,
+                                                    limit
+                                                )
+                                            }
+                                            className="bg-transparent"
+                                        >
+                                            Selanjutnya ›
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        </GlassCard>
+
+                        {/* MOBILE CARDS */}
+                        <div className="md:hidden space-y-4">
+                            {loading ? (
+                                <>
+                                    {Array.from({ length: 3 }).map((_, i) => (
+                                        <GlassCard
+                                            key={`skm-${i}`}
+                                            className="p-4 space-y-3"
+                                        >
+                                            <div className="flex items-start justify-between">
+                                                <div>
+                                                    <Skeleton className="h-4 w-40 mb-2" />
+                                                    <Skeleton className="h-3 w-24" />
+                                                </div>
+                                                <Skeleton className="h-3 w-14" />
+                                            </div>
+                                            <Skeleton className="h-3 w-32" />{" "}
+                                            {/* Petugas */}
+                                            <div className="grid grid-cols-2 gap-y-2">
+                                                <Skeleton className="h-3 w-24" />
+                                                <Skeleton className="h-3 w-20 justify-self-end" />
+                                                <Skeleton className="h-3 w-24" />
+                                                <Skeleton className="h-3 w-20 justify-self-end" />
+                                                <Skeleton className="h-3 w-28" />
+                                                <Skeleton className="h-3 w-24 justify-self-end" />
+                                            </div>
+                                        </GlassCard>
+                                    ))}
+                                </>
+                            ) : error ? (
+                                <GlassCard className="p-8 text-center text-sm text-red-600">
+                                    {error}
+                                </GlassCard>
+                            ) : rows.length === 0 ? (
+                                <GlassCard className="p-8 text-center text-sm text-muted-foreground">
+                                    Tidak ada data.
+                                </GlassCard>
+                            ) : (
+                                rows.map((r) => (
                                     <GlassCard
-                                        key={`skm-${i}`}
+                                        key={r.id}
                                         className="p-4 space-y-3"
                                     >
                                         <div className="flex items-start justify-between">
                                             <div>
-                                                <Skeleton className="h-4 w-40 mb-2" />
-                                                <Skeleton className="h-3 w-24" />
+                                                <h4 className="font-medium">
+                                                    {r.namaPelanggan}
+                                                </h4>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {month
+                                                        ? formatYmId(month)
+                                                        : "-"}
+                                                </p>
                                             </div>
-                                            <Skeleton className="h-3 w-14" />
+                                            <div className="text-xs text-muted-foreground">
+                                                {r.zona || "-"}
+                                            </div>
                                         </div>
-                                        <Skeleton className="h-3 w-32" />{" "}
-                                        {/* Petugas */}
-                                        <div className="grid grid-cols-2 gap-y-2">
-                                            <Skeleton className="h-3 w-24" />
-                                            <Skeleton className="h-3 w-20 justify-self-end" />
-                                            <Skeleton className="h-3 w-24" />
-                                            <Skeleton className="h-3 w-20 justify-self-end" />
-                                            <Skeleton className="h-3 w-28" />
-                                            <Skeleton className="h-3 w-24 justify-self-end" />
+                                        <div className="grid grid-cols-2 gap-y-1 text-sm">
+                                            <span className="text-muted-foreground">
+                                                Meter Awal
+                                            </span>
+                                            <span className="tabular-nums text-right">
+                                                {fmt(r.meterAwal)}
+                                            </span>
+
+                                            <span className="text-muted-foreground">
+                                                Meter Akhir
+                                            </span>
+                                            <span className="tabular-nums text-right">
+                                                {fmt(r.meterAkhir)}
+                                            </span>
+
+                                            <span className="text-muted-foreground">
+                                                Pemakaian (m³)
+                                            </span>
+                                            <span className="tabular-nums text-right font-semibold">
+                                                {fmt(r.pemakaian)} m³
+                                            </span>
+                                            <span className="text-muted-foreground">
+                                                Status Simpan
+                                            </span>
+                                            <span className="text-right">
+                                                {r.isSaved
+                                                    ? "Disimpan"
+                                                    : "Belum Disimpan"}
+                                            </span>
+
+                                            <span className="text-muted-foreground">
+                                                Status Finalisasi
+                                            </span>
+                                            <span className="text-right">
+                                                {r.isLocked
+                                                    ? "Terkunci"
+                                                    : "Belum Terkunci"}
+                                            </span>
+                                            <div className="text-sm mt-2 font-semibold text-muted-foreground">
+                                                Petugas:{" "}
+                                                <span className="text-foreground">
+                                                    {r.namaPetugas || "-"}
+                                                </span>
+                                            </div>
                                         </div>
                                     </GlassCard>
-                                ))}
-                            </>
-                        ) : error ? (
-                            <GlassCard className="p-8 text-center text-sm text-red-600">
-                                {error}
-                            </GlassCard>
-                        ) : rows.length === 0 ? (
-                            <GlassCard className="p-8 text-center text-sm text-muted-foreground">
-                                Tidak ada data.
-                            </GlassCard>
-                        ) : (
-                            rows.map((r) => (
-                                <GlassCard key={r.id} className="p-4 space-y-3">
-                                    <div className="flex items-start justify-between">
-                                        <div>
-                                            <h4 className="font-medium">
-                                                {r.namaPelanggan}
-                                            </h4>
-                                            <p className="text-xs text-muted-foreground">
-                                                {month
-                                                    ? formatYmId(month)
-                                                    : "-"}
-                                            </p>
-                                        </div>
-                                        <div className="text-xs text-muted-foreground">
-                                            {r.zona || "-"}
-                                        </div>
+                                ))
+                            )}
+
+                            {/* mobile pager + size */}
+                            {!!rows.length && (
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm text-muted-foreground">
+                                            Baris
+                                        </span>
+                                        <Select
+                                            value={String(limit)}
+                                            onValueChange={onChangePageSize}
+                                        >
+                                            <SelectTrigger className="h-8 w-24">
+                                                <SelectValue placeholder="50" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {PAGE_SIZES.map((s) => (
+                                                    <SelectItem
+                                                        key={s}
+                                                        value={s}
+                                                    >
+                                                        {s}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-y-1 text-sm">
-                                        <span className="text-muted-foreground">
-                                            Meter Awal
-                                        </span>
-                                        <span className="tabular-nums text-right">
-                                            {fmt(r.meterAwal)}
-                                        </span>
-
-                                        <span className="text-muted-foreground">
-                                            Meter Akhir
-                                        </span>
-                                        <span className="tabular-nums text-right">
-                                            {fmt(r.meterAkhir)}
-                                        </span>
-
-                                        <span className="text-muted-foreground">
-                                            Pemakaian (m³)
-                                        </span>
-                                        <span className="tabular-nums text-right font-semibold">
-                                            {fmt(r.pemakaian)} m³
-                                        </span>
-                                        <span className="text-muted-foreground">
-                                            Status Simpan
-                                        </span>
-                                        <span className="text-right">
-                                            {r.isSaved
-                                                ? "Disimpan"
-                                                : "Belum Disimpan"}
-                                        </span>
-
-                                        <span className="text-muted-foreground">
-                                            Status Finalisasi
-                                        </span>
-                                        <span className="text-right">
-                                            {r.isLocked
-                                                ? "Terkunci"
-                                                : "Belum Terkunci"}
-                                        </span>
-                                        <div className="text-sm mt-2 font-semibold text-muted-foreground">
-                                            Petugas:{" "}
-                                            <span className="text-foreground">
-                                                {r.namaPetugas || "-"}
-                                            </span>
-                                        </div>
+                                    <div className="flex gap-2">
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            disabled={page <= 1 || loading}
+                                            onClick={() =>
+                                                loadData(
+                                                    page - 1,
+                                                    month,
+                                                    zonaId,
+                                                    limit
+                                                )
+                                            }
+                                            className="bg-transparent"
+                                        >
+                                            ‹ Sebelumnya
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            disabled={
+                                                page >= totalPages || loading
+                                            }
+                                            onClick={() =>
+                                                loadData(
+                                                    page + 1,
+                                                    month,
+                                                    zonaId,
+                                                    limit
+                                                )
+                                            }
+                                            className="bg-transparent"
+                                        >
+                                            Selanjutnya ›
+                                        </Button>
                                     </div>
-                                </GlassCard>
-                            ))
-                        )}
-
-                        {/* mobile pager + size */}
-                        {!!rows.length && (
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-sm text-muted-foreground">
-                                        Baris
-                                    </span>
-                                    <Select
-                                        value={String(limit)}
-                                        onValueChange={onChangePageSize}
-                                    >
-                                        <SelectTrigger className="h-8 w-24">
-                                            <SelectValue placeholder="50" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {PAGE_SIZES.map((s) => (
-                                                <SelectItem key={s} value={s}>
-                                                    {s}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
                                 </div>
-                                <div className="flex gap-2">
-                                    <Button
-                                        size="sm"
-                                        variant="outline"
-                                        disabled={page <= 1 || loading}
-                                        onClick={() =>
-                                            loadData(
-                                                page - 1,
-                                                month,
-                                                zonaId,
-                                                limit
-                                            )
-                                        }
-                                        className="bg-transparent"
-                                    >
-                                        ‹ Sebelumnya
-                                    </Button>
-                                    <Button
-                                        size="sm"
-                                        variant="outline"
-                                        disabled={page >= totalPages || loading}
-                                        onClick={() =>
-                                            loadData(
-                                                page + 1,
-                                                month,
-                                                zonaId,
-                                                limit
-                                            )
-                                        }
-                                        className="bg-transparent"
-                                    >
-                                        Selanjutnya ›
-                                    </Button>
-                                </div>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
-                </div>
-            </AppShell>
+                </AppShell>
+            </PermissionGate>
         </AuthGuard>
     );
 }

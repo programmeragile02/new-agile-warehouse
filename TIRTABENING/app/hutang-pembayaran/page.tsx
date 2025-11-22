@@ -26,6 +26,8 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, Loader2, Check, History, Wand2 } from "lucide-react";
+import { AclDeniedAlert } from "@/components/acl-denied-alert";
+import { PermissionGate } from "@/components/permission-gate";
 
 /* ===== utils ===== */
 const fetcher = (u: string) => fetch(u).then((r) => r.json());
@@ -229,432 +231,467 @@ export default function HutangPembayaranPage() {
         <div className="min-h-screen">
             <div className="container mx-auto p-4 space-y-6">
                 <AuthGuard>
-                    <AppShell>
-                        <AppHeader title="Pembayaran Hutang" />
+                    <PermissionGate
+                        path="/hutang-pembayaran"
+                        action="view"
+                        fallback={<AclDeniedAlert fullPage />}
+                        loadingFallback={
+                            <div className="min-h-screen flex items-center justify-center">
+                                <div className="flex items-center gap-2 text-primary">
+                                    <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                                    <span className="text-lg">Memuat…</span>
+                                </div>
+                            </div>
+                        }
+                    >
+                        <AppShell>
+                            <AppHeader title="Pembayaran Hutang" />
 
-                        {/* Filter & link riwayat */}
-                        <GlassCard className="p-6 mb-6">
-                            {/* Grid agar tetap rapi di semua breakpoint */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                {/* Kolom 1: pilih pemberi + tombol load */}
-                                <div className="flex-1">
-                                    <Label>Pemberi Hutang</Label>
-                                    <div className="mt-1 flex gap-2 flex-wrap sm:flex-nowrap items-stretch">
-                                        <Select
-                                            value={giver}
-                                            onValueChange={setGiver}
-                                        >
-                                            <SelectTrigger
-                                                className="
+                            {/* Filter & link riwayat */}
+                            <GlassCard className="p-6 mb-6">
+                                {/* Grid agar tetap rapi di semua breakpoint */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    {/* Kolom 1: pilih pemberi + tombol load */}
+                                    <div className="flex-1">
+                                        <Label>Pemberi Hutang</Label>
+                                        <div className="mt-1 flex gap-2 flex-wrap sm:flex-nowrap items-stretch">
+                                            <Select
+                                                value={giver}
+                                                onValueChange={setGiver}
+                                            >
+                                                <SelectTrigger
+                                                    className="
                           min-w-0 w-full sm:w-64 flex-1
                         "
-                                                aria-label="Pilih pemberi hutang"
-                                            >
-                                                <SelectValue placeholder="Pilih pemberi…" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {givers.map((g) => (
-                                                    <SelectItem
-                                                        key={g.name}
-                                                        value={g.name}
-                                                    >
-                                                        {g.name}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                                    aria-label="Pilih pemberi hutang"
+                                                >
+                                                    <SelectValue placeholder="Pilih pemberi…" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {givers.map((g) => (
+                                                        <SelectItem
+                                                            key={g.name}
+                                                            value={g.name}
+                                                        >
+                                                            {g.name}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
 
-                                        <Button
-                                            variant="outline"
-                                            onClick={() => giver && mutate()}
-                                            disabled={!giver}
-                                            className="shrink-0 w-full sm:w-auto"
-                                            title="Muat detail hutang dari pemberi ini"
-                                        >
-                                            Load detail
-                                        </Button>
-                                    </div>
-                                </div>
-
-                                {/* Kolom 2: tombol riwayat */}
-                                <div className="flex flex-col sm:items-end">
-                                    <Label className="sm:invisible sm:h-5">
-                                        &nbsp;
-                                    </Label>
-                                    <div className="mt-1 w-full sm:w-auto">
-                                        <Link href="/hutang-pembayaran/riwayat">
                                             <Button
                                                 variant="outline"
-                                                className="w-full sm:w-auto shrink-0"
+                                                onClick={() =>
+                                                    giver && mutate()
+                                                }
+                                                disabled={!giver}
+                                                className="shrink-0 w-full sm:w-auto"
+                                                title="Muat detail hutang dari pemberi ini"
                                             >
-                                                <History className="w-4 h-4 mr-2" />
-                                                Riwayat Pembayaran
+                                                Load detail
                                             </Button>
-                                        </Link>
-                                    </div>
-                                </div>
-                            </div>
-                        </GlassCard>
-
-                        {/* Data header hutang */}
-                        <GlassCard className="p-6">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-lg font-semibold">
-                                    Data Hutang ke Pemberi
-                                </h3>
-                                <div className="text-sm text-muted-foreground">
-                                    {giver || "—"}
-                                </div>
-                            </div>
-
-                            {!giver ? (
-                                <div className="p-4 text-sm text-muted-foreground bg-muted/20 rounded">
-                                    Pilih pemberi hutang lalu klik{" "}
-                                    <b>Load detail</b>.
-                                </div>
-                            ) : isLoading ? (
-                                <div className="p-4 text-sm text-muted-foreground">
-                                    Memuat data…
-                                </div>
-                            ) : items.length === 0 ? (
-                                <div className="p-4 text-sm text-muted-foreground">
-                                    Tidak ada data hutang.
-                                </div>
-                            ) : (
-                                <>
-                                    {/* desktop table */}
-                                    <div className="hidden lg:block overflow-x-auto">
-                                        <table className="w-full">
-                                            <thead>
-                                                <tr className="border-b border-border/20">
-                                                    <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
-                                                        No Bukti
-                                                    </th>
-                                                    <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
-                                                        Tgl Hutang
-                                                    </th>
-                                                    <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
-                                                        Keterangan
-                                                    </th>
-                                                    <th className="text-right py-3 px-2 text-sm font-medium text-muted-foreground">
-                                                        Total Hutang
-                                                    </th>
-                                                    <th className="text-right py-3 px-2 text-sm font-medium text-muted-foreground">
-                                                        Sudah Bayar
-                                                    </th>
-                                                    <th className="text-right py-3 px-2 text-sm font-medium text-muted-foreground">
-                                                        Sisa
-                                                    </th>
-                                                    <th className="text-center py-3 px-2 text-sm font-medium text-muted-foreground">
-                                                        Aksi
-                                                    </th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {items.map((h) => (
-                                                    <tr
-                                                        key={h.id}
-                                                        className="border-b border-border/10 hover:bg-muted/20"
-                                                    >
-                                                        <td className="py-3 px-2 text-sm font-semibold">
-                                                            {h.noBukti}
-                                                        </td>
-                                                        <td className="py-3 px-2 text-sm">
-                                                            {onlyDate(
-                                                                h.tanggalHutang
-                                                            )}
-                                                        </td>
-                                                        <td className="py-3 px-2 text-sm">
-                                                            {h.keterangan}
-                                                        </td>
-                                                        <td className="py-3 px-2 text-sm text-right">
-                                                            {toIDR(h.total)}
-                                                        </td>
-                                                        <td className="py-3 px-2 text-sm text-right">
-                                                            {toIDR(
-                                                                h.sudahBayar
-                                                            )}
-                                                        </td>
-                                                        <td className="py-3 px-2 text-sm text-right font-bold">
-                                                            {toIDR(h.sisa)}
-                                                        </td>
-                                                        <td className="py-3 px-2 text-center">
-                                                            <Button
-                                                                size="sm"
-                                                                variant="outline"
-                                                                className="h-8 px-2 rounded-lg"
-                                                                onClick={() =>
-                                                                    openPay(h)
-                                                                }
-                                                                title="Bayar / Lihat detail"
-                                                            >
-                                                                <Eye className="w-4 h-4" />
-                                                            </Button>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
+                                        </div>
                                     </div>
 
-                                    {/* mobile cards */}
-                                    <div className="lg:hidden space-y-4">
-                                        {items.map((h) => (
-                                            <div
-                                                key={h.id}
-                                                className="p-4 bg-muted/20 rounded-lg space-y-3"
-                                            >
-                                                <div className="flex items-start justify-between">
-                                                    <div>
-                                                        <p className="font-semibold text-foreground">
-                                                            {h.noBukti}
-                                                        </p>
-                                                        <p className="text-xs text-muted-foreground">
-                                                            Tgl:{" "}
-                                                            {onlyDate(
-                                                                h.tanggalHutang
-                                                            )}
-                                                        </p>
-                                                        <p className="mt-1 text-sm">
-                                                            {h.keterangan}
-                                                        </p>
-                                                    </div>
-                                                    <div className="text-right">
-                                                        <p className="text-xs text-muted-foreground">
-                                                            Sisa
-                                                        </p>
-                                                        <p className="font-bold text-primary">
-                                                            {toIDR(h.sisa)}
-                                                        </p>
-                                                    </div>
-                                                </div>
+                                    {/* Kolom 2: tombol riwayat */}
+                                    <div className="flex flex-col sm:items-end">
+                                        <Label className="sm:invisible sm:h-5">
+                                            &nbsp;
+                                        </Label>
+                                        <div className="mt-1 w-full sm:w-auto">
+                                            <Link href="/hutang-pembayaran/riwayat">
+                                                <Button
+                                                    variant="outline"
+                                                    className="w-full sm:w-auto shrink-0"
+                                                >
+                                                    <History className="w-4 h-4 mr-2" />
+                                                    Riwayat Pembayaran
+                                                </Button>
+                                            </Link>
+                                        </div>
+                                    </div>
+                                </div>
+                            </GlassCard>
 
-                                                <div className="bg-card/50 p-3 rounded-lg grid grid-cols-2 gap-3 text-sm">
-                                                    <div>
-                                                        <p className="text-muted-foreground">
-                                                            Total
-                                                        </p>
-                                                        <p className="font-medium">
-                                                            {toIDR(h.total)}
-                                                        </p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-muted-foreground">
+                            {/* Data header hutang */}
+                            <GlassCard className="p-6">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-lg font-semibold">
+                                        Data Hutang ke Pemberi
+                                    </h3>
+                                    <div className="text-sm text-muted-foreground">
+                                        {giver || "—"}
+                                    </div>
+                                </div>
+
+                                {!giver ? (
+                                    <div className="p-4 text-sm text-muted-foreground bg-muted/20 rounded">
+                                        Pilih pemberi hutang lalu klik{" "}
+                                        <b>Load detail</b>.
+                                    </div>
+                                ) : isLoading ? (
+                                    <div className="p-4 text-sm text-muted-foreground">
+                                        Memuat data…
+                                    </div>
+                                ) : items.length === 0 ? (
+                                    <div className="p-4 text-sm text-muted-foreground">
+                                        Tidak ada data hutang.
+                                    </div>
+                                ) : (
+                                    <>
+                                        {/* desktop table */}
+                                        <div className="hidden lg:block overflow-x-auto">
+                                            <table className="w-full">
+                                                <thead>
+                                                    <tr className="border-b border-border/20">
+                                                        <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
+                                                            No Bukti
+                                                        </th>
+                                                        <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
+                                                            Tgl Hutang
+                                                        </th>
+                                                        <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
+                                                            Keterangan
+                                                        </th>
+                                                        <th className="text-right py-3 px-2 text-sm font-medium text-muted-foreground">
+                                                            Total Hutang
+                                                        </th>
+                                                        <th className="text-right py-3 px-2 text-sm font-medium text-muted-foreground">
                                                             Sudah Bayar
-                                                        </p>
-                                                        <p className="font-medium">
-                                                            {toIDR(
-                                                                h.sudahBayar
-                                                            )}
-                                                        </p>
-                                                    </div>
-                                                </div>
-
-                                                <div className="flex justify-end">
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        onClick={() =>
-                                                            openPay(h)
-                                                        }
-                                                    >
-                                                        <Eye className="w-4 h-4 mr-2" />
-                                                        Bayar / Detail
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </>
-                            )}
-                        </GlassCard>
-
-                        {/* Modal Bayar – full cards */}
-                        <Dialog open={open} onOpenChange={setOpen}>
-                            <DialogContent className="sm:max-w-3xl">
-                                <DialogHeader>
-                                    <DialogTitle>
-                                        Bayar Hutang — {activeHeader?.noBukti}
-                                    </DialogTitle>
-                                </DialogHeader>
-
-                                {activeHeader && (
-                                    <div className="space-y-4">
-                                        {/* header cards */}
-                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                            <div className="p-3 rounded-lg bg-muted/20">
-                                                <Label className="text-xs">
-                                                    No Bukti (opsional)
-                                                </Label>
-                                                <div className="mt-1 flex gap-2">
-                                                    <Input
-                                                        className="h-9"
-                                                        placeholder="BYR-…"
-                                                        value={refNo}
-                                                        onChange={(e) =>
-                                                            setRefNo(
-                                                                e.target.value
-                                                            )
-                                                        }
-                                                    />
-                                                    <Button
-                                                        type="button"
-                                                        variant="outline"
-                                                        onClick={genRef}
-                                                        title="Generate otomatis"
-                                                        className="shrink-0"
-                                                    >
-                                                        <Wand2 className="w-4 h-4 mr-1" />
-                                                        Generate
-                                                    </Button>
-                                                </div>
-                                            </div>
-
-                                            <div className="p-3 rounded-lg bg-muted/20">
-                                                <Label className="text-xs">
-                                                    Tanggal Bayar
-                                                </Label>
-                                                <Input
-                                                    type="date"
-                                                    className="h-9 mt-1"
-                                                    value={payDate}
-                                                    onChange={(e) =>
-                                                        setPayDate(
-                                                            e.target.value
-                                                        )
-                                                    }
-                                                />
-                                            </div>
-
-                                            <div className="p-3 rounded-lg bg-muted/20">
-                                                <Label className="text-xs">
-                                                    Catatan
-                                                </Label>
-                                                <Input
-                                                    className="h-9 mt-1"
-                                                    placeholder="Masukkan catatan pembayaran hutang"
-                                                    value={note}
-                                                    onChange={(e) =>
-                                                        setNote(e.target.value)
-                                                    }
-                                                />
-                                            </div>
+                                                        </th>
+                                                        <th className="text-right py-3 px-2 text-sm font-medium text-muted-foreground">
+                                                            Sisa
+                                                        </th>
+                                                        <th className="text-center py-3 px-2 text-sm font-medium text-muted-foreground">
+                                                            Aksi
+                                                        </th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {items.map((h) => (
+                                                        <tr
+                                                            key={h.id}
+                                                            className="border-b border-border/10 hover:bg-muted/20"
+                                                        >
+                                                            <td className="py-3 px-2 text-sm font-semibold">
+                                                                {h.noBukti}
+                                                            </td>
+                                                            <td className="py-3 px-2 text-sm">
+                                                                {onlyDate(
+                                                                    h.tanggalHutang
+                                                                )}
+                                                            </td>
+                                                            <td className="py-3 px-2 text-sm">
+                                                                {h.keterangan}
+                                                            </td>
+                                                            <td className="py-3 px-2 text-sm text-right">
+                                                                {toIDR(h.total)}
+                                                            </td>
+                                                            <td className="py-3 px-2 text-sm text-right">
+                                                                {toIDR(
+                                                                    h.sudahBayar
+                                                                )}
+                                                            </td>
+                                                            <td className="py-3 px-2 text-sm text-right font-bold">
+                                                                {toIDR(h.sisa)}
+                                                            </td>
+                                                            <td className="py-3 px-2 text-center">
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    className="h-8 px-2 rounded-lg"
+                                                                    onClick={() =>
+                                                                        openPay(
+                                                                            h
+                                                                        )
+                                                                    }
+                                                                    title="Bayar / Lihat detail"
+                                                                >
+                                                                    <Eye className="w-4 h-4" />
+                                                                </Button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
                                         </div>
 
-                                        {/* detail cards */}
-                                        <div className="space-y-3">
-                                            {activeHeader.details.map((d) => (
+                                        {/* mobile cards */}
+                                        <div className="lg:hidden space-y-4">
+                                            {items.map((h) => (
                                                 <div
-                                                    key={d.id}
-                                                    className="p-3 bg-muted/10 rounded-lg border border-border/40"
+                                                    key={h.id}
+                                                    className="p-4 bg-muted/20 rounded-lg space-y-3"
                                                 >
-                                                    <div className="flex items-start justify-between gap-3">
+                                                    <div className="flex items-start justify-between">
                                                         <div>
-                                                            <div className="text-xs text-muted-foreground">
-                                                                No {d.no}
-                                                            </div>
-                                                            <div className="font-medium">
-                                                                {d.keterangan}
-                                                            </div>
+                                                            <p className="font-semibold text-foreground">
+                                                                {h.noBukti}
+                                                            </p>
+                                                            <p className="text-xs text-muted-foreground">
+                                                                Tgl:{" "}
+                                                                {onlyDate(
+                                                                    h.tanggalHutang
+                                                                )}
+                                                            </p>
+                                                            <p className="mt-1 text-sm">
+                                                                {h.keterangan}
+                                                            </p>
                                                         </div>
                                                         <div className="text-right">
-                                                            <div className="text-xs text-muted-foreground">
+                                                            <p className="text-xs text-muted-foreground">
                                                                 Sisa
-                                                            </div>
-                                                            <div className="font-semibold text-primary">
-                                                                {toIDR(d.sisa)}
-                                                            </div>
+                                                            </p>
+                                                            <p className="font-bold text-primary">
+                                                                {toIDR(h.sisa)}
+                                                            </p>
                                                         </div>
                                                     </div>
 
-                                                    <div className="mt-2 grid grid-cols-3 gap-3 text-sm">
+                                                    <div className="bg-card/50 p-3 rounded-lg grid grid-cols-2 gap-3 text-sm">
                                                         <div>
-                                                            <div className="text-muted-foreground">
-                                                                Nominal
-                                                            </div>
-                                                            <div className="font-medium">
-                                                                {toIDR(
-                                                                    d.nominal
-                                                                )}
-                                                            </div>
+                                                            <p className="text-muted-foreground">
+                                                                Total
+                                                            </p>
+                                                            <p className="font-medium">
+                                                                {toIDR(h.total)}
+                                                            </p>
                                                         </div>
                                                         <div>
-                                                            <div className="text-muted-foreground">
+                                                            <p className="text-muted-foreground">
                                                                 Sudah Bayar
-                                                            </div>
-                                                            <div className="font-medium">
+                                                            </p>
+                                                            <p className="font-medium">
                                                                 {toIDR(
-                                                                    d.sudahBayar
+                                                                    h.sudahBayar
                                                                 )}
-                                                            </div>
+                                                            </p>
                                                         </div>
-                                                        <div>
-                                                            <Label className="text-xs">
-                                                                Bayar
-                                                            </Label>
-                                                            <Input
-                                                                inputMode="numeric"
-                                                                className="h-9 text-right mt-1"
-                                                                placeholder="Masukkan nominal bayar"
-                                                                value={
-                                                                    lineStrs[
-                                                                        d.id
-                                                                    ] ?? ""
-                                                                }
-                                                                onChange={(e) =>
-                                                                    onChangeAmount(
-                                                                        d.id,
-                                                                        e.target
-                                                                            .value,
-                                                                        d.sisa
-                                                                    )
-                                                                }
-                                                            />
-                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex justify-end">
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            onClick={() =>
+                                                                openPay(h)
+                                                            }
+                                                        >
+                                                            <Eye className="w-4 h-4 mr-2" />
+                                                            Bayar / Detail
+                                                        </Button>
                                                     </div>
                                                 </div>
                                             ))}
                                         </div>
-
-                                        <div className="flex items-center justify-between border-t border-border/20 pt-3">
-                                            <span className="text-sm text-muted-foreground">
-                                                Total Bayar:
-                                            </span>
-                                            <span className="font-bold">
-                                                {toIDR(totalBayar)}
-                                            </span>
-                                        </div>
-                                    </div>
+                                    </>
                                 )}
+                            </GlassCard>
 
-                                <DialogFooter className="gap-2">
-                                    <Button
-                                        variant="outline"
-                                        onClick={() => setOpen(false)}
-                                        disabled={saving}
-                                    >
-                                        Batal
-                                    </Button>
-                                    <Button
-                                        onClick={savePayment}
-                                        disabled={saving}
-                                    >
-                                        {saving ? (
-                                            <>
-                                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                                Menyimpan…
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Check className="w-4 h-4 mr-2" />
-                                                Simpan Pembayaran
-                                            </>
-                                        )}
-                                    </Button>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
-                    </AppShell>
+                            {/* Modal Bayar – full cards */}
+                            <Dialog open={open} onOpenChange={setOpen}>
+                                <DialogContent className="sm:max-w-3xl">
+                                    <DialogHeader>
+                                        <DialogTitle>
+                                            Bayar Hutang —{" "}
+                                            {activeHeader?.noBukti}
+                                        </DialogTitle>
+                                    </DialogHeader>
+
+                                    {activeHeader && (
+                                        <div className="space-y-4">
+                                            {/* header cards */}
+                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                                <div className="p-3 rounded-lg bg-muted/20">
+                                                    <Label className="text-xs">
+                                                        No Bukti (opsional)
+                                                    </Label>
+                                                    <div className="mt-1 flex gap-2">
+                                                        <Input
+                                                            className="h-9"
+                                                            placeholder="BYR-…"
+                                                            value={refNo}
+                                                            onChange={(e) =>
+                                                                setRefNo(
+                                                                    e.target
+                                                                        .value
+                                                                )
+                                                            }
+                                                        />
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            onClick={genRef}
+                                                            title="Generate otomatis"
+                                                            className="shrink-0"
+                                                        >
+                                                            <Wand2 className="w-4 h-4 mr-1" />
+                                                            Generate
+                                                        </Button>
+                                                    </div>
+                                                </div>
+
+                                                <div className="p-3 rounded-lg bg-muted/20">
+                                                    <Label className="text-xs">
+                                                        Tanggal Bayar
+                                                    </Label>
+                                                    <Input
+                                                        type="date"
+                                                        className="h-9 mt-1"
+                                                        value={payDate}
+                                                        onChange={(e) =>
+                                                            setPayDate(
+                                                                e.target.value
+                                                            )
+                                                        }
+                                                    />
+                                                </div>
+
+                                                <div className="p-3 rounded-lg bg-muted/20">
+                                                    <Label className="text-xs">
+                                                        Catatan
+                                                    </Label>
+                                                    <Input
+                                                        className="h-9 mt-1"
+                                                        placeholder="Masukkan catatan pembayaran hutang"
+                                                        value={note}
+                                                        onChange={(e) =>
+                                                            setNote(
+                                                                e.target.value
+                                                            )
+                                                        }
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* detail cards */}
+                                            <div className="space-y-3">
+                                                {activeHeader.details.map(
+                                                    (d) => (
+                                                        <div
+                                                            key={d.id}
+                                                            className="p-3 bg-muted/10 rounded-lg border border-border/40"
+                                                        >
+                                                            <div className="flex items-start justify-between gap-3">
+                                                                <div>
+                                                                    <div className="text-xs text-muted-foreground">
+                                                                        No{" "}
+                                                                        {d.no}
+                                                                    </div>
+                                                                    <div className="font-medium">
+                                                                        {
+                                                                            d.keterangan
+                                                                        }
+                                                                    </div>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <div className="text-xs text-muted-foreground">
+                                                                        Sisa
+                                                                    </div>
+                                                                    <div className="font-semibold text-primary">
+                                                                        {toIDR(
+                                                                            d.sisa
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="mt-2 grid grid-cols-3 gap-3 text-sm">
+                                                                <div>
+                                                                    <div className="text-muted-foreground">
+                                                                        Nominal
+                                                                    </div>
+                                                                    <div className="font-medium">
+                                                                        {toIDR(
+                                                                            d.nominal
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                                <div>
+                                                                    <div className="text-muted-foreground">
+                                                                        Sudah
+                                                                        Bayar
+                                                                    </div>
+                                                                    <div className="font-medium">
+                                                                        {toIDR(
+                                                                            d.sudahBayar
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                                <div>
+                                                                    <Label className="text-xs">
+                                                                        Bayar
+                                                                    </Label>
+                                                                    <Input
+                                                                        inputMode="numeric"
+                                                                        className="h-9 text-right mt-1"
+                                                                        placeholder="Masukkan nominal bayar"
+                                                                        value={
+                                                                            lineStrs[
+                                                                                d
+                                                                                    .id
+                                                                            ] ??
+                                                                            ""
+                                                                        }
+                                                                        onChange={(
+                                                                            e
+                                                                        ) =>
+                                                                            onChangeAmount(
+                                                                                d.id,
+                                                                                e
+                                                                                    .target
+                                                                                    .value,
+                                                                                d.sisa
+                                                                            )
+                                                                        }
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                )}
+                                            </div>
+
+                                            <div className="flex items-center justify-between border-t border-border/20 pt-3">
+                                                <span className="text-sm text-muted-foreground">
+                                                    Total Bayar:
+                                                </span>
+                                                <span className="font-bold">
+                                                    {toIDR(totalBayar)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <DialogFooter className="gap-2">
+                                        <Button
+                                            variant="outline"
+                                            onClick={() => setOpen(false)}
+                                            disabled={saving}
+                                        >
+                                            Batal
+                                        </Button>
+                                        <Button
+                                            onClick={savePayment}
+                                            disabled={saving}
+                                        >
+                                            {saving ? (
+                                                <>
+                                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                    Menyimpan…
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Check className="w-4 h-4 mr-2" />
+                                                    Simpan Pembayaran
+                                                </>
+                                            )}
+                                        </Button>
+                                    </DialogFooter>
+                                </DialogContent>
+                            </Dialog>
+                        </AppShell>
+                    </PermissionGate>
                 </AuthGuard>
             </div>
         </div>

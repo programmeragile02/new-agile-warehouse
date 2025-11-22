@@ -1,4 +1,3 @@
-// app/api/_debug/warehouse/route.ts
 import { NextResponse } from "next/server";
 
 function apiBase(): string {
