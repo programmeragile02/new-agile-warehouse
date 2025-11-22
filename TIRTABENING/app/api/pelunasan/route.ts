@@ -643,7 +643,7 @@ export async function POST(req: NextRequest) {
         if (!a.phone) continue;
 
         const token = randomToken(32);
-        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        const expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
         await prisma.magicLinkToken.create({
           data: {
             token,

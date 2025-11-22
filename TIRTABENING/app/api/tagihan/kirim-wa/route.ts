@@ -241,7 +241,7 @@ export async function POST(req: NextRequest) {
 
         // create magic link (include companyId so magic login resolves tenant)
         const token = randomToken(32);
-        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        const expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
         await prisma.magicLinkToken.create({
             data: {
                 token,

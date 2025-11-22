@@ -32,6 +32,7 @@ import {
     Users,
     Wallet,
     MapPin,
+    ReceiptText,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { FeatureGate } from "@/components/feature-gate";
@@ -435,7 +436,7 @@ export default function PiutangPage() {
 
                             <GlassCard className="p-4 flex items-center gap-3">
                                 <div className="rounded-2xl p-2 bg-primary/10">
-                                    <Users className="w-5 h-5" />
+                                    <ReceiptText className="w-5 h-5" />
                                 </div>
                                 <div>
                                     <div className="text-xs text-muted-foreground">

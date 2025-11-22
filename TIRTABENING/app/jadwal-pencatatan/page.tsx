@@ -6,7 +6,6 @@ import {
     RefreshCw,
     Download,
     FileSpreadsheet,
-    FileText,
     Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -41,6 +40,9 @@ import {
 } from "@/components/ui/dialog";
 import { PermissionGate } from "@/components/permission-gate";
 import { AclDeniedAlert } from "@/components/acl-denied-alert";
+
+// ⬇️ IMPORT XLSX UNTUK EXPORT EXCEL
+import * as XLSX from "xlsx";
 
 /* ========= Helper Tooltip: desktop=Tooltip, mobile=Dialog ========= */
 function useIsMobile() {
@@ -126,6 +128,45 @@ function InfoTip({
     );
 }
 
+// ====== HELPER UNTUK LABEL TANGGAL & PERIODE DI HEADER EXCEL ======
+function todayLabel() {
+    const d = new Date();
+    return d.toLocaleString("id-ID", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+    });
+}
+
+function formatMonthLabel(ym: string) {
+    if (!ym || !/^\d{4}-\d{2}$/.test(ym)) return ym || "-";
+    const [y, m] = ym.split("-");
+    const d = new Date(Number(y), Number(m) - 1, 1);
+    return d.toLocaleDateString("id-ID", {
+        month: "long",
+        year: "numeric",
+    });
+}
+
+function mapStatusLabel(uiStatus: string) {
+    switch (uiStatus) {
+        case "waiting":
+            return "Belum mulai";
+        case "in-progress":
+            return "Sedang berjalan";
+        case "non-progress":
+            return "Tidak dicatat";
+        case "finished":
+            return "Selesai";
+        case "overdue":
+            return "Terlambat";
+        default:
+            return uiStatus;
+    }
+}
+
 export default function JadwalPencatatanPage() {
     const { isLoading, getFilteredSchedules, refreshSchedules, filters } =
         useScheduleStore();
@@ -187,11 +228,109 @@ export default function JadwalPencatatanPage() {
         }
     };
 
-    const handleExport = (format: "excel" | "pdf") => {
+    // ========== EXPORT EXCEL ==========
+    const exportJadwalToExcel = () => {
+        if (!filteredSchedules.length) {
+            toast({
+                title: "Tidak ada data",
+                description:
+                    "Tidak ada jadwal yang cocok dengan filter untuk diekspor.",
+            });
+            return;
+        }
+
+        const periodeLabel = formatMonthLabel(filters.month);
+        const searchLabel = filters.search?.trim();
+
+        // Header atas
+        const aoa: (string | number)[][] = [
+            ["LAPORAN JADWAL PENCATATAN METER"],
+            [
+                `Periode: ${periodeLabel}   —   Dicetak: ${todayLabel()}${
+                    searchLabel ? `   —   Pencarian: ${searchLabel}` : ""
+                }`,
+            ],
+            [],
+            [
+                "No",
+                "Blok",
+                "Alamat / Area",
+                "Petugas",
+                "Target Pelanggan",
+                "Sudah Dicatat",
+                "% Progress",
+                "Status",
+                "Tanggal Rencana",
+            ],
+            ...filteredSchedules.map((s, idx) => {
+                const zonaNama =
+                    typeof s.zona === "string" ? s.zona : s.zona?.nama ?? "";
+                const t = Number(s.target || 0);
+                const p = Number(s.progress || 0);
+                const pct = t > 0 ? Math.round((p / t) * 100) : 0;
+                const tanggal = s.tanggalRencana
+                    ? new Date(s.tanggalRencana).toLocaleDateString("id-ID", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                      })
+                    : "";
+
+                return [
+                    idx + 1,
+                    zonaNama,
+                    s.alamat || "",
+                    s.petugas?.nama || "",
+                    t,
+                    p,
+                    `${pct}%`,
+                    mapStatusLabel(s.status),
+                    tanggal,
+                ];
+            }),
+        ];
+
+        const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+        // Lebar kolom
+        (ws as any)["!cols"] = [
+            { wch: 5 }, // No
+            { wch: 22 }, // Zona
+            { wch: 35 }, // Alamat
+            { wch: 22 }, // Petugas
+            { wch: 18 }, // Target
+            { wch: 18 }, // Sudah dicatat
+            { wch: 14 }, // %
+            { wch: 18 }, // Status
+            { wch: 18 }, // Tanggal
+        ];
+
+        // Merge judul & subjudul
+        (ws as any)["!merges"] = [
+            { s: { r: 0, c: 0 }, e: { r: 0, c: 8 } },
+            { s: { r: 1, c: 0 }, e: { r: 1, c: 8 } },
+        ];
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(
+            wb,
+            ws,
+            periodeLabel || filters.month || "Jadwal"
+        );
+
+        const fileName = `Jadwal-Pencatatan-${filters.month || "periode"}.xlsx`;
+        XLSX.writeFile(wb, fileName);
+
         toast({
-            title: "Export",
-            description: `Mengunduh data dalam format ${format.toUpperCase()}...`,
+            title: "Export berhasil",
+            description: `File ${fileName} berhasil dibuat.`,
         });
+    };
+
+    const handleExport = (format: "excel") => {
+        if (format === "excel") {
+            exportJadwalToExcel();
+        }
     };
 
     return (
@@ -293,15 +432,6 @@ export default function JadwalPencatatanPage() {
                                                 >
                                                     <FileSpreadsheet className="h-4 w-4 mr-2" />
                                                     Export Excel
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem
-                                                    onClick={() =>
-                                                        handleExport("pdf")
-                                                    }
-                                                    className="cursor-pointer"
-                                                >
-                                                    <FileText className="h-4 w-4 mr-2" />
-                                                    Export PDF
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>

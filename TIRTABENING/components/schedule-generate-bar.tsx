@@ -102,7 +102,7 @@ export function ScheduleGenerateBar() {
           </Button>
 
           <Button
-            onClick={handleSyncTanggal}
+            // onClick={handleSyncTanggal}
             disabled={syncing}
             variant="outline"
             className="w-full md:w-auto"
