@@ -30,6 +30,7 @@ import {
     Network,
     ReceiptText,
     LifeBuoy,
+    MessageSquareWarning,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter, usePathname } from "next/navigation";
@@ -196,6 +197,14 @@ const MENU_ITEMS: MenuItem[] = [
         icon: ClipboardList,
         roles: ["ADMIN", "OPERATOR", "PETUGAS"],
         group: ["Admin", "Petugas"],
+        section: "Operasional",
+    },
+    {
+        href: "/kendala",
+        label: "Kendala",
+        icon: MessageSquareWarning,
+        roles: ["ADMIN", "PETUGAS", "WARGA"],
+        group: ["Admin", "Petugas", "Warga"],
         section: "Operasional",
     },
 
@@ -463,6 +472,7 @@ const SECTION_ITEM_ORDER: Record<string, string[]> = {
     Operasional: [
         "/jadwal-pencatatan",
         "/catat-meter",
+        "/kendala",
         "/reset-meteran",
         "/petugas/riwayat",
     ],
@@ -515,6 +525,7 @@ const PATH_LABELS: Record<string, string> = {
     "/petugas/riwayat": "Riwayat Petugas",
     "/petugas/profil": "Profil Petugas",
     "/reset-meteran": "Reset Meteran",
+    "/kendala": "kendala",
     "/biaya": "Kategori Biaya",
     "/pengeluaran": "Input Pengeluaran",
     "/hutang": "Hutang",

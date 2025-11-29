@@ -17,12 +17,14 @@ import {
     CheckCircle2,
     ChevronRight,
     CalendarCheck,
+    Shield,
 } from "lucide-react";
 
 /** kunci langkah agar konsisten dengan backend */
 export type StepKey =
     | "tarif"
     | "pengaturan"
+    | "hak-akses"
     | "jadwal"
     | "user"
     | "tandon"
@@ -60,6 +62,13 @@ export default function OnboardingGetStarted(props: {
                 icon: Settings,
             },
             {
+                key: "hak-akses",
+                title: "Pengaturan Hak Akses ADMIN",
+                desc: "Pastikan ADMIN memiliki akses penuh, klik tombol Ctg Semua agar ADMIN memiliki akses penuh",
+                href: "/pengaturan",
+                icon: Shield,
+            },
+            {
                 key: "jadwal",
                 title: "Pengaturan Jadwal Pencatatan",
                 desc: "Buat jadwal(hari) pencatatan meter untuk bulan berjalan.",
@@ -90,7 +99,7 @@ export default function OnboardingGetStarted(props: {
             {
                 key: "pelanggan",
                 title: "Tambah Pelanggan",
-                desc: "Daftarkan pelanggan dan hubungkan ke zona (blok).",
+                desc: "Daftarkan pelanggan dan hubungkan ke blok (zona).",
                 href: "/pelanggan",
                 icon: Users,
             },
@@ -117,8 +126,8 @@ export default function OnboardingGetStarted(props: {
                         Mulai Pakai Nata Banyu
                     </h2>
                     <p className="mt-1 text-sm text-muted-foreground">
-                        Lengkapi beberapa langkah singkat supaya Nata Banyu
-                        siap digunakan dan mulai pencatatan meter air.
+                        Lengkapi beberapa langkah singkat supaya Nata Banyu siap
+                        digunakan dan mulai pencatatan meter air.
                     </p>
                 </div>
                 <Badge variant="secondary" className="self-start sm:self-auto">

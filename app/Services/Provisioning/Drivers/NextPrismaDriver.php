@@ -81,19 +81,6 @@ class NextPrismaDriver implements ProductProvisionerDriver
         return $this->lastTenantCreds = ['username'=>$user, 'password'=>$pass];
     }
 
-    // public function hardenPrivileges(string $dbName, string $username): void
-    // {
-    //     $db = $this->safeIdent($dbName);
-    //     $u  = $this->safeIdent($username);
-
-    //     $this->adminConn()->statement("REVOKE ALL PRIVILEGES, GRANT OPTION FROM '{$u}'@'localhost'");
-    //     $this->adminConn()->statement("
-    //         GRANT SELECT, INSERT, UPDATE, DELETE, EXECUTE, SHOW VIEW,
-    //             CREATE TEMPORARY TABLES, REFERENCES
-    //         ON `{$db}`.* TO '{$u}'@'%'
-    //     ");
-    // }
-
     public function runMigrations(string $dbName, array $manifest): void
     {
         $project = $manifest['paths']['next_root'] ?? null;
@@ -107,20 +94,12 @@ class NextPrismaDriver implements ProductProvisionerDriver
         // Jalankan prisma dengan user tenant
         $dbUrl = $this->composeDatabaseUrlWithCreds($dbName, $creds['username'], $creds['password']);
         $dbUrl = trim(str_replace(["\r", "\n"], '', $dbUrl));
-        \Log::info('TP: Prisma migrate DSN', ['dsn' => preg_replace('#(mysql://[^:]+:)[^@]+(@)#', '$1****$2', $dbUrl)]);
+        \Log::info('TP: Prisma generate DSN', ['dsn' => preg_replace('#(mysql://[^:]+:)[^@]+(@)#', '$1****$2', $dbUrl)]);
         $this->run(['npx','prisma','generate'], $project, ['DATABASE_URL'=>$dbUrl, 'DB_PORT' => '3306',]);
         \Log::info('TP: Prisma migrate DSN', ['dsn' => preg_replace('#(mysql://[^:]+:)[^@]+(@)#', '$1****$2', $dbUrl)]);
         $this->run(['npx','prisma','migrate','deploy'], $project, ['DATABASE_URL'=>$dbUrl, 'DB_PORT' => '3306',]);
-        \Log::info('TP: Prisma migrate DSN', ['dsn' => preg_replace('#(mysql://[^:]+:)[^@]+(@)#', '$1****$2', $dbUrl)]);
-        $this->run(['npx','prisma','db','push', '--accept-data-loss'], $project, ['DATABASE_URL'=>$dbUrl, 'DB_PORT' => '3306',]);
-
-        // Hardening privilege untuk runtime
-        // $this->hardenPrivileges($dbName, $creds['username']);
-
-        // if (!empty($manifest['seed']['use_prisma_seed'])) {
-        //     // Prisma default seed (prisma/seed.ts)
-        //     $this->run(['npx','prisma','db','seed'], $project, ['DATABASE_URL'=>$dbUrl]);
-        // }
+        // \Log::info('TP: Prisma migrate DSN', ['dsn' => preg_replace('#(mysql://[^:]+:)[^@]+(@)#', '$1****$2', $dbUrl)]);
+        // $this->run(['npx','prisma','db','push', '--accept-data-loss'], $project, ['DATABASE_URL'=>$dbUrl, 'DB_PORT' => '3306',]);
     }
 
     public function seedTenant(string $dbName, array $manifest): void

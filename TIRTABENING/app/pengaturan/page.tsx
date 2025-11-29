@@ -1,4 +1,4 @@
-// app/pengaturan/page.tsx
+// app/pengaturan/page.tsxk
 import { AuthGuard } from "@/components/auth-guard";
 import { AppShell } from "@/components/app-shell";
 import { GlassCard } from "@/components/glass-card";
@@ -31,11 +31,15 @@ export default function PengaturanPage() {
                         <AppHeader title="Pengaturan" />
 
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            {/* Tarif Air */}
-                            <GlassCard className="p-6  space-y-20">
-                                <TarifForm />
-                                <ScheduleSettingsForm />
-                            </GlassCard>
+                            <div className="space-y-6">
+                                {/* Tarif Air */}
+                                <GlassCard className="p-6">
+                                    <TarifForm />
+                                </GlassCard>
+                                <GlassCard className="p-6">
+                                    <ScheduleSettingsForm />
+                                </GlassCard>
+                            </div>
 
                             {/* Pengaturan Sistem */}
                             <GlassCard className="p-6">

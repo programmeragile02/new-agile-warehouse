@@ -11,6 +11,7 @@ import { AppHeader } from "@/components/app-header";
 type StepKey =
     | "tarif"
     | "pengaturan"
+    | "hak-akses"
     | "jadwal"
     | "user"
     | "tandon"
@@ -23,7 +24,7 @@ export default function OnboardingPage() {
     const [completedKeys, setCompletedKeys] = useState<StepKey[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const TOTAL_STEPS = 8;
+    const TOTAL_STEPS = 9;
     const allDone = !loading && (completedKeys?.length ?? 0) >= TOTAL_STEPS;
 
     async function loadState() {

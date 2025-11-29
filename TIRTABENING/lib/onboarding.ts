@@ -4,6 +4,7 @@ import { db } from "./db";
 export type StepKey =
     | "tarif"
     | "pengaturan"
+    | "hak-akses"
     | "jadwal"
     | "user"
     | "tandon"
@@ -49,6 +50,35 @@ export async function getOnboardingState(): Promise<{
         done.add("pengaturan");
     }
 
+    // 1c) hak akses semua menu untuk admin
+    const adminRole = await prisma.appRole.findFirst({
+        where: { name: "ADMIN" },
+        select: { id: true },
+    });
+
+    if (adminRole) {
+        // jumlah total permission
+        const totalPermission = await prisma.appPermission.count();
+
+        if (totalPermission > 0) {
+            // hitung jumlah permission ADMIN yang sudah FULL (V A E D)
+            const adminFullCount = await prisma.rolePermission.count({
+                where: {
+                    roleId: adminRole.id,
+                    canView: true,
+                    canAdd: true,
+                    canEdit: true,
+                    canDelete: true,
+                },
+            });
+
+            // jika jumlah permission sama -> berarti sudah tekan "ALL"
+            if (adminFullCount >= totalPermission) {
+                done.add("hak-akses");
+            }
+        }
+    }
+
     // 2) Jadwal: selesai jika ADA record apa pun di tabel
     if (setting && filled(setting.tanggalCatatDefault)) {
         done.add("jadwal");
@@ -81,6 +111,7 @@ export async function getOnboardingState(): Promise<{
     const all: StepKey[] = [
         "tarif",
         "pengaturan",
+        "hak-akses",
         "jadwal",
         "user",
         "tandon",

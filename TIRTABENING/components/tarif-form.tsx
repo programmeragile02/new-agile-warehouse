@@ -150,7 +150,7 @@ export function TarifForm() {
                 />
             </div>
 
-            <div>
+            {/* <div>
                 <Label htmlFor="biaya-admin">Biaya Admin</Label>
                 <Input
                     id="biaya-admin"
@@ -160,7 +160,7 @@ export function TarifForm() {
                     onChange={onChange("biayaAdmin")}
                     placeholder="Masukkan Biaya Admin"
                 />
-            </div>
+            </div> */}
 
             <div>
                 <Label htmlFor="tgl-jt">Tgl Jatuh Tempo (tanggal)</Label>
@@ -174,7 +174,7 @@ export function TarifForm() {
                 />
             </div>
 
-            <div>
+            {/* <div>
                 <Label htmlFor="denda-sama">Denda Terlambat (bulan sama)</Label>
                 <Input
                     id="denda-sama"
@@ -196,7 +196,7 @@ export function TarifForm() {
                     onChange={onChange("dendaTelatBulanBerbeda")}
                     placeholder="Masukkan denda bulan berbeda"
                 />
-            </div>
+            </div> */}
 
             <Button type="submit" className="w-full" disabled={saving}>
                 {saving ? (

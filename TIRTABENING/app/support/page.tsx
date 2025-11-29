@@ -165,8 +165,7 @@ export default function SupportIndexPage() {
                                     >
                                         <AccordionItem value="step1">
                                             <AccordionTrigger>
-                                                1) Masuk Aplikasi (2 tahap
-                                                login)
+                                                1) Masuk Aplikasi
                                             </AccordionTrigger>
                                             <AccordionContent className="text-sm leading-relaxed">
                                                 <ul className="list-decimal pl-5 space-y-1">

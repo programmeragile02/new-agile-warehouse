@@ -326,6 +326,10 @@ export async function POST(req: NextRequest) {
             parseInt(req.cookies.get("tb_addons")?.value ?? "0", 10) || 0
         );
 
+        const wargaAppRole = await prisma.appRole.findUnique({
+            where: { name: "WARGA" }, // case sesuai di DB
+        });
+
         // ====== KUOTA: cek dalam transaksi (anti-race) ======
         const out = await prisma.$transaction(async (tx) => {
             let addons = Math.max(
@@ -359,7 +363,8 @@ export async function POST(req: NextRequest) {
                     passwordHash,
                     name: nama,
                     phone: waNorm ?? null,
-                    role: "WARGA",
+                    role: wargaAppRole?.name ?? "WARGA",
+                    appRoleId: wargaAppRole?.id ?? null,
                     isActive: true,
                     companyId: companyId, // kaitkan user dengan company
                 },
@@ -946,7 +951,7 @@ export async function PUT(req: NextRequest) {
             successMsg = `Nomor urut pelanggan "${updated.nama}" dipindah ke ${updated.noUrutRumah}.`;
         }
 
-        // ✅ invalidasi list setelah update
+        // invalidasi list setelah update
         revalidateTag("pelanggan");
 
         return NextResponse.json({

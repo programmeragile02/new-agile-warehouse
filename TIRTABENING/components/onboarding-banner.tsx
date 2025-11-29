@@ -18,7 +18,7 @@ export function OnboardingBanner() {
     const [state, setState] = useState({
         progressPct: 0,
         completed: 0,
-        total: 8,
+        total: 9,
         loaded: false,
         onboardingCompleted: false,
     });
@@ -42,7 +42,7 @@ export function OnboardingBanner() {
                 const completed = Array.isArray(json.completedKeys)
                     ? json.completedKeys.length
                     : 0;
-                const total = 8;
+                const total = 9;
                 const pct = Math.min(
                     100,
                     json.progressPct ?? Math.round((completed / total) * 100)
@@ -73,7 +73,7 @@ export function OnboardingBanner() {
                     setState({
                         progressPct: 0,
                         completed: 0,
-                        total: 8,
+                        total: 9,
                         loaded: true,
                         onboardingCompleted: false,
                     });

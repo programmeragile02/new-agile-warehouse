@@ -480,7 +480,7 @@ export async function POST(req: NextRequest) {
                 `[CLOSED_BY:${periodeAktif}]`,
                 `[PAID_AT:${paidAtISO}]`,
               ]),
-              statusVerif: "VERIFIED",
+              // statusVerif: "VERIFIED",
             },
           });
           clearedPeriods.push(t.periode);

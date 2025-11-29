@@ -262,14 +262,14 @@ export function SystemForm() {
 
             {/* Informasi Pembayaran & Kontak */}
             <div className="pt-2">
-                <div className="flex items-center gap-2 mb-2">
+                <div className="flex items-center gap-2 mb-3">
                     <Wallet className="w-4 h-4 text-primary" />
-                    <h3 className="font-medium">
+                    <h3 className="text-xl font-semibold">
                         Informasi Pembayaran & Kontak
                     </h3>
                 </div>
 
-                <div className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 space-y-3 gap-3">
                     <div>
                         <Label htmlFor="nama-bank-pembayaran">
                             Nama Bank Pembayaran
@@ -306,7 +306,7 @@ export function SystemForm() {
 
                     <div>
                         <Label htmlFor="an-norek-pembayaran">
-                            a.n. No Rekening Pembayaran
+                            A.n. No Rekening Pembayaran
                         </Label>
                         <Input
                             id="an-norek-pembayaran"
@@ -332,7 +332,7 @@ export function SystemForm() {
                                     namaBendahara: e.target.value,
                                 }))
                             }
-                            placeholder="MAsukkan nama bendahara"
+                            placeholder="Masukkan nama bendahara"
                         />
                     </div>
 

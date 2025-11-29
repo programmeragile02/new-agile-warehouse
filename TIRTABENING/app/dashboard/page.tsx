@@ -789,8 +789,17 @@ export default function DashboardPage() {
                                                 <p className="text-xs text-muted-foreground">
                                                     {issue.date}
                                                 </p>
-                                                <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
-                                                    Belum Selesai
+                                                <span
+                                                    className={`px-2 py-1 text-xs rounded-full ${
+                                                        issue.status ===
+                                                        "solved"
+                                                            ? "bg-green-100 text-green-800"
+                                                            : "bg-yellow-100 text-yellow-800"
+                                                    }`}
+                                                >
+                                                    {issue.status === "solved"
+                                                        ? "Selesai"
+                                                        : "Belum Selesai"}
                                                 </span>
                                             </div>
                                         </div>

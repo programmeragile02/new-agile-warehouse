@@ -7,19 +7,15 @@ datasource db {
   url      = env("DATABASE_URL") // koneksi dari .env
 }
 
-enum Role {
-  ADMIN
-  PETUGAS
-  WARGA
-}
-
 model User {
   id                    String   @id @default(cuid()) // PK
   username              String   @unique // unik
   passwordHash          String
   name                  String
   phone                 String?  @db.VarChar(20)
-  role                  Role     @default(WARGA)
+  role                  String?  @db.VarChar(50)   // "ADMIN", "PETUGAS", "WARGA", dll
+  appRoleId             String?
+  appRole               AppRole? @relation("UserAppRole", fields: [appRoleId], references: [id])
   isActive              Boolean  @default(true)
   mustChangePassword    Boolean  @default(false)
   lastPasswordChangeAt  DateTime?
@@ -106,6 +102,7 @@ model Pelanggan {
   resets         ResetMeter[]   @relation("PelangganReset")
   catatMeterBlok CatatMeterBlok[] @relation("PelangganToCatatMeterBlok")
   detailPembayaran DetailPembayaran[]
+  kendalaAir       KendalaAir[]      @relation("PelangganKendalaAir")
 
   @@unique([zonaId, noUrutRumah])
   @@index([zonaId])
@@ -1058,6 +1055,7 @@ model AppRole {
   updatedAt   DateTime @updatedAt
 
   permissions RolePermission[]
+  users       User[]   @relation("UserAppRole")
 
   @@unique([name])                 // unik di DB tenant ini
   @@index([isActive])
@@ -1095,4 +1093,49 @@ model RolePermission {
 
   @@unique([roleId, permissionId])
   @@map("app_role_permissions")
+}
+
+enum KendalaStatus {
+  UNRESOLVED
+  SOLVED
+}
+
+enum KendalaPriority {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum KendalaSource {
+  METER_READING
+  METER_READING_BLOK
+  MANUAL_REPORT
+}
+
+model KendalaAir {
+  id        String          @id @default(cuid())
+
+  // Relasi opsional ke Pelanggan (kalau kendala milik pelanggan tertentu)
+  pelangganId String?
+  pelanggan   Pelanggan?     @relation("PelangganKendalaAir", fields: [pelangganId], references: [id])
+
+  // data laporan
+  issue        String        // judul singkat, mis: "Pipa bocor depan rumah"
+  description  String?       @db.Text
+  status       KendalaStatus @default(UNRESOLVED)
+  priority     KendalaPriority @default(MEDIUM)
+
+  source       KendalaSource @default(MANUAL_REPORT)
+
+  reporterName    String?    @db.VarChar(160)
+  reporterPhone   String?    @db.VarChar(30)
+  reporterAddress String?    @db.VarChar(255)
+
+  reportedAt   DateTime      @default(now())
+  solvedAt     DateTime?
+
+  solution     String?       @db.Text
+
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 }
