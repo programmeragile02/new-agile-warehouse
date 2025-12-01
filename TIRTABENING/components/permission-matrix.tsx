@@ -16,22 +16,14 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import {
-    Shield,
-    Plus,
-    Edit,
-    Trash2,
-    Users,
-    Settings,
-    CheckSquare,
-    XSquare,
-    ToggleRight,
-} from "lucide-react";
+import { Shield, Plus, Edit, Trash2, Users, ToggleRight } from "lucide-react";
 
 export function PermissionMatrix() {
     const {
         permissions,
         roles,
+        roleQuota, // <-- info kuota role dari store
+
         addRole,
         updateRole,
         deleteRole,
@@ -51,29 +43,49 @@ export function PermissionMatrix() {
     const [isAddRoleOpen, setIsAddRoleOpen] = useState(false);
     const [editingRole, setEditingRole] = useState<any>(null);
     const [roleForm, setRoleForm] = useState({ name: "", description: "" });
+    const [savingRole, setSavingRole] = useState(false);
 
     useEffect(() => {
         fetchAll();
     }, [fetchAll]);
 
-    const handleSubmitRole = (e: React.FormEvent) => {
+    const used = roleQuota?.used ?? roles.length;
+    const max = roleQuota?.max ?? 0;
+    const remaining = roleQuota?.remaining ?? Math.max(0, max - used);
+    const plan = roleQuota?.planCode ?? "—";
+    const isQuotaFull = max > 0 && used >= max;
+
+    const handleSubmitRole = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (editingRole) {
-            updateRole(editingRole.id, roleForm);
+        setSavingRole(true);
+        try {
+            if (editingRole) {
+                await updateRole(editingRole.id, roleForm);
+                toast({
+                    title: "Berhasil",
+                    description: "Role berhasil diperbarui",
+                });
+                setEditingRole(null);
+            } else {
+                await addRole({ ...roleForm, isActive: true });
+                toast({
+                    title: "Berhasil",
+                    description: "Role berhasil ditambahkan",
+                });
+                setIsAddRoleOpen(false);
+            }
+            setRoleForm({ name: "", description: "" });
+        } catch (err: any) {
+            // Error di-wrap helper `j` → err.message berisi pesan dari backend
             toast({
-                title: "Berhasil",
-                description: "Role berhasil diperbarui",
+                title: "Gagal",
+                description:
+                    err?.message ?? "Terjadi kesalahan saat menyimpan role.",
+                variant: "destructive",
             });
-            setEditingRole(null);
-        } else {
-            addRole({ ...roleForm, isActive: true });
-            toast({
-                title: "Berhasil",
-                description: "Role berhasil ditambahkan",
-            });
-            setIsAddRoleOpen(false);
+        } finally {
+            setSavingRole(false);
         }
-        setRoleForm({ name: "", description: "" });
     };
 
     const handlePermissionChange = (
@@ -103,35 +115,45 @@ export function PermissionMatrix() {
         <div className="space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <Shield className="w-5 h-5 text-primary" />
-                    <h2 className="text-xl font-semibold text-foreground">
-                        Hak Akses User
-                    </h2>
+                <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-2">
+                        <Shield className="w-5 h-5 text-primary" />
+                        <h2 className="text-xl font-semibold text-foreground">
+                            Hak Akses User
+                        </h2>
+                    </div>
+
+                    {roleQuota && (
+                        <div className="text-xs sm:text-sm text-muted-foreground">
+                            Kuota Role:{" "}
+                            <span className="font-semibold">
+                                {roleQuota.used} / {roleQuota.max}
+                            </span>
+                            {roleQuota.planCode && (
+                                <span>{` • Paket ${roleQuota.planCode}`}</span>
+                            )}
+                            {roleQuota.remaining <= 0 && (
+                                <span className="text-red-600 font-medium ml-1">
+                                    (Kuota habis)
+                                </span>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex items-center gap-2">
-                    {/* <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => bulkSetAllRolesAll(true)}
-                    >
-                        <CheckSquare className="w-4 h-4 mr-2" /> Centang Semua
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => bulkSetAllRolesAll(false)}
-                    >
-                        <XSquare className="w-4 h-4 mr-2" /> Hapus Semua
-                    </Button> */}
-
                     <Dialog
                         open={isAddRoleOpen}
-                        onOpenChange={setIsAddRoleOpen}
+                        onOpenChange={(open) => {
+                            setIsAddRoleOpen(open);
+                            if (!open) {
+                                setEditingRole(null);
+                                setRoleForm({ name: "", description: "" });
+                            }
+                        }}
                     >
                         <DialogTrigger asChild>
-                            <Button>
+                            <Button disabled={isQuotaFull}>
                                 <Plus className="w-4 h-4 mr-2" />
                                 Tambah Role
                             </Button>
@@ -176,8 +198,14 @@ export function PermissionMatrix() {
                                         required
                                     />
                                 </div>
-                                <Button type="submit" className="w-full">
-                                    Tambah Role
+                                <Button
+                                    type="submit"
+                                    className="w-full"
+                                    disabled={savingRole}
+                                >
+                                    {savingRole
+                                        ? "Menyimpan..."
+                                        : "Tambah Role"}
                                 </Button>
                             </form>
                         </DialogContent>
@@ -190,6 +218,11 @@ export function PermissionMatrix() {
                 <h3 className="text-lg font-medium flex items-center gap-2">
                     <Users className="w-4 h-4" /> Manajemen Role ({roles.length}
                     )
+                    {roleQuota && (
+                        <span className="text-xs text-muted-foreground">
+                            • Dipakai {roleQuota.used}/{roleQuota.max}
+                        </span>
+                    )}
                 </h3>
 
                 <div className="grid gap-3">
@@ -223,7 +256,11 @@ export function PermissionMatrix() {
                                 <Button
                                     variant="ghost"
                                     size="sm"
-                                    hidden={role.name === "ADMIN" || role.name === "PETUGAS" || role.name === "WARGA"}
+                                    hidden={
+                                        role.name === "ADMIN" ||
+                                        role.name === "PETUGAS" ||
+                                        role.name === "WARGA"
+                                    }
                                     onClick={() => toggleRoleStatus(role.id)}
                                 >
                                     <ToggleRight className="w-4 h-4" />
@@ -239,7 +276,11 @@ export function PermissionMatrix() {
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            hidden={role.name === "ADMIN" || role.name === "PETUGAS" || role.name === "WARGA"}
+                                            hidden={
+                                                role.name === "ADMIN" ||
+                                                role.name === "PETUGAS" ||
+                                                role.name === "WARGA"
+                                            }
                                             onClick={() => {
                                                 setEditingRole(role);
                                                 setRoleForm({
@@ -300,8 +341,11 @@ export function PermissionMatrix() {
                                             <Button
                                                 type="submit"
                                                 className="w-full"
+                                                disabled={savingRole}
                                             >
-                                                Simpan Perubahan
+                                                {savingRole
+                                                    ? "Menyimpan..."
+                                                    : "Simpan Perubahan"}
                                             </Button>
                                         </form>
                                     </DialogContent>
@@ -345,47 +389,6 @@ export function PermissionMatrix() {
                                         <h4 className="text-md font-medium text-primary">
                                             {category || "—"}
                                         </h4>
-                                        {/* Bulk pada kategori ini untuk semua role aktif */}
-                                        {/* <div className="flex gap-2">
-                                            {activeRoles.map((role) => (
-                                                <div
-                                                    key={role.id}
-                                                    className="flex items-center gap-2"
-                                                >
-                                                    <span className="text-xs text-muted-foreground">
-                                                        {role.name}:
-                                                    </span>
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        onClick={() =>
-                                                            bulkSetRoleActionForCategory(
-                                                                role.id,
-                                                                "all",
-                                                                true,
-                                                                category
-                                                            )
-                                                        }
-                                                    >
-                                                        All
-                                                    </Button>
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        onClick={() =>
-                                                            bulkSetRoleActionForCategory(
-                                                                role.id,
-                                                                "all",
-                                                                false,
-                                                                category
-                                                            )
-                                                        }
-                                                    >
-                                                        None
-                                                    </Button>
-                                                </div>
-                                            ))}
-                                        </div> */}
                                     </div>
 
                                     <div className="bg-white/50 backdrop-blur-sm rounded-lg border border-white/20 overflow-hidden">
@@ -422,12 +425,16 @@ export function PermissionMatrix() {
                                                                                     )
                                                                                 }
                                                                             >
-                                                                                Ctg Semua
+                                                                                Ctg
+                                                                                Semua
                                                                             </Button>
                                                                             <Button
                                                                                 variant="outline"
                                                                                 size="sm"
-                                                                                disabled={role.name === "ADMIN"}
+                                                                                disabled={
+                                                                                    role.name ===
+                                                                                    "ADMIN"
+                                                                                }
                                                                                 onClick={() =>
                                                                                     bulkSetRoleAll(
                                                                                         role.id,
@@ -435,7 +442,9 @@ export function PermissionMatrix() {
                                                                                     )
                                                                                 }
                                                                             >
-                                                                                Hapus Semua Ctg
+                                                                                Hapus
+                                                                                Semua
+                                                                                Ctg
                                                                             </Button>
                                                                         </div>
                                                                         {/* Toggle per-aksi untuk role ini */}
@@ -455,7 +464,6 @@ export function PermissionMatrix() {
                                                                                         key={
                                                                                             act
                                                                                         }
-                                                                                        // Indeterminate state tidak kita tampilkan; ini tombol aksi massal
                                                                                         onCheckedChange={(
                                                                                             checked
                                                                                         ) =>

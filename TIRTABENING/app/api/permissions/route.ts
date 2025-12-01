@@ -40,15 +40,19 @@ async function fetchAllowedPathsFromMatrix(
     offering: string
 ): Promise<Set<string> | null> {
     try {
-        const url = new URL(req.url);
-        // ganti path ke endpoint matrix public kita
-        url.pathname = `/api/public/catalog/offerings/${encodeURIComponent(
-            productCode
-        )}/${encodeURIComponent(offering)}/matrix`;
+        const base =
+            process.env.INTERNAL_BASE_URL ||
+            `http://127.0.0.1:${process.env.PORT || 3011}`;
+
+        const url = new URL(
+            `/api/public/catalog/offerings/${encodeURIComponent(
+                productCode
+            )}/${encodeURIComponent(offering)}/matrix`,
+            base
+        );
         url.searchParams.set("include", "menus");
 
         const res = await fetch(url.toString(), {
-            // kalau endpoint ini butuh context cookie, kita forward saja
             headers: {
                 cookie: req.headers.get("cookie") ?? "",
                 accept: "application/json",

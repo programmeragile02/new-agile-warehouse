@@ -29,6 +29,13 @@ export type UIRolePermission = {
     canDelete: boolean;
 };
 
+type RoleQuota = {
+    used: number;
+    max: number;
+    remaining: number;
+    planCode?: string;
+};
+
 async function j<T>(url: string, init?: RequestInit): Promise<T> {
     const res = await fetch(url, init);
     const ct = res.headers.get("content-type") || "";
@@ -54,6 +61,7 @@ export const usePermissionStore = create<{
     roles: UIRole[];
     permissions: UIPermission[];
     rolePermissions: UIRolePermission[];
+    roleQuota?: RoleQuota;
 
     fetchAll: () => Promise<void>;
     addRole: (payload: {
@@ -100,19 +108,22 @@ export const usePermissionStore = create<{
     roles: [],
     permissions: [],
     rolePermissions: [],
+    roleQuota: undefined,
 
     fetchAll: async () => {
         const [permJ, roleJ, linkJ] = await Promise.all([
             j<{ ok: boolean; data: UIPermission[] }>("/api/permissions"),
-            j<{ ok: boolean; data: UIRole[] }>("/api/roles"),
+            j<{ ok: boolean; data: UIRole[]; quota?: RoleQuota }>("/api/roles"),
             j<{ ok: boolean; data: UIRolePermission[] }>(
                 "/api/role-permissions"
             ),
         ]);
+
         usePermissionStore.setState({
             permissions: permJ.data,
             roles: roleJ.data,
             rolePermissions: linkJ.data,
+            roleQuota: roleJ.quota,
         });
     },
 
