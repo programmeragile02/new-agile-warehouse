@@ -1,3 +1,1063 @@
+// "use client";
+
+// import React, { useEffect, useMemo, useState } from "react";
+// import {
+//     ArrowLeft,
+//     Menu as MenuIcon,
+//     Home,
+//     Users,
+//     ClipboardList,
+//     CreditCard,
+//     Settings,
+//     LogOut,
+//     MapPin,
+//     FileText,
+//     CalendarDays,
+//     RotateCcw,
+//     FolderOpen,
+//     BarChart3,
+//     DollarSign,
+//     IdCard,
+//     HistoryIcon,
+//     Phone,
+//     LibraryIcon,
+//     Droplet,
+//     TrendingUp,
+//     FileBarChart,
+//     ChevronRight,
+//     Droplets,
+//     HandCoins,
+//     Network,
+//     ReceiptText,
+//     LifeBuoy,
+//     MessageSquareWarning,
+// } from "lucide-react";
+// import { Button } from "@/components/ui/button";
+// import { useRouter, usePathname } from "next/navigation";
+// import Link from "next/link";
+// import {
+//     DropdownMenu,
+//     DropdownMenuContent,
+//     DropdownMenuItem,
+//     DropdownMenuTrigger,
+// } from "@/components/ui/dropdown-menu";
+// import {
+//     Breadcrumb,
+//     BreadcrumbItem,
+//     BreadcrumbLink,
+//     BreadcrumbList,
+//     BreadcrumbPage,
+//     BreadcrumbSeparator,
+// } from "@/components/ui/breadcrumb";
+// import { GlassCard } from "./glass-card";
+// import { useToast } from "@/hooks/use-toast";
+// import Progress from "./ui/progress";
+// import { OnboardingBanner } from "./onboarding-banner";
+
+// /* ============== ENV & helpers ============== */
+
+// /** DEFAULT OFFERING */
+// const DEFAULT_OFFERING =
+//     (typeof process !== "undefined" &&
+//         (process.env.NEXT_PUBLIC_DEFAULT_OFFERING ??
+//             process.env.DEFAULT_OFFERING)) ||
+//     "basic";
+
+// const PRODUCT_CODE =
+//     typeof process !== "undefined"
+//         ? process.env.NEXT_PUBLIC_PRODUCT_CODE ||
+//           process.env.PRODUCT_CODE ||
+//           "NATABANYU"
+//         : "NATABANYU";
+
+// /** Strict mode (default: true) */
+// const MATRIX_STRICT =
+//     typeof process !== "undefined" &&
+//     (process.env.NEXT_PUBLIC_MATRIX_STRICT ?? "true").toLowerCase() !== "false";
+
+// /** Offering getter (client) */
+// function getOfferingClient(): string {
+//     try {
+//         const cookieMatch = document.cookie
+//             .split("; ")
+//             .find((x) => x.startsWith("tb_offering="));
+//         if (cookieMatch) {
+//             const v = decodeURIComponent(cookieMatch.split("=")[1] || "");
+//             if (v) return v;
+//         }
+//     } catch {}
+//     try {
+//         const v = localStorage.getItem("tb_offering");
+//         if (v) return v;
+//     } catch {}
+//     return DEFAULT_OFFERING || "basic";
+// }
+
+// /** Aliases: local -> upstream matrix route */
+// const ROUTE_ALIASES: Record<string, string> = {
+//     "/warga-dashboard": "/warga-dashboard",
+//     "/hutang-pembayaran": "/hutang-pembayaran",
+//     // Tambahkan mapping lain bila backend berbeda nama:
+//     // "/catat-blok": "/catat-meter-blok",
+//     // "/petugas/profil": "/profil-petugas",
+//     // "/petugas/riwayat": "/riwayat-petugas",
+// };
+
+// /** Normalisasi path: leading '/', tanpa trailing '/', apply alias */
+// function normalizePath(p: string): string {
+//     if (!p) return "/";
+//     let s = p.trim();
+//     if (!s.startsWith("/")) s = "/" + s;
+//     if (s.length > 1 && s.endsWith("/")) s = s.slice(0, -1);
+//     if (ROUTE_ALIASES[s]) return normalizePath(ROUTE_ALIASES[s]);
+//     return s;
+// }
+
+// /** Selalu tampil */
+// const ALWAYS_SHOW = new Set<string>(["/dashboard"].map(normalizePath));
+
+// /** Fallback aman untuk PETUGAS (boleh dihapus setelah semua rute tercakup matrix) */
+// const PETUGAS_SAFE_ROUTES = new Set(
+//     ["/catat-tandon", "/catat-blok", "/petugas/riwayat", "/petugas/profil"].map(
+//         normalizePath
+//     )
+// );
+
+// /* ============== Types ============== */
+// type Role = "ADMIN" | "OPERATOR" | "PETUGAS" | "WARGA";
+// type LiteUser = { id: string; name: string; role: Role };
+
+// type GroupName = "Admin" | "Petugas" | "Warga";
+
+// type MenuItem = {
+//     href: string;
+//     label: string;
+//     icon: React.ComponentType<any>;
+//     roles?: Role[];
+//     group?: GroupName | GroupName[];
+//     section?: string;
+// };
+
+// /* ============== Menu (data) ============== */
+// const MENU_ITEMS: MenuItem[] = [
+//     {
+//         href: "/dashboard",
+//         label: "Dashboard",
+//         icon: Home,
+//         roles: ["ADMIN"],
+//         group: "Admin",
+//     },
+
+//     // Master
+//     {
+//         href: "/pelanggan",
+//         label: "Pelanggan",
+//         icon: Users,
+//         roles: ["ADMIN"],
+//         group: "Admin",
+//         section: "Master",
+//     },
+//     {
+//         href: "/tandon",
+//         label: "Tandon",
+//         icon: Droplet,
+//         roles: ["ADMIN"],
+//         group: "Admin",
+//         section: "Master",
+//     },
+//     {
+//         href: "/zona",
+//         label: "Blok",
+//         icon: MapPin,
+//         roles: ["ADMIN"],
+//         group: "Admin",
+//         section: "Master",
+//     },
+//     {
+//         href: "/inventaris",
+//         label: "Inventaris",
+//         icon: LibraryIcon,
+//         roles: ["ADMIN", "OPERATOR"],
+//         group: "Admin",
+//         section: "Master",
+//     },
+
+//     // Operasional
+//     {
+//         href: "/jadwal-pencatatan",
+//         label: "Jadwal Pencatatan",
+//         icon: CalendarDays,
+//         roles: ["ADMIN", "PETUGAS"],
+//         group: ["Admin", "Petugas"],
+//         section: "Operasional",
+//     },
+//     {
+//         href: "/catat-meter",
+//         label: "Catat Meter",
+//         icon: ClipboardList,
+//         roles: ["ADMIN", "OPERATOR", "PETUGAS"],
+//         group: ["Admin", "Petugas"],
+//         section: "Operasional",
+//     },
+//     {
+//         href: "/kendala",
+//         label: "Kendala",
+//         icon: MessageSquareWarning,
+//         roles: ["ADMIN", "PETUGAS", "WARGA"],
+//         group: ["Admin", "Petugas", "Warga"],
+//         section: "Operasional",
+//     },
+
+//     // Meteran
+//     {
+//         href: "/catat-tandon",
+//         label: "Catat Meter Tandon",
+//         icon: ClipboardList,
+//         roles: ["ADMIN", "OPERATOR", "PETUGAS"],
+//         group: ["Admin", "Petugas"],
+//         section: "Meteran",
+//     },
+//     {
+//         href: "/catat-blok",
+//         label: "Catat Meter Blok",
+//         icon: ClipboardList,
+//         roles: ["ADMIN", "OPERATOR", "PETUGAS"],
+//         group: ["Admin", "Petugas"],
+//         section: "Meteran",
+//     },
+
+//     {
+//         href: "/reset-meteran",
+//         label: "Reset Meteran",
+//         icon: RotateCcw,
+//         roles: ["ADMIN", "OPERATOR"],
+//         group: "Admin",
+//         section: "Operasional",
+//     },
+
+//     // Keuangan
+//     {
+//         href: "/tagihan-pembayaran",
+//         label: "Tagihan & Pembayaran",
+//         icon: FileText,
+//         roles: ["ADMIN", "OPERATOR", "WARGA"],
+//         group: ["Admin", "Warga"],
+//         section: "Keuangan",
+//     },
+//     {
+//         href: "/biaya",
+//         label: "Kategori Biaya",
+//         icon: FolderOpen,
+//         roles: ["ADMIN", "OPERATOR"],
+//         group: "Admin",
+//         section: "Keuangan",
+//     },
+//     {
+//         href: "/pengeluaran",
+//         label: "Input Pengeluaran",
+//         icon: CreditCard,
+//         roles: ["ADMIN", "OPERATOR"],
+//         group: "Admin",
+//         section: "Keuangan",
+//     },
+//     {
+//         href: "/hutang",
+//         label: "Hutang",
+//         icon: CreditCard,
+//         roles: ["ADMIN", "OPERATOR"],
+//         group: "Admin",
+//         section: "Keuangan",
+//     },
+//     {
+//         href: "/hutang-pembayaran",
+//         label: "Pembayaran Hutang",
+//         icon: HandCoins,
+//         roles: ["ADMIN", "OPERATOR"],
+//         group: "Admin",
+//         section: "Keuangan",
+//     },
+//     {
+//         href: "/pajak",
+//         label: "Pengelolaan Pajak",
+//         icon: ReceiptText,
+//         roles: ["ADMIN"],
+//         group: "Admin",
+//         section: "Keuangan",
+//     },
+
+//     // Laporan
+//     {
+//         href: "/laporan-catat-meter",
+//         label: "Laporan Catat Meter",
+//         icon: FileText,
+//         roles: ["ADMIN", "PETUGAS"],
+//         group: "Admin",
+//         section: "Laporan",
+//     },
+//     {
+//         href: "/laporan-summary",
+//         label: "Laporan Summary",
+//         icon: BarChart3,
+//         roles: ["ADMIN", "OPERATOR"],
+//         group: "Admin",
+//         section: "Laporan",
+//     },
+//     {
+//         href: "/laporan/konsumsi-zona",
+//         label: "Laporan Konsumsi Blok",
+//         icon: Droplet,
+//         roles: ["ADMIN", "OPERATOR"],
+//         group: "Admin",
+//         section: "Laporan",
+//     },
+//     {
+//         href: "/laporan-status-pembayaran",
+//         label: "Laporan Status Pembayaran",
+//         icon: FileText,
+//         roles: ["ADMIN"],
+//         group: "Admin",
+//         section: "Laporan",
+//     },
+//     {
+//         href: "/laporan/laba-rugi",
+//         label: "Laporan Laba & Rugi",
+//         icon: TrendingUp,
+//         roles: ["ADMIN"],
+//         group: "Admin",
+//         section: "Laporan",
+//     },
+//     {
+//         href: "/laporan/hutang",
+//         label: "Laporan Hutang",
+//         icon: FileBarChart,
+//         roles: ["ADMIN"],
+//         group: "Admin",
+//         section: "Laporan",
+//     },
+//     {
+//         href: "/laporan/keuangan",
+//         label: "Laporan Keuangan",
+//         icon: DollarSign,
+//         roles: ["ADMIN"],
+//         group: "Admin",
+//         section: "Laporan",
+//     },
+//     {
+//         href: "/laporan/piutang",
+//         label: "Laporan Piutang",
+//         icon: FileText,
+//         roles: ["ADMIN", "OPERATOR"],
+//         group: "Admin",
+//         section: "Laporan",
+//     },
+
+//     // Distribusi
+//     {
+//         href: "/distribusi/hirarki",
+//         label: "Hirarki",
+//         icon: Network,
+//         roles: ["ADMIN"],
+//         group: "Admin",
+//         section: "Distribusi",
+//     },
+//     {
+//         href: "/distribusi/rekonsiliasi",
+//         label: "Rekonsiliasi",
+//         icon: BarChart3,
+//         roles: ["ADMIN"],
+//         group: "Admin",
+//         section: "Distribusi",
+//     },
+//     {
+//         href: "/distribusi/peta",
+//         label: "Peta Pemakaian Air",
+//         icon: Droplets,
+//         roles: ["ADMIN"],
+//         group: "Admin",
+//         section: "Distribusi",
+//     },
+
+//     // Pengaturan
+//     {
+//         href: "/pengaturan",
+//         label: "Pengaturan",
+//         icon: Settings,
+//         roles: ["ADMIN"],
+//         group: "Admin",
+//         section: "Pengaturan",
+//     },
+//     {
+//         href: "/whatsapp-setting",
+//         label: "WhatsApp Setting",
+//         icon: Phone,
+//         roles: ["ADMIN"],
+//         group: "Admin",
+//         section: "Pengaturan",
+//     },
+//     // Support
+//     {
+//         href: "/support",
+//         label: "Pusat Bantuan",
+//         icon: LifeBuoy,
+//         roles: ["ADMIN", "OPERATOR", "PETUGAS", "WARGA"],
+//         group: "Admin",
+//         section: "Support",
+//     },
+//     {
+//         href: "/admin/support",
+//         label: "CS Center",
+//         icon: LifeBuoy,
+//         roles: ["ADMIN"],
+//         group: "Admin",
+//         section: "Support",
+//     },
+
+//     // Petugas
+//     {
+//         href: "/petugas/riwayat",
+//         label: "Riwayat Petugas",
+//         icon: HistoryIcon,
+//         roles: ["PETUGAS"],
+//         group: "Petugas",
+//         section: "Operasional",
+//     },
+//     {
+//         href: "/petugas/profil",
+//         label: "Profil Petugas",
+//         icon: IdCard,
+//         roles: ["PETUGAS"],
+//         group: "Petugas",
+//         section: "Akun",
+//     },
+
+//     // Warga
+//     {
+//         href: "/warga-dashboard",
+//         label: "Dashboard Warga",
+//         icon: Home,
+//         roles: ["WARGA"],
+//         group: "Warga",
+//         section: "Beranda",
+//     },
+//     {
+//         href: "/warga-profil",
+//         label: "Profil Warga",
+//         icon: Users,
+//         roles: ["WARGA"],
+//         group: "Warga",
+//         section: "Akun",
+//     },
+// ];
+
+// /* ====== Urutan section & sub menu ====== */
+// const SECTION_ORDER = [
+//     "Master",
+//     "Operasional",
+//     "Meteran",
+//     "Keuangan",
+//     "Laporan",
+//     "Distribusi",
+//     "Pengaturan",
+//     "Support",
+//     "Petugas",
+//     "Warga",
+//     "Akun",
+// ];
+// const getSectionOrder = (s: string) => {
+//     const i = SECTION_ORDER.indexOf(s);
+//     return i === -1 ? 1000 : i;
+// };
+
+// const SECTION_ITEM_ORDER: Record<string, string[]> = {
+//     Operasional: [
+//         "/jadwal-pencatatan",
+//         "/catat-meter",
+//         "/kendala",
+//         "/reset-meteran",
+//         "/petugas/riwayat",
+//     ],
+//     Master: ["/pelanggan", "/zona", "/inventaris"],
+//     Meteran: ["/catat-tandon", "/catat-blok"],
+//     Keuangan: [
+//         "/tagihan-pembayaran",
+//         "/biaya",
+//         "/pengeluaran",
+//         "/hutang",
+//         "/pajak",
+//     ],
+//     Laporan: [
+//         "/laporan-catat-meter",
+//         "/laporan-summary",
+//         "/laporan/konsumsi-zona",
+//         "/laporan-status-pembayaran",
+//         "/laporan/laba-rugi",
+//         "/laporan/hutang",
+//         "/laporan/keuangan",
+//         "/laporan/piutang",
+//     ],
+//     Distribusi: [
+//         "/distribusi/hirarki",
+//         "/distribusi/rekonsiliasi",
+//         "/distribusi/peta",
+//     ],
+//     Pengaturan: ["/pengaturan", "/whatsapp-setting", "/tools/import-export"],
+//     Support: ["/support", "/admin/support"],
+// };
+// const getItemOrder = (section: string, href: string) => {
+//     const arr = SECTION_ITEM_ORDER[section];
+//     if (!arr) return 1000;
+//     const idx = arr.indexOf(href);
+//     return idx === -1 ? 900 : idx;
+// };
+
+// /* ============== Breadcrumb Labels ============== */
+// const PATH_LABELS: Record<string, string> = {
+//     "/dashboard": "Dashboard",
+//     "/pelanggan": "Pelanggan",
+//     "/zona": "Blok",
+//     "/jadwal-pencatatan": "Jadwal Pencatatan",
+//     "/catat-meter": "Catat Meter",
+//     "/catat-meter-blok": "Catat Meter Blok",
+//     "/catat-tandon": "Catat Meter Tandon",
+//     "/catat-blok": "Catat Meter Blok",
+//     "/tagihan-pembayaran": "Tagihan & Pembayaran",
+//     "/warga-profil": "Profil Warga",
+//     "/petugas/riwayat": "Riwayat Petugas",
+//     "/petugas/profil": "Profil Petugas",
+//     "/reset-meteran": "Reset Meteran",
+//     "/kendala": "kendala",
+//     "/biaya": "Kategori Biaya",
+//     "/pengeluaran": "Input Pengeluaran",
+//     "/hutang": "Hutang",
+//     "/pajak": "Pengelolaan Pajak",
+//     "/laporan-summary": "Laporan Summary",
+//     "/laporan/konsumsi-zona": "Laporan Konsumsi Blok",
+//     "/laporan-status-pembayaran": "Laporan Status Pembayaran",
+//     "/laporan/laba-rugi": "Laporan Laba & Rugi",
+//     "/laporan/hutang": "Laporan Hutang",
+//     "/laporan/keuangan": "Laporan Keuangan",
+//     "/laporan-catat-meter": "Laporan Catat Meter",
+//     "/laporan/piutang": "Laporan Piutang",
+//     "/distribusi/hirarki": "Hirarki",
+//     "/distribusi/rekonsiliasi": "Rekonsiliasi",
+//     "/distribusi/peta": "Peta Pemakaian Air",
+//     "/pengaturan": "Pengaturan",
+//     "/support": "Pusat Bantuan",
+//     "/admin/support": "CS Center",
+//     "/tools/import-export": "Import/Export",
+//     "/warga-dashboard": "Dashboard Warga",
+//     "/login": "Login",
+// };
+
+// interface AppHeaderProps {
+//     title: string;
+//     showBackButton?: boolean;
+//     showBreadcrumb?: boolean;
+//     titleExtra?: React.ReactNode;
+// }
+
+// /* ===================== Helpers for groups ===================== */
+// const normalizeGroups = (item: MenuItem): GroupName[] => {
+//     const g = item.group ?? "Admin";
+//     return Array.isArray(g) ? g : [g];
+// };
+
+// /* ===================== Component ===================== */
+// export function AppHeader({
+//     title,
+//     showBackButton = true,
+//     showBreadcrumb = true,
+//     titleExtra,
+// }: AppHeaderProps) {
+//     const router = useRouter();
+//     const pathname = usePathname();
+//     const { toast } = useToast();
+//     const [user, setUser] = useState<LiteUser | null>(null);
+
+//     useEffect(() => {
+//         try {
+//             const raw = localStorage.getItem("tb_user");
+//             if (raw) setUser(JSON.parse(raw));
+//         } catch {}
+//     }, []);
+//     const role: Role | undefined = user?.role;
+
+//     const [offering, setOffering] = useState<string>(getOfferingClient());
+//     useEffect(() => {
+//         setOffering(getOfferingClient());
+//         const onStorage = (e: StorageEvent) => {
+//             if (e.key === "tb_offering") setOffering(getOfferingClient());
+//         };
+//         const onFocus = () => setOffering(getOfferingClient());
+//         window.addEventListener("storage", onStorage);
+//         window.addEventListener("focus", onFocus);
+//         return () => {
+//             window.removeEventListener("storage", onStorage);
+//             window.removeEventListener("focus", onFocus);
+//         };
+//     }, []);
+
+//     // allowedPaths: null => non-strict fallback; Set => strict mode aktif
+//     const [allowedPaths, setAllowedPaths] = useState<Set<string> | null>(null);
+//     const [matrixLoaded, setMatrixLoaded] = useState(false);
+
+//     useEffect(() => {
+//         let cancelled = false;
+//         (async () => {
+//             try {
+//                 const url = `/api/public/catalog/offerings/${encodeURIComponent(
+//                     PRODUCT_CODE
+//                 )}/${encodeURIComponent(offering)}/matrix?include=menus`;
+
+//                 const res = await fetch(url, { cache: "no-store" });
+//                 const json = await res.json().catch(() => ({}));
+
+//                 if (!res.ok || json?.ok === false) {
+//                     if (!cancelled) {
+//                         setAllowedPaths(
+//                             MATRIX_STRICT ? new Set<string>() : null
+//                         );
+//                         setMatrixLoaded(true);
+//                     }
+//                     return;
+//                 }
+
+//                 const menus: Array<{ route_path?: string; is_active?: any }> =
+//                     json?.data?.menus || json?.menus || [];
+
+//                 const s = new Set<string>();
+//                 for (const m of menus) {
+//                     const p = normalizePath((m?.route_path ?? "").toString());
+//                     if (!p || p === "/") continue;
+
+//                     // Aktif by default, non-aktif hanya jika eksplisit
+//                     const inactive =
+//                         m?.is_active === false ||
+//                         m?.is_active === 0 ||
+//                         m?.is_active === "0" ||
+//                         (typeof m?.is_active === "string" &&
+//                             m?.is_active.toLowerCase() === "false");
+//                     if (inactive) continue;
+
+//                     s.add(p);
+//                 }
+
+//                 if (!cancelled) {
+//                     setAllowedPaths(s);
+//                     setMatrixLoaded(true);
+//                     // console.debug("[MATRIX] allowedPaths:", Array.from(s));
+//                 }
+//             } catch (err) {
+//                 if (!cancelled) {
+//                     setAllowedPaths(MATRIX_STRICT ? new Set<string>() : null);
+//                     setMatrixLoaded(true);
+//                 }
+//             }
+//         })();
+//         return () => {
+//             cancelled = true;
+//         };
+//     }, [offering]);
+
+//     /* visibleMenu:
+//      * 1) filter by role
+//      * 2) strict: allow jika exact match atau parent-prefix match
+//      */
+//     const visibleMenu = useMemo(() => {
+//         let base = MENU_ITEMS.filter((m) => {
+//             if (!m.roles || m.roles.length === 0) return false;
+//             if (!role) return false;
+//             return m.roles.includes(role);
+//         });
+
+//         if (!matrixLoaded) return base;
+
+//         // non-strict -> role-based saja
+//         if (allowedPaths === null) return base;
+
+//         const isAllowed = (href: string) => {
+//             const local = normalizePath(href);
+//             if (ALWAYS_SHOW.has(local)) return true;
+
+//             // 1) exact match
+//             if (allowedPaths.has(local)) return true;
+
+//             // 2) parent-prefix match (contoh: '/petugas/riwayat' lolos kalau '/petugas' ada)
+//             const segs = local.split("/").filter(Boolean);
+//             for (let i = 1; i < segs.length; i++) {
+//                 const parent = "/" + segs.slice(0, i).join("/");
+//                 if (allowedPaths.has(parent)) return true;
+//             }
+
+//             // 3) fallback aman untuk rute-rute petugas
+//             if (role === "PETUGAS" && PETUGAS_SAFE_ROUTES.has(local))
+//                 return true;
+
+//             return false;
+//         };
+
+//         base = base.filter((m) => isAllowed(m.href));
+//         return base;
+//     }, [role, matrixLoaded, allowedPaths]);
+
+//     // Susun kelompok & urutan
+//     const standaloneAdmin = useMemo(
+//         () =>
+//             visibleMenu
+//                 .filter(
+//                     (m) => normalizeGroups(m).includes("Admin") && !m.section
+//                 )
+//                 .sort((a, b) => a.label.localeCompare(b.label)),
+//         [visibleMenu]
+//     );
+
+//     const adminSections = useMemo(() => {
+//         const map = new Map<string, MenuItem[]>();
+//         for (const item of visibleMenu) {
+//             if (!normalizeGroups(item).includes("Admin") || !item.section)
+//                 continue;
+//             if (!map.has(item.section)) map.set(item.section, []);
+//             map.get(item.section)!.push(item);
+//         }
+
+//         return Array.from(map.entries())
+//             .map(([section, items]) => ({
+//                 section,
+//                 items: items.sort((a, b) => {
+//                     const oa = getItemOrder(section, a.href);
+//                     const ob = getItemOrder(section, b.href);
+//                     if (oa !== ob) return oa - ob;
+//                     return a.label.localeCompare(b.label);
+//                 }),
+//             }))
+//             .sort((a, b) => {
+//                 const oa = getSectionOrder(a.section);
+//                 const ob = getSectionOrder(b.section);
+//                 if (oa !== ob) return oa - ob;
+//                 return a.section.localeCompare(b.section);
+//             });
+//     }, [visibleMenu]);
+
+//     // PETUGAS & WARGA
+//     const petugasItems = useMemo(
+//         () =>
+//             visibleMenu
+//                 .filter(
+//                     (m) =>
+//                         normalizeGroups(m).includes("Petugas") ||
+//                         (Array.isArray(m.roles) && m.roles.includes("PETUGAS"))
+//                 )
+//                 .sort((a, b) => a.label.localeCompare(b.label)),
+//         [visibleMenu]
+//     );
+
+//     const wargaItems = useMemo(
+//         () =>
+//             visibleMenu
+//                 .filter(
+//                     (m) =>
+//                         normalizeGroups(m).includes("Warga") ||
+//                         (Array.isArray(m.roles) && m.roles.includes("WARGA"))
+//                 )
+//                 .sort((a, b) => a.label.localeCompare(b.label)),
+//         [visibleMenu]
+//     );
+
+//     // UI handlers
+//     const [openSections, setOpenSections] = useState<Set<string>>(new Set());
+//     const toggleSection = (sec: string) => {
+//         setOpenSections((prev) => {
+//             const next = new Set(prev);
+//             next.has(sec) ? next.delete(sec) : next.add(sec);
+//             return next;
+//         });
+//     };
+
+//     const handleBack = () => {
+//         if (pathname === "/dashboard") router.push("/");
+//         else router.back();
+//     };
+
+//     const handleLogoutUser = async () => {
+//         try {
+//             await fetch("/api/auth/logout", { method: "POST" });
+//             toast({
+//                 title: "Logout berhasil",
+//                 description: "Silakan login ulang.",
+//             });
+//         } catch {
+//             toast({
+//                 title: "Logout gagal",
+//                 description: "Terjadi error, coba lagi.",
+//                 variant: "destructive",
+//             });
+//         } finally {
+//             localStorage.removeItem("tb_user");
+//             router.push("/login");
+//         }
+//     };
+
+//     const getBreadcrumbItems = () => {
+//         const items = [{ href: "/dashboard", label: "Dashboard" }];
+//         if (pathname !== "/dashboard") {
+//             const currentLabel = PATH_LABELS[pathname] || title;
+//             items.push({ href: pathname, label: currentLabel });
+//         }
+//         return items;
+//     };
+
+//     return (
+//         <>
+//             <GlassCard className="mb-6 p-4">
+//                 <div className="flex items-center justify-between">
+//                     <div className="flex items-center gap-4">
+//                         {showBackButton && (
+//                             <Button
+//                                 variant="ghost"
+//                                 size="icon"
+//                                 onClick={handleBack}
+//                                 className="shrink-0 hover:bg-white/20"
+//                             >
+//                                 <ArrowLeft className="h-5 w-5" />
+//                             </Button>
+//                         )}
+
+//                         <div className="flex-1">
+//                             <div className="flex items-center gap-2">
+//                                 <h1 className="text-2xl font-bold text-foreground">
+//                                     {title}
+//                                 </h1>
+//                                 {titleExtra ? (
+//                                     <div className="shrink-0">{titleExtra}</div>
+//                                 ) : null}
+//                             </div>
+
+//                             {showBreadcrumb && pathname !== "/dashboard" && (
+//                                 <Breadcrumb className="mt-1">
+//                                     <BreadcrumbList>
+//                                         {getBreadcrumbItems().map(
+//                                             (item, index, arr) => (
+//                                                 <div
+//                                                     key={item.href}
+//                                                     className="flex items-center"
+//                                                 >
+//                                                     {index > 0 && (
+//                                                         <BreadcrumbSeparator />
+//                                                     )}
+//                                                     <BreadcrumbItem>
+//                                                         {index ===
+//                                                         arr.length - 1 ? (
+//                                                             <BreadcrumbPage className="text-sm">
+//                                                                 {item.label}
+//                                                             </BreadcrumbPage>
+//                                                         ) : (
+//                                                             <BreadcrumbLink
+//                                                                 asChild
+//                                                             >
+//                                                                 <Link
+//                                                                     href={
+//                                                                         item.href
+//                                                                     }
+//                                                                     className="text-sm hover:text-primary"
+//                                                                 >
+//                                                                     {item.label}
+//                                                                 </Link>
+//                                                             </BreadcrumbLink>
+//                                                         )}
+//                                                     </BreadcrumbItem>
+//                                                 </div>
+//                                             )
+//                                         )}
+//                                     </BreadcrumbList>
+//                                 </Breadcrumb>
+//                             )}
+//                         </div>
+//                     </div>
+
+//                     <DropdownMenu>
+//                         <DropdownMenuTrigger asChild>
+//                             <Button
+//                                 variant="ghost"
+//                                 size="icon"
+//                                 className="hover:bg-white/20"
+//                             >
+//                                 <MenuIcon className="h-5 w-5" />
+//                             </Button>
+//                         </DropdownMenuTrigger>
+
+//                         <DropdownMenuContent
+//                             align="end"
+//                             className="w-72 bg-white/95 backdrop-blur-md border-0 shadow-lg rounded-lg p-1"
+//                         >
+//                             <div className="px-3 py-2 text-xs text-muted-foreground">
+//                                 {user ? (
+//                                     <>
+//                                         Masuk sebagai{" "}
+//                                         <b className="text-foreground">
+//                                             {user.name}
+//                                         </b>{" "}
+//                                         ({user.role})
+//                                     </>
+//                                 ) : (
+//                                     "Belum login"
+//                                 )}
+//                             </div>
+
+//                             {/* Standalone Admin */}
+//                             {(role === "ADMIN" || role === "OPERATOR") && (
+//                                 <>
+//                                     {standaloneAdmin.map((item) => {
+//                                         const Icon = item.icon;
+//                                         return (
+//                                             <DropdownMenuItem
+//                                                 key={item.href}
+//                                                 asChild
+//                                                 className="cursor-pointer rounded-md"
+//                                             >
+//                                                 <Link
+//                                                     href={item.href}
+//                                                     className="flex items-center gap-2"
+//                                                 >
+//                                                     <Icon className="h-4 w-4" />
+//                                                     <span>{item.label}</span>
+//                                                 </Link>
+//                                             </DropdownMenuItem>
+//                                         );
+//                                     })}
+
+//                                     {standaloneAdmin.length > 0 &&
+//                                         adminSections.length > 0 && (
+//                                             <div className="h-1" />
+//                                         )}
+
+//                                     {adminSections.map(
+//                                         ({ section, items }, idx) => (
+//                                             <div key={section}>
+//                                                 <DropdownMenuItem
+//                                                     className="justify-between font-medium rounded-md"
+//                                                     onSelect={(e) =>
+//                                                         e.preventDefault()
+//                                                     }
+//                                                     onClick={() =>
+//                                                         toggleSection(section)
+//                                                     }
+//                                                 >
+//                                                     <span>{section}</span>
+//                                                     <ChevronRight
+//                                                         className={`h-4 w-4 transition-transform ${
+//                                                             openSections.has(
+//                                                                 section
+//                                                             )
+//                                                                 ? "rotate-90"
+//                                                                 : ""
+//                                                         }`}
+//                                                     />
+//                                                 </DropdownMenuItem>
+
+//                                                 {openSections.has(section) && (
+//                                                     <div className="py-1">
+//                                                         {items.map((item) => {
+//                                                             const Icon =
+//                                                                 item.icon;
+//                                                             return (
+//                                                                 <DropdownMenuItem
+//                                                                     key={
+//                                                                         item.href
+//                                                                     }
+//                                                                     asChild
+//                                                                     className="pl-6 pr-2 py-2 rounded-md"
+//                                                                 >
+//                                                                     <Link
+//                                                                         href={
+//                                                                             item.href
+//                                                                         }
+//                                                                         className="flex items-center gap-2 cursor-pointer"
+//                                                                     >
+//                                                                         <Icon className="h-4 w-4" />
+//                                                                         <span>
+//                                                                             {
+//                                                                                 item.label
+//                                                                             }
+//                                                                         </span>
+//                                                                     </Link>
+//                                                                 </DropdownMenuItem>
+//                                                             );
+//                                                         })}
+//                                                     </div>
+//                                                 )}
+
+//                                                 {idx <
+//                                                     adminSections.length -
+//                                                         1 && (
+//                                                     <div className="h-1" />
+//                                                 )}
+//                                             </div>
+//                                         )
+//                                     )}
+//                                 </>
+//                             )}
+
+//                             {/* PETUGAS */}
+//                             {role === "PETUGAS" &&
+//                                 petugasItems.map((item) => {
+//                                     const Icon = item.icon;
+//                                     return (
+//                                         <DropdownMenuItem
+//                                             key={item.href}
+//                                             asChild
+//                                             className="cursor-pointer rounded-md"
+//                                         >
+//                                             <Link
+//                                                 href={item.href}
+//                                                 className="flex items-center gap-2"
+//                                             >
+//                                                 <Icon className="h-4 w-4" />
+//                                                 <span>{item.label}</span>
+//                                             </Link>
+//                                         </DropdownMenuItem>
+//                                     );
+//                                 })}
+
+//                             {/* WARGA */}
+//                             {role === "WARGA" &&
+//                                 wargaItems.map((item) => {
+//                                     const Icon = item.icon;
+//                                     return (
+//                                         <DropdownMenuItem
+//                                             key={item.href}
+//                                             asChild
+//                                             className="cursor-pointer rounded-md"
+//                                         >
+//                                             <Link
+//                                                 href={item.href}
+//                                                 className="flex items-center gap-2"
+//                                             >
+//                                                 <Icon className="h-4 w-4" />
+//                                                 <span>{item.label}</span>
+//                                             </Link>
+//                                         </DropdownMenuItem>
+//                                     );
+//                                 })}
+
+//                             <div className="h-1" />
+
+//                             <DropdownMenuItem
+//                                 onClick={handleLogoutUser}
+//                                 className="flex items-center gap-2 cursor-pointer text-red-600 rounded-md"
+//                             >
+//                                 <LogOut className="h-4 w-4" />
+//                                 <span>Logout</span>
+//                             </DropdownMenuItem>
+//                         </DropdownMenuContent>
+//                     </DropdownMenu>
+//                 </div>
+//             </GlassCard>
+//             {/* Banner onboarding di bawah header */}
+//             <OnboardingBanner />
+//         </>
+//     );
+// }
+
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
@@ -95,12 +1155,8 @@ function getOfferingClient(): string {
 
 /** Aliases: local -> upstream matrix route */
 const ROUTE_ALIASES: Record<string, string> = {
-    "/warga-dashboard": "/warga",
-    "/hutang-pembayaran": "/keuangan/pembayaran-hutang",
-    // Tambahkan mapping lain bila backend berbeda nama:
-    // "/catat-blok": "/catat-meter-blok",
-    // "/petugas/profil": "/profil-petugas",
-    // "/petugas/riwayat": "/riwayat-petugas",
+    "/warga-dashboard": "/warga-dashboard",
+    "/hutang-pembayaran": "/hutang-pembayaran",
 };
 
 /** Normalisasi path: leading '/', tanpa trailing '/', apply alias */
@@ -109,11 +1165,20 @@ function normalizePath(p: string): string {
     let s = p.trim();
     if (!s.startsWith("/")) s = "/" + s;
     if (s.length > 1 && s.endsWith("/")) s = s.slice(0, -1);
-    if (ROUTE_ALIASES[s]) return normalizePath(ROUTE_ALIASES[s]);
+
+    // apply alias sekali saja, tanpa rekursi
+    const alias = ROUTE_ALIASES[s];
+    if (alias) {
+        let a = alias.trim();
+        if (!a.startsWith("/")) a = "/" + a;
+        if (a.length > 1 && a.endsWith("/")) a = a.slice(0, -1);
+        return a;
+    }
+
     return s;
 }
 
-/** Selalu tampil */
+/** Optional: rute yang mau selalu tampil kalau sampai matrix kosong banget */
 const ALWAYS_SHOW = new Set<string>(["/dashboard"].map(normalizePath));
 
 /** Fallback aman untuk PETUGAS (boleh dihapus setelah semua rute tercakup matrix) */
@@ -144,7 +1209,7 @@ const MENU_ITEMS: MenuItem[] = [
         href: "/dashboard",
         label: "Dashboard",
         icon: Home,
-        roles: ["ADMIN", "OPERATOR"],
+        roles: ["ADMIN"],
         group: "Admin",
     },
 
@@ -153,7 +1218,7 @@ const MENU_ITEMS: MenuItem[] = [
         href: "/pelanggan",
         label: "Pelanggan",
         icon: Users,
-        roles: ["ADMIN", "OPERATOR"],
+        roles: ["ADMIN"],
         group: "Admin",
         section: "Master",
     },
@@ -161,7 +1226,7 @@ const MENU_ITEMS: MenuItem[] = [
         href: "/tandon",
         label: "Tandon",
         icon: Droplet,
-        roles: ["ADMIN", "OPERATOR"],
+        roles: ["ADMIN"],
         group: "Admin",
         section: "Master",
     },
@@ -169,7 +1234,7 @@ const MENU_ITEMS: MenuItem[] = [
         href: "/zona",
         label: "Blok",
         icon: MapPin,
-        roles: ["ADMIN", "OPERATOR"],
+        roles: ["ADMIN"],
         group: "Admin",
         section: "Master",
     },
@@ -177,7 +1242,7 @@ const MENU_ITEMS: MenuItem[] = [
         href: "/inventaris",
         label: "Inventaris",
         icon: LibraryIcon,
-        roles: ["ADMIN", "OPERATOR"],
+        roles: ["ADMIN"],
         group: "Admin",
         section: "Master",
     },
@@ -195,7 +1260,7 @@ const MENU_ITEMS: MenuItem[] = [
         href: "/catat-meter",
         label: "Catat Meter",
         icon: ClipboardList,
-        roles: ["ADMIN", "OPERATOR", "PETUGAS"],
+        roles: ["ADMIN", "PETUGAS"],
         group: ["Admin", "Petugas"],
         section: "Operasional",
     },
@@ -213,7 +1278,7 @@ const MENU_ITEMS: MenuItem[] = [
         href: "/catat-tandon",
         label: "Catat Meter Tandon",
         icon: ClipboardList,
-        roles: ["ADMIN", "OPERATOR", "PETUGAS"],
+        roles: ["ADMIN", "PETUGAS"],
         group: ["Admin", "Petugas"],
         section: "Meteran",
     },
@@ -221,7 +1286,7 @@ const MENU_ITEMS: MenuItem[] = [
         href: "/catat-blok",
         label: "Catat Meter Blok",
         icon: ClipboardList,
-        roles: ["ADMIN", "OPERATOR", "PETUGAS"],
+        roles: ["ADMIN", "PETUGAS"],
         group: ["Admin", "Petugas"],
         section: "Meteran",
     },
@@ -230,7 +1295,7 @@ const MENU_ITEMS: MenuItem[] = [
         href: "/reset-meteran",
         label: "Reset Meteran",
         icon: RotateCcw,
-        roles: ["ADMIN", "OPERATOR"],
+        roles: ["ADMIN"],
         group: "Admin",
         section: "Operasional",
     },
@@ -240,7 +1305,7 @@ const MENU_ITEMS: MenuItem[] = [
         href: "/tagihan-pembayaran",
         label: "Tagihan & Pembayaran",
         icon: FileText,
-        roles: ["ADMIN", "OPERATOR", "WARGA"],
+        roles: ["ADMIN", "WARGA"],
         group: ["Admin", "Warga"],
         section: "Keuangan",
     },
@@ -248,7 +1313,7 @@ const MENU_ITEMS: MenuItem[] = [
         href: "/biaya",
         label: "Kategori Biaya",
         icon: FolderOpen,
-        roles: ["ADMIN", "OPERATOR"],
+        roles: ["ADMIN"],
         group: "Admin",
         section: "Keuangan",
     },
@@ -256,7 +1321,7 @@ const MENU_ITEMS: MenuItem[] = [
         href: "/pengeluaran",
         label: "Input Pengeluaran",
         icon: CreditCard,
-        roles: ["ADMIN", "OPERATOR"],
+        roles: ["ADMIN"],
         group: "Admin",
         section: "Keuangan",
     },
@@ -264,7 +1329,7 @@ const MENU_ITEMS: MenuItem[] = [
         href: "/hutang",
         label: "Hutang",
         icon: CreditCard,
-        roles: ["ADMIN", "OPERATOR"],
+        roles: ["ADMIN"],
         group: "Admin",
         section: "Keuangan",
     },
@@ -272,7 +1337,7 @@ const MENU_ITEMS: MenuItem[] = [
         href: "/hutang-pembayaran",
         label: "Pembayaran Hutang",
         icon: HandCoins,
-        roles: ["ADMIN", "OPERATOR"],
+        roles: ["ADMIN"],
         group: "Admin",
         section: "Keuangan",
     },
@@ -298,7 +1363,7 @@ const MENU_ITEMS: MenuItem[] = [
         href: "/laporan-summary",
         label: "Laporan Summary",
         icon: BarChart3,
-        roles: ["ADMIN", "OPERATOR"],
+        roles: ["ADMIN"],
         group: "Admin",
         section: "Laporan",
     },
@@ -306,7 +1371,7 @@ const MENU_ITEMS: MenuItem[] = [
         href: "/laporan/konsumsi-zona",
         label: "Laporan Konsumsi Blok",
         icon: Droplet,
-        roles: ["ADMIN", "OPERATOR"],
+        roles: ["ADMIN"],
         group: "Admin",
         section: "Laporan",
     },
@@ -346,7 +1411,7 @@ const MENU_ITEMS: MenuItem[] = [
         href: "/laporan/piutang",
         label: "Laporan Piutang",
         icon: FileText,
-        roles: ["ADMIN", "OPERATOR"],
+        roles: ["ADMIN"],
         group: "Admin",
         section: "Laporan",
     },
@@ -394,12 +1459,13 @@ const MENU_ITEMS: MenuItem[] = [
         group: "Admin",
         section: "Pengaturan",
     },
+
     // Support
     {
         href: "/support",
         label: "Pusat Bantuan",
         icon: LifeBuoy,
-        roles: ["ADMIN", "OPERATOR", "PETUGAS", "WARGA"],
+        roles: ["ADMIN", "PETUGAS", "WARGA"],
         group: "Admin",
         section: "Support",
     },
@@ -597,7 +1663,7 @@ export function AppHeader({
         };
     }, []);
 
-    // allowedPaths: null => non-strict fallback; Set => strict mode aktif
+    // ====== MATRIX OFFERING (existing) ======
     const [allowedPaths, setAllowedPaths] = useState<Set<string> | null>(null);
     const [matrixLoaded, setMatrixLoaded] = useState(false);
 
@@ -630,7 +1696,6 @@ export function AppHeader({
                     const p = normalizePath((m?.route_path ?? "").toString());
                     if (!p || p === "/") continue;
 
-                    // Aktif by default, non-aktif hanya jika eksplisit
                     const inactive =
                         m?.is_active === false ||
                         m?.is_active === 0 ||
@@ -645,9 +1710,8 @@ export function AppHeader({
                 if (!cancelled) {
                     setAllowedPaths(s);
                     setMatrixLoaded(true);
-                    // console.debug("[MATRIX] allowedPaths:", Array.from(s));
                 }
-            } catch (err) {
+            } catch {
                 if (!cancelled) {
                     setAllowedPaths(MATRIX_STRICT ? new Set<string>() : null);
                     setMatrixLoaded(true);
@@ -659,9 +1723,67 @@ export function AppHeader({
         };
     }, [offering]);
 
+    // ====== MATRIX ROLE-PERMISSION (BARU) ======
+    const [roleAllowedPaths, setRoleAllowedPaths] =
+        useState<Set<string> | null>(null);
+    const [roleMatrixLoaded, setRoleMatrixLoaded] = useState(false);
+
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            // kalau belum tau user, anggap belum siap
+            if (!user) {
+                setRoleAllowedPaths(null);
+                setRoleMatrixLoaded(true);
+                return;
+            }
+
+            try {
+                const res = await fetch("/api/my/menu-permissions", {
+                    cache: "no-store",
+                });
+                const json = await res.json().catch(() => ({}));
+
+                if (!res.ok || json?.ok === false) {
+                    if (!cancelled) {
+                        // null = fallback ke role-only (abaikan matrix role-permission)
+                        setRoleAllowedPaths(null);
+                        setRoleMatrixLoaded(true);
+                    }
+                    return;
+                }
+
+                const routes: string[] =
+                    json?.data?.routes || json?.routes || json?.data || [];
+
+                const s = new Set<string>();
+                for (const r of routes) {
+                    const p = normalizePath((r ?? "").toString());
+                    if (!p || p === "/") continue;
+                    s.add(p);
+                }
+
+                if (!cancelled) {
+                    setRoleAllowedPaths(s);
+                    setRoleMatrixLoaded(true);
+                }
+            } catch {
+                if (!cancelled) {
+                    setRoleAllowedPaths(null);
+                    setRoleMatrixLoaded(true);
+                }
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [user?.id]);
+
     /* visibleMenu:
      * 1) filter by role
-     * 2) strict: allow jika exact match atau parent-prefix match
+     * 2) filter by offering matrix (allowedPaths)
+     * 3) filter by role-permission matrix (roleAllowedPaths → canView)
      */
     const visibleMenu = useMemo(() => {
         let base = MENU_ITEMS.filter((m) => {
@@ -670,14 +1792,20 @@ export function AppHeader({
             return m.roles.includes(role);
         });
 
-        if (!matrixLoaded) return base;
+        // kalau salah satu matrix belum kelar load, tampil dulu base (hindari flicker)
+        if (!matrixLoaded || !roleMatrixLoaded) return base;
 
-        // non-strict -> role-based saja
-        if (allowedPaths === null) return base;
+        // util check allowed oleh offering
+        const isAllowedByOffering = (local: string) => {
+            // non-strict → semua oleh offering dianggap ok
+            if (allowedPaths === null) return true;
 
-        const isAllowed = (href: string) => {
-            const local = normalizePath(href);
-            if (ALWAYS_SHOW.has(local)) return true;
+            if (local === "/dashboard") return true;
+
+            if (ALWAYS_SHOW.has(local) && allowedPaths.size === 0) {
+                // kalau benar-benar kosong, tetap biarkan dashboard
+                return true;
+            }
 
             // 1) exact match
             if (allowedPaths.has(local)) return true;
@@ -689,16 +1817,25 @@ export function AppHeader({
                 if (allowedPaths.has(parent)) return true;
             }
 
-            // 3) fallback aman untuk rute-rute petugas
-            if (role === "PETUGAS" && PETUGAS_SAFE_ROUTES.has(local))
-                return true;
-
             return false;
         };
 
-        base = base.filter((m) => isAllowed(m.href));
+        // util check allowed oleh role-permission
+        const isAllowedByRoleMatrix = (local: string) => {
+            if (roleAllowedPaths === null) {
+                // fallback: kalau endpoint gagal, kita tidak pakai matrix role-permission
+                return true;
+            }
+            return roleAllowedPaths.has(local);
+        };
+
+        base = base.filter((m) => {
+            const local = normalizePath(m.href);
+            return isAllowedByOffering(local) && isAllowedByRoleMatrix(local);
+        });
+
         return base;
-    }, [role, matrixLoaded, allowedPaths]);
+    }, [role, matrixLoaded, allowedPaths, roleMatrixLoaded, roleAllowedPaths]);
 
     // Susun kelompok & urutan
     const standaloneAdmin = useMemo(
@@ -904,7 +2041,7 @@ export function AppHeader({
                             </div>
 
                             {/* Standalone Admin */}
-                            {(role === "ADMIN" || role === "OPERATOR") && (
+                            {role === "ADMIN" && (
                                 <>
                                     {standaloneAdmin.map((item) => {
                                         const Icon = item.icon;
@@ -1052,6 +2189,7 @@ export function AppHeader({
                     </DropdownMenu>
                 </div>
             </GlassCard>
+
             {/* Banner onboarding di bawah header */}
             <OnboardingBanner />
         </>

@@ -702,6 +702,15 @@ function FeatureDisabledBanner() {
     );
 }
 
+function formatRupiah(n: number) {
+    if (!Number.isFinite(n)) return "-";
+    return new Intl.NumberFormat("id-ID", {
+        style: "currency",
+        currency: "IDR",
+        maximumFractionDigits: 0,
+    }).format(n);
+}
+
 /* ===================== Form ===================== */
 export function CustomerForm() {
     const [isLoading, setIsLoading] = useState(false);
@@ -735,8 +744,16 @@ export function CustomerForm() {
     // QUOTA
     const { data: quotaResp } = useSWR<{
         ok: boolean;
-        quota: { used: number; max: number; remaining: number };
+        quota: {
+            used: number;
+            max: number;
+            remaining: number;
+            addons: number;
+            addonUnitPrice: number;
+            addonCost: number;
+        };
     }>("/api/pelanggan?quota=1", fetcher, { revalidateOnFocus: true });
+
     const remaining = quotaResp?.quota?.remaining ?? Infinity;
     const quotaHabis = Number.isFinite(remaining) && remaining <= 0;
 
@@ -791,14 +808,17 @@ export function CustomerForm() {
         e.preventDefault();
 
         if (quotaHabis) {
+            const q = quotaResp?.quota;
             toast({
                 title: "Kuota pelanggan habis",
-                description:
-                    "Paket sudah mencapai maksimum pelanggan. Hapus pelanggan tidak aktif atau upgrade paket.",
+                description: q
+                    ? `Paket ini maksimal ${q.max} pelanggan dan semuanya sudah terpakai. Hapus pelanggan tidak aktif atau upgrade / tambah addon untuk menambah kuota.`
+                    : "Paket sudah mencapai maksimum pelanggan. Hapus pelanggan tidak aktif atau upgrade paket.",
                 variant: "destructive",
             });
             return;
         }
+
         if (isLoading) return;
         setIsLoading(true);
 
@@ -899,13 +919,73 @@ export function CustomerForm() {
             fallback={<FeatureDisabledBanner />}
         >
             <form onSubmit={handleSubmit} className="space-y-6">
+                {/* === INFO KUOTA PELANGGAN === */}
+                {quotaResp?.quota && (
+                    <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 mb-2 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                        <div>
+                            <div className="text-sm font-semibold text-primary">
+                                Kuota pelanggan
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                                Digunakan{" "}
+                                <span className="font-semibold text-foreground">
+                                    {quotaResp.quota.used}
+                                </span>{" "}
+                                dari{" "}
+                                <span className="font-semibold text-foreground">
+                                    {quotaResp.quota.max}
+                                </span>{" "}
+                                pelanggan. Sisa{" "}
+                                <span
+                                    className={
+                                        (quotaResp.quota.remaining ?? 0) <= 5
+                                            ? "font-semibold text-amber-600"
+                                            : "font-semibold"
+                                    }
+                                >
+                                    {quotaResp.quota.remaining}
+                                </span>{" "}
+                                pelanggan.
+                            </div>
+
+                            {quotaResp.quota.addons > 0 && (
+                                <div className="mt-1 text-xs text-muted-foreground">
+                                    Termasuk{" "}
+                                    <span className="font-semibold">
+                                        {quotaResp.quota.addons} pelanggan
+                                        tambahan
+                                    </span>{" "}
+                                    dari addon
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="shrink-0 text-right">
+                            <div className="inline-flex items-center rounded-full border border-primary/30 bg-background px-3 py-1 text-xs font-medium">
+                                {quotaResp.quota.used}/{quotaResp.quota.max}{" "}
+                                pelanggan
+                            </div>
+                            {quotaResp.quota.remaining <= 3 && (
+                                <div className="mt-1 text-[11px] text-amber-700">
+                                    Kuota hampir habis, pertimbangkan upgrade /
+                                    tambah addon.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
                 {quotaHabis && (
                     <div className="p-4 border border-amber-300 bg-amber-50 text-amber-900 rounded-md">
                         <div className="font-medium">Kuota pelanggan habis</div>
                         <div className="text-sm">
                             Paket kamu sudah mencapai maksimum pelanggan. Hapus
                             pelanggan tidak aktif atau{" "}
-                            <a href="/upgrade" className="underline">
+                            <a
+                                href="https://agilestore.id"
+                                target="_blank"
+                                className="underline"
+                            >
                                 upgrade paket
                             </a>{" "}
                             untuk menambah kuota.

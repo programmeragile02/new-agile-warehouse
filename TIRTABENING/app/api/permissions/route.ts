@@ -106,6 +106,10 @@ export async function GET(req: NextRequest) {
             offering
         );
 
+        if (!allowedPaths || allowedPaths.size === 0) {
+            return NextResponse.json({ ok: true, data: [] });
+        }
+
         // 3) siapkan kondisi filter menu
         //    Asumsi: di mstMenu ada kolom `routePath` yang berisi "/pelanggan", "/jadwal-pencatatan", dst.
         const menuWhere: any = {
@@ -159,8 +163,14 @@ export async function GET(req: NextRequest) {
 
         // 7) ambil permissions hasil sinkron (hanya untuk productCode ini,
         //    dan implicit cuma untuk menu yang tadi kita proses)
+        const menuIds = menus.map((m: any) => m.id);
+
         const permissions = await prisma.appPermission.findMany({
-            where: { isActive: true, productCode },
+            where: {
+                isActive: true,
+                productCode,
+                menuId: { in: menuIds },
+            },
             orderBy: [{ category: "asc" }, { menuTitle: "asc" }],
         });
 

@@ -18,6 +18,7 @@ interface ProductProvisionerDriver
         string $adminEmail,
         string $adminUser,
         string $adminPlainPass,
+        string $adminPhone,
         array  $manifest
     ): void;
 

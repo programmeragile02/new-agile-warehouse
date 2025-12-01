@@ -54,7 +54,7 @@ async function fetchExtraCustomers(companyId: string): Promise<number> {
         const url = `${String(WAREHOUSE_API).replace(
             /\/+$/,
             ""
-        )}/api/company/entitlements`;
+        )}/company/entitlements`;
         const res = await fetch(url, {
             method: "POST",
             headers: {

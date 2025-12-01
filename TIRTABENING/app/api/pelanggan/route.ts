@@ -154,7 +154,7 @@ async function fetchEntitlementsFromWarehouse(companyId: string): Promise<{
         const url = `${WAREHOUSE_API_BASE.replace(
             /\/+$/,
             ""
-        )}/api/company/entitlements`;
+        )}/company/entitlements`;
         const res = await fetch(url, {
             method: "POST",
             headers: {

@@ -88,6 +88,7 @@ class TenantProvisioner
             throw new \InvalidArgumentException('Missing meta.customer_email in job.');
         }
         $customerName = data_get($job->meta, 'customer_name');
+        $adminPhone = data_get($job->meta, 'customer_phone');
 
         // Tentukan dbName sekali (idempoten)
         $dbName = data_get($job->meta, 'db_name');
@@ -130,6 +131,7 @@ class TenantProvisioner
             adminEmail:       $adminEmail,
             adminUser:        $adminUser,
             adminPlainPass:   $adminPass,
+            adminPhone:       $adminPhone,
             manifest:         $manifest
         );
 

@@ -396,7 +396,8 @@ export default function MasterTandonPage() {
                                         tandon. Hapus tandon yang tidak
                                         digunakan atau{" "}
                                         <a
-                                            href="/upgrade"
+                                            href="https://agilestore.id"
+                                            target="_blank"
                                             className="underline"
                                         >
                                             upgrade paket

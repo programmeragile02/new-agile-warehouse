@@ -22,6 +22,7 @@ async function main() {
     // const adminUser  = arg('adminUser')!;
     const adminEmail = arg("adminEmail")!; // masuk ke username
     const adminPass = arg("adminPass")!;
+    const adminPhone = arg("adminPhone")!;
 
     if (!companyPassHash && adminPass) {
         companyPassHash = await bcrypt.hash(adminPass, 12);
@@ -798,6 +799,7 @@ async function main() {
             role: adminRole.name,
             appRoleId: adminRole.id,
             name: "Administrator",
+            phone: adminPhone,
             companyId: companyId, // <-- link ke MstCompany.company_id
             mustChangePassword: true,
             updatedAt: new Date(),
@@ -806,6 +808,7 @@ async function main() {
             username: adminEmail,
             passwordHash: adminHash,
             name: "Administrator",
+            phone: adminPhone,
             role: adminRole.name,
             appRoleId: adminRole.id,
             isActive: true,

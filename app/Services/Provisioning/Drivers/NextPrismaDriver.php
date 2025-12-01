@@ -126,6 +126,7 @@ class NextPrismaDriver implements ProductProvisionerDriver
         string $adminEmail,
         string $adminUser,
         string $adminPlainPass,
+        string $adminPhone,
         array  $manifest
     ): void
     {
@@ -145,6 +146,7 @@ class NextPrismaDriver implements ProductProvisionerDriver
             "--adminEmail={$adminEmail}",
             "--adminUser={$adminUser}",
             "--adminPass={$adminPlainPass}",
+            "--adminPhone={$adminPhone}"
         ], $project, ['DATABASE_URL'=>$dbUrl]);
     }
 
